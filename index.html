@@ -14,25 +14,28 @@
 <body>
 <div id="speedlines"></div>
 <div id="vignette"></div>
+<div id="crowdcue"></div>
 <div id="hud">
+  <div class="box">ড্যামেজ<br><b id="damage">0</b> <span id="combo"></span></div>
   <div class="box">ভাড়া<br><b id="fare">৳0</b></div>
-  <div class="box">চিপা<br><b id="points">0</b> <span id="combo"></span></div>
   <div class="box">যাত্রী<br><b id="pass">0</b></div>
   <div class="box">গতি<br><b id="spd">0</b> কিমি/ঘ</div>
   <div class="box">দূরত্ব<br><b id="dist">0.0</b> কিমি</div>
-  <div class="box">তেল<div class="bar"><i id="fuelbar"></i></div></div>
-  <div class="box">বাসের অবস্থা<div class="bar"><i id="hpbar"></i></div></div>
+  <div class="box" id="fuelbox">⛽ তেল<div class="bar"><i id="fuelbar"></i></div></div>
+  <div class="box" id="crowdbox" hidden>🏃 পাবলিক<div class="bar"><i id="crowdbar"></i></div></div>
 </div>
 <div id="msg"></div>
-<div id="chipaPop"></div>
+<div id="dmgPop"></div>
 <div id="warn" hidden>⚠ সামনে বিপদ!</div>
+<div id="subtitle" hidden></div>
 <div id="screen">
   <h1 id="title">লোকাল বাস — ঢাকা রুট</h1>
   <div id="sub">
-    স্টপে হলুদ দাগে বাস ধীর করে যাত্রী তুলুন, ভাড়া বাড়ান।<br>
-    গাড়ির পাশ ঘেঁষে বেরিয়ে যান: <b>চিপা</b> দিলে পয়েন্ট, পরপর দিলে কম্বো!<br>
-    ধাক্কা দিলে ক্ষতিপূরণ। <b>ট্রাক, অন্য বাস আর পিলারে</b> লাগলেই খেলা শেষ ⚠<br>
-    নীল তেলের ড্রাম ধরে তেল ভরুন।<br><br>
+    রিকশা, বাইক, সিএনজি, গাড়ি আর দোকানে ধাক্কা দিলে <b>ড্যামেজ</b> বাড়ে, পরপর দিলে কম্বো!<br>
+    <b>ট্রাক, অন্য বাস আর পিলারে</b> লাগলেই খেলা শেষ ⚠<br>
+    ধাক্কার পর পাবলিক দৌড়াবে 🏃 ধরে ফেলার আগে পালান।<br>
+    হলুদ <b>⛽ সিএনজি</b> দাগে থেমে তেল নিন। গোলাপি <b>👮 পুলিশ</b> দাগে থেমে জরিমানা দিলে পাবলিক চলে যায়।<br>
+    নীল <b>বাস স্টপে</b> আস্তে থামলে যাত্রী ওঠে, ভাড়া বাড়ে।<br><br>
     <b>W/↑</b> চালান &nbsp; <b>S/↓</b> ব্রেক &nbsp; <b>A D / ← →</b> ঘুরান &nbsp; <b>Shift/Space</b> বুস্ট &nbsp; <b>P/Esc</b> বিরতি
   </div><br>
   <button id="go">খেলা শুরু</button>

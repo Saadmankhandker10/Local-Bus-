@@ -52,16 +52,11 @@ export const CFG = {
     speedDrain: 1.4,     // extra drain at speed 40 (scales with speed)
     speedDrainRef: 40,   // the speed where speedDrain is reached
     boostDrain: 2,       // extra drain per second while boosting
-    drumAmount: 40,      // fuel given by one blue drum
   },
 
-  hp: {
-    max: 100,
-    hitDamageScale: 1,   // multiply all crash damage (higher = harder)
-    hitBase: 0.5,        // damage multiplier at speed 0...
-    hitSpeedRef: 40,     // ...plus 1 more for every 40 speed
-    hitShake: 0.6,       // camera shake strength after a crash
-    hitVibrateMs: 80,    // phone vibration on a crash (0 = off)
+  hit: {
+    shake: 0.6,          // camera shake strength after a crash
+    vibrateMs: 80,       // phone vibration on a crash (0 = off)
     invulnTime: 0.6,     // seconds after a hit when nothing else can hit you (no chain crashes)
   },
 
@@ -97,20 +92,46 @@ export const CFG = {
     pulseHz: 2,          // pulse speed (kept under 3 Hz for comfort)
   },
 
-  // "চিপা": squeezing past a vehicle without touching it. This is where points come from.
-  chipa: {
-    gap: 0.9,            // the side gap must be smaller than this to count
-    minSpeed: 15,        // and the bus must be at least this fast
-    comboWindow: 2.5,    // seconds to chain the next chipa into a combo
-    comboStep: 0.5,      // each combo step adds this to the multiplier (x1, x1.5, x2 ...)
-    comboMaxMult: 4,
+  // Damage score: every light crash adds its `damage` value (see the types below).
+  // Crashes close together form a combo that multiplies the score.
+  combo: {
+    window: 2.5,         // seconds to chain the next crash into the combo
+    step: 0.5,           // each combo step adds this to the multiplier (x1, x1.5, x2 ...)
+    maxMult: 4,
+  },
+
+  // The crowd that chases the bus after a crash. Distances are behind the bus.
+  crowd: {
+    startGap: 9,         // where the crowd appears after the first crash
+    catchGap: 3.6,       // if they get this close (the back of the bus), they catch it
+    crashGapCut: 5,      // a new crash during a chase brings them this much closer
+    baseSpeed: 14,       // running speed at the first crash
+    speedPerCrash: 1.5,  // each extra crash makes them faster...
+    maxSpeed: 30,        // ...up to this (bus top speed is 38, so a moving bus can escape)
+    baseSize: 6,         // people at the first crash
+    sizePerCrash: 3,
+    maxSize: 40,         // also the size of the instanced mesh (the most we ever draw)
+    escapeGap: 70,       // stay further than this...
+    escapeTime: 4,       // ...for this many seconds and they give up
+    cueGap: 40,          // the screen-edge cue starts showing within this gap
+    spread: 6,           // how deep the crowd is (front runners to the back)
+    runBobHz: 3,         // running bounce speed
+    runBob: 0.25,        // running bounce height
+    ringRadius: 4.2,     // when they catch the bus, they stand around it in a ring this wide
+    caughtSeconds: 1.6,  // the "surrounded" moment before the game-over screen
+    ringSpeed: 6,        // how fast they walk into the ring
+  },
+
+  speech: {
+    rudeness: 1,          // 0 = no insults, 1 = mild banter (default), 2 = louder street banter
+    subtitleSeconds: 2.2, // how long a line stays on screen
+    crowdShoutEvery: 2.5, // seconds between crowd shouts while they are close
   },
 
   fare: {
-    perPassenger: 10,     // taka for each passenger who boards
+    perPassenger: 10,    // taka for each passenger who boards
     travelRate: 0.015,    // taka per passenger per unit of speed per second
     maxPassengers: 30,
-    lostOnHit: 2,         // passengers who leave after a crash
   },
 
   traffic: {
@@ -141,27 +162,27 @@ export const CFG = {
     heavyGap: 30,         // never two heavy vehicles this close, so there's always a way through
 
     // w/l/h = size, v = own speed, wt = how often it appears, mass = for launching,
-    // dmg = damage to the bus, fine = taka lost on a crash, chipa = points for squeezing past.
+    // damage = score for crashing into it (bigger or rarer = more).
     // wobble/weave = side-to-side movement, laneChange = chance per second to switch lane.
     types: [
-      { name: "rickshaw", shape: "rickshaw", w: 1.3, l: 2.6, h: 1.0, v: 5,  wt: 4,   mass: 0.4, dmg: 6,  fine: 15, chipa: 10,
+      { name: "rickshaw", shape: "rickshaw", w: 1.3, l: 2.6, h: 1.0, v: 5,  wt: 4,   mass: 0.4, damage: 10,
         wobble: 0.6, wobbleFreq: 2, colors: [0xff9800, 0x29b6f6, 0xec407a, 0xab47bc] },
-      { name: "bike",     shape: "bike",     w: 0.8, l: 2.0, h: 1.3, v: 16, wt: 2.5, mass: 0.3, dmg: 4,  fine: 10, chipa: 15,
+      { name: "bike",     shape: "bike",     w: 0.8, l: 2.0, h: 1.3, v: 16, wt: 2.5, mass: 0.3, damage: 15,
         wobble: 1.2, wobbleFreq: 1.5, colors: [0x212121, 0xd32f2f, 0x1565c0] },
-      { name: "cng",      shape: "car",      w: 1.6, l: 2.8, h: 1.6, v: 12, wt: 3.5, mass: 0.6, dmg: 10, fine: 25, chipa: 15,
+      { name: "cng",      shape: "car",      w: 1.6, l: 2.8, h: 1.6, v: 12, wt: 3.5, mass: 0.6, damage: 20,
         laneChange: 0.25, colors: [0x2e9e4f] },
-      { name: "car",      shape: "car",      w: 1.9, l: 4.2, h: 1.4, v: 15, wt: 3,   mass: 1.5, dmg: 14, fine: 40, chipa: 20,
+      { name: "car",      shape: "car",      w: 1.9, l: 4.2, h: 1.4, v: 15, wt: 3,   mass: 1.5, damage: 30,
         colors: [0xe53935, 0x1e88e5, 0xfafafa, 0x424242, 0xfdd835] },
-      { name: "truck",    shape: "truck",    w: 2.6, l: 8,   h: 3.0, v: 9,  wt: 1.2, heavy: true, chipa: 40,
+      { name: "truck",    shape: "truck",    w: 2.6, l: 8,   h: 3.0, v: 9,  wt: 1.2, heavy: true,
         colors: [0xf57c00, 0x5d4037, 0x1565c0] },
-      { name: "bus",      shape: "bus",      w: 2.6, l: 7.5, h: 2.8, v: 11, wt: 1,   heavy: true, chipa: 40,
+      { name: "bus",      shape: "bus",      w: 2.6, l: 7.5, h: 2.8, v: 11, wt: 1,   heavy: true,
         colors: [0xc62828, 0x1565c0, 0x6a1b9a] },
     ],
   },
 
-  // Small roadside stalls poking into the outer lane. Crashable, but they cost money.
+  // Small roadside stalls poking into the outer lane. Crashable, and they break apart.
   stall: {
-    name: "stall", w: 1.2, l: 2.2, h: 2.2, mass: 0.5, dmg: 5, fine: 30, chipa: 0,
+    name: "stall", w: 1.2, l: 2.2, h: 2.2, mass: 0.5, damage: 25,
     x: 6.6,               // distance from the road centre
     gapMin: 60, gapMax: 140,
     colors: [0xe53935, 0x1e88e5, 0x43a047, 0xffb300],
@@ -169,7 +190,7 @@ export const CFG = {
 
   // Flyover sections: a row of pillars down the middle of the road with the deck overhead.
   pillar: {
-    name: "pillar", w: 1.4, l: 1.4, heavy: true, chipa: 25,
+    name: "pillar", w: 1.4, l: 1.4, heavy: true,
     startDist: 450,       // first flyover after this distance
     gapMin: 600, gapMax: 1000,
     countMin: 4, countMax: 7,
@@ -192,15 +213,33 @@ export const CFG = {
     despawnBehind: 25,
   },
 
-  drums: {
-    first: 250,
-    gapMin: 350,
-    gapMax: 550,
-    rangeX: 5,            // drums appear anywhere between -rangeX and +rangeX
-    reachX: 2.2,
-    reachZ: 4,
-    spin: 3,
-    despawnBehind: 20,
+  // Road marks you must STOP on (be slower than stopSpeed while the bus is over them).
+  // Both sit in an outer lane, on a random side.
+  marks: {
+    sideX: 4,             // distance of the mark's centre from the road centre
+    width: 3.6,
+    length: 14,
+    stopSpeed: 6,         // slower than this counts as "stopped on the mark"
+    reachX: 2.2,          // how far the bus centre may be from the mark centre (sideways)
+    despawnBehind: 25,
+  },
+
+  // Yellow CNG-station mark: refuels while you stand on it.
+  cng: {
+    first: 300,
+    gapMin: 450,          // keep this short enough that a careful driver never runs dry
+    gapMax: 700,
+    refuelRate: 40,       // fuel per second while stopped on the mark
+  },
+
+  // Pink police mark: stop here, pay the sergeant, and the chasing crowd goes home.
+  police: {
+    first: 600,
+    gapMin: 600,
+    gapMax: 1000,
+    payTime: 1,           // seconds you must stand on the mark
+    fineBase: 20,         // taka paid...
+    finePerPerson: 3,     // ...plus this much for every person in the crowd
   },
 
   world: {
@@ -256,5 +295,6 @@ export const CFG = {
   hud: {
     kmhPerSpeed: 2.2,     // converts speed to the km/h number shown
     unitsPerKm: 100,      // converts distance to the km number shown
+    lowFuel: 25,          // below this the fuel box blinks gently
   },
 };

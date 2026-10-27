@@ -1,0 +1,82 @@
+// Bangla lines, grouped by situation and rudeness level.
+// Level 0 = no insults, 1 = mild Dhaka banter (default), 2 = louder street banter.
+// A setting of N uses every line from level 0 up to N.
+// Hard limits at every level: no slurs, nothing about religion, ethnicity, gender, region,
+// disability, or any group; no sexual content, no threats, no real people or politics.
+// Add your own lines anywhere below; the game picks them up automatically.
+
+export const DIALOGUE = {
+  // The crowd running after the bus.
+  crowdChase: {
+    0: [
+      "থামেন! থামেন!",
+      "ওই বাস, দাঁড়ান!",
+      "ড্রাইভার সাহেব, থামেন একটু!",
+      "এইটা কী করলেন ভাই!",
+      "বাস থামান, কথা আছে!",
+      "হায় হায়, আমার দোকান!",
+      "আমার রিকশাটা!",
+    ],
+    1: [
+      "ধুর মিয়া!",
+      "চোখে দেখেন না?!",
+      "পাগল হইছেন নাকি!",
+      "গাধা নাকি!",
+      "ওই ড্রাইভার, লাইসেন্স আছে?",
+      "এই বাসের ব্রেক নাই নাকি?!",
+    ],
+    2: [
+      "আরে ভাই, এইটা বাস না বুলডোজার?!",
+      "ওই বেয়াদব ড্রাইভার, থাম!",
+      "ঘুমাইয়া চালাস নাকি?!",
+      "এই বাস আজকে ছাড়ুম না!",
+    ],
+  },
+
+  // The moment the crowd surrounds the bus (cartoon, nobody gets hurt).
+  crowdCaught: {
+    0: [
+      "পাইছি! এইবার নামেন!",
+      "দাঁড়ান, আগে হিসাব হবে!",
+      "সবাই ঘিরা ধরেন, বাস যেন না যায়!",
+    ],
+    1: [
+      "এইবার কই পালাইবেন ওস্তাদ?",
+    ],
+    2: [],
+  },
+
+  // The crowd gives up the chase.
+  crowdGaveUp: {
+    0: [
+      "উফ্‌, আর পারলাম না!",
+      "যাক, পরের বার দেখুম!",
+      "বাসটা তো উইড়া গেল!",
+    ],
+    1: [],
+    2: [],
+  },
+
+  // The traffic sergeant at the pink mark.
+  sergeantClosed: {
+    0: [
+      "ঠিক আছে, এবারের মতো ছাড়লাম!",
+      "জরিমানা দিলেন, কেস ক্লোজ!",
+      "সাবধানে চালান, বুঝছেন?",
+      "রসিদটা রাখেন, যান যান!",
+    ],
+    1: [],
+    2: [],
+  },
+
+  // Stopping at the pink mark with nobody chasing you.
+  sergeantNothing: {
+    0: [
+      "সব ঠিক আছে, যান যান!",
+      "কাগজপত্র ঠিক আছে? আচ্ছা যান!",
+      "এইখানে দাঁড়াইয়া আছেন কেন? সামনে যান!",
+    ],
+    1: [],
+    2: [],
+  },
+};

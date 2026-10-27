@@ -8,17 +8,23 @@ import { resetBus, updateBus, updateBusVisual } from "./bus.js";
 import { cam, updateCamera } from "./camera.js";
 import { resetTraffic, updateTraffic } from "./traffic.js";
 import { resetMarks, updateMarks } from "./marks.js";
+import { crowd, resetCrowd, updateCrowd, updateCrowdVisual } from "./crowd.js";
+import { line, say, updateSpeech, clearSpeech } from "./speech.js";
 import { resetScore, saveBest } from "./score.js";
 import { HEAVY_HIT } from "./i18n.js";
 import { updateHud, onStartPressed, onPauseButton, hideScreen, showPause, showEndScreen } from "./hud.js";
 
 let endReason = "";
+let caughtT = 0;      // seconds left in the "surrounded" moment
+let shoutT = 0;       // time of the next crowd shout
 
 function start() {
   resetTraffic();
   resetMarks();
   resetGame();
   resetScore();
+  resetCrowd();
+  clearSpeech();
   resetBus();
   game.running = true;
   setPaused(false);
@@ -44,8 +50,8 @@ function onPauseInput(fromPad) {
 
 // A light crash shakes the camera and buzzes the phone.
 on("crash", () => {
-  game.shake = CFG.hp.hitShake;
-  if (navigator.vibrate) navigator.vibrate(CFG.hp.hitVibrateMs);
+  game.shake = CFG.hit.shake;
+  if (navigator.vibrate) navigator.vibrate(CFG.hit.vibrateMs);
 });
 
 // A heavy crash: big shake, then a short slow-motion moment before the game-over screen.
@@ -59,6 +65,16 @@ on("heavyHit", e => {
   if (navigator.vibrate) navigator.vibrate(C.vibrateMs);
   endReason = HEAVY_HIT[e.type];
 });
+
+// The crowd reached the bus: it stops, they stand around it, then the game-over screen.
+on("caught", () => {
+  game.caught = true;
+  game.boostT = 0;
+  caughtT = CFG.crowd.caughtSeconds;
+  say("পাবলিক", line("crowdCaught"));
+});
+
+on("crowdGaveUp", () => say("পাবলিক", line("crowdGaveUp")));
 
 /** Advance the game by exactly one fixed step of dt seconds. */
 function step(dt) {
@@ -75,18 +91,31 @@ function step(dt) {
 
   updateTraffic(dt);
   updateMarks(dt, d);
+  updateCrowd(dt);
+
+  // The crowd shouts while it is close behind the bus.
+  if (crowd.active && !game.caught && crowd.gap < CFG.crowd.cueGap && game.time > shoutT) {
+    shoutT = game.time + CFG.speech.crowdShoutEvery;
+    say("পাবলিক", line("crowdChase"));
+  }
 
   if (game.crashing) {
     game.crashT -= dt;
     if (game.crashT <= 0) end(endReason);
   }
-  else if (game.hp <= 0) end("বাস ভেঙে গেছে!");
-  else if (game.fuel <= 0 && game.speed < .5) end("তেল শেষ!");
+  else if (game.caught) {
+    caughtT -= dt;
+    if (caughtT <= 0) end("পাবলিক ঘিরে ফেলেছে!");
+  }
+  // Out of fuel in the open: if a crowd is chasing, they will reach the bus; otherwise it is over.
+  else if (game.fuel <= 0 && game.speed < .5 && game.onMark !== "cng" && !crowd.active) end("তেল শেষ!");
 }
 
 /** Draw one frame. dt is the real time since the last frame (0 while paused). */
 function render(dt) {
   updateBusVisual(dt);
+  updateCrowdVisual(dt);
+  updateSpeech(dt);
   const boostFx = updateCamera(dt);
   renderer.render(scene, cam);
   updateHud(dt, boostFx);

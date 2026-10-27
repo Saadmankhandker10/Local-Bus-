@@ -1,5 +1,5 @@
 // Everything on the road the bus can touch: traffic, roadside stalls, and flyover pillars.
-// Handles spawning, simple driving AI, collisions, "chipa" near misses, and warnings.
+// Handles spawning, simple driving AI, collisions, launches, and heavy-hazard warnings.
 import { CFG } from "./config.js";
 import { rnd, pick, clamp } from "./utils.js";
 import { scene } from "./world.js";
@@ -40,7 +40,7 @@ function add(t, m, x, isStatic) {
     t, m, x, z: T.spawnZ, y: 0,
     v: isStatic ? 0 : t.v * rnd(.9, 1.1), // own forward speed
     targetX: x, isStatic,
-    hit: false, passed: false,
+    hit: false,
     vx: 0, vy: 0, spin: 0,                // used after being launched
     ph: rnd(0, 6),                        // wobble phase, so they don't all sway together
   });
@@ -183,16 +183,14 @@ export function updateTraffic(dt) {
     const zPrev = o.z;
     o.z += (game.speed - o.v) * dt;
 
-    if (!o.hit && !game.crashing) {
-      if (game.invulnT <= 0 && sweptHit(bx, B.hitHalfWidth, o.x, t.w / 2, zPrev, o.z, B.hitHalfLength + t.l / 2)) {
-        game.invulnT = CFG.hp.invulnTime;
-        if (t.heavy) emit("heavyHit", { type: t.name });
-        else { launch(o); emit("crash", { type: t.name, fine: t.fine, dmg: t.dmg }); }
-      } else if (!o.passed && o.z > 0) {
-        // It just passed the bus without touching: was it a tight squeeze?
-        o.passed = true;
-        const gap = sideGap(bx, B.hitHalfWidth, o.x, t.w / 2);
-        if (t.chipa && gap > 0 && gap < CFG.chipa.gap && game.speed >= CFG.chipa.minSpeed) emit("chipa", { type: t.name, points: t.chipa });
+    if (!o.hit && !game.crashing && !game.caught) {
+      if (sweptHit(bx, B.hitHalfWidth, o.x, t.w / 2, zPrev, o.z, B.hitHalfLength + t.l / 2)) {
+        if (!t.heavy) {
+          launch(o);
+          game.invulnT = CFG.hit.invulnTime;
+          emit("crash", { type: t.name, damage: t.damage });
+        // Right after a light crash the bus may be shoved into something big: forgive that.
+        } else if (game.invulnT <= 0) emit("heavyHit", { type: t.name });
       }
 
       // Heavy thing ahead and in our path? Light its beacon and warn the HUD.

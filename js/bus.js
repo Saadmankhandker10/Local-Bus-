@@ -74,8 +74,8 @@ function approach(current, target, rate, dt) {
  */
 export function updateBus(dt) {
   const F = CFG.fuel;
-  // After a heavy crash the driver has lost control: no steering, full brake.
-  const ctl = game.crashing ? CRASHED : input;
+  // After a heavy crash (or when surrounded) the driver has lost control: no steering, full brake.
+  const ctl = game.crashing || game.caught ? CRASHED : input;
   const hasFuel = game.fuel > 0;
 
   // Boost: holding the key keeps the timer full; after release it runs out by itself.
