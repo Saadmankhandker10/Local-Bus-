@@ -17,6 +17,7 @@ const body = new THREE.Group();
 bus.add(body);
 
 const wheels = [];
+const CRASHED = Object.freeze({ throttle: 0, brake: 1, steer: 0, boost: false });
 // One shared tail-light material, so both lights glow together when braking.
 const tailMat = new THREE.MeshLambertMaterial({ color: 0xff1111, emissive: 0xff0000, emissiveIntensity: 0.3 });
 
@@ -73,21 +74,23 @@ function approach(current, target, rate, dt) {
  */
 export function updateBus(dt) {
   const F = CFG.fuel;
+  // After a heavy crash the driver has lost control: no steering, full brake.
+  const ctl = game.crashing ? CRASHED : input;
   const hasFuel = game.fuel > 0;
 
   // Boost: holding the key keeps the timer full; after release it runs out by itself.
-  if (input.boost && hasFuel) game.boostT = B.boostHold;
+  if (ctl.boost && hasFuel) game.boostT = B.boostHold;
   else game.boostT = Math.max(0, game.boostT - dt);
   const boosting = game.boostT > 0 && hasFuel;
 
   // While boosting the bus drives itself, so the player only needs to steer.
-  const throttle = boosting ? 1 : input.throttle;
+  const throttle = boosting ? 1 : ctl.throttle;
   const top = boosting ? B.boostSpeed : B.maxSpeed;
   const v = game.speed;
   // Engine pull fades out near top speed, like a real heavy vehicle.
   const pull = hasFuel ? (B.accel + (boosting ? B.boostAccel : 0)) * throttle * Math.max(0, 1 - (v / top) ** 3) : 0;
   const drag = (hasFuel ? B.rollDrag : B.emptyTankDrag) + B.airDrag * v * v;
-  let speed = Math.max(0, v + (pull - B.brake * input.brake - drag) * dt);
+  let speed = Math.max(0, v + (pull - B.brake * ctl.brake - drag) * dt);
   // After a boost ends, ease back down to normal top speed instead of snapping.
   if (!boosting && speed > B.maxSpeed) speed = Math.max(B.maxSpeed, speed - B.overSpeedDecel * dt);
   game.accel = (speed - v) / dt;
@@ -97,7 +100,7 @@ export function updateBus(dt) {
   // Weak when nearly stopped, full at medium speed, a bit calmer at boost speed.
   const lowFactor = clamp(B.steerLowSpeedMin + speed / B.steerFullAt, 0, 1);
   const highFactor = 1 - B.steerHighSpeedCut * clamp(speed / B.boostSpeed, 0, 1);
-  game.vx = approach(game.vx, input.steer * B.steerSpeed * lowFactor * highFactor, B.steerResponse, dt);
+  game.vx = approach(game.vx, ctl.steer * B.steerSpeed * lowFactor * highFactor, B.steerResponse, dt);
 
   let x = bus.position.x + game.vx * dt;
   // Road edge: past edgeX the kerb pushes back like a spring and scrapes off some speed.

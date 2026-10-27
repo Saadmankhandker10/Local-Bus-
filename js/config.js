@@ -60,9 +60,50 @@ export const CFG = {
     hitDamageScale: 1,   // multiply all crash damage (higher = harder)
     hitBase: 0.5,        // damage multiplier at speed 0...
     hitSpeedRef: 40,     // ...plus 1 more for every 40 speed
-    hitSpeedKeep: 0.6,   // fraction of speed kept after a crash
     hitShake: 0.6,       // camera shake strength after a crash
     hitVibrateMs: 80,    // phone vibration on a crash (0 = off)
+    invulnTime: 0.6,     // seconds after a hit when nothing else can hit you (no chain crashes)
+  },
+
+  // Bumping light things (rickshaw, bike, CNG, car, stall).
+  // Mass decides who flies: the bus is heavy, so small things get launched and the bus barely slows.
+  impact: {
+    busMass: 10,
+    slowFactor: 1.6,     // bus speed lost = slowFactor × (their mass / total mass)
+    pushForward: 1.2,    // how hard a hit object is shoved ahead
+    flingSide: 10,       // base sideways launch speed
+    flingPerSpeed: 0.35, // extra sideways launch per unit of closing speed
+    hop: 5,              // upward launch speed
+    gravity: 25,
+    spin: 8,             // spin speed of a launched object
+    flyDrag: 10,         // how fast a launched object loses its forward speed
+    sideDrag: 2,         // how fast it loses its sideways speed
+  },
+
+  // Hitting a heavy thing (truck, rival bus, pillar) ends the run with a short slow-motion moment.
+  crash: {
+    slowMo: 0.25,        // game speed during the crash (0.25 = four times slower)
+    realSeconds: 1.4,    // how long the slow-motion lasts in real seconds
+    speedKeep: 0.15,     // the bus keeps this much speed at the impact
+    shake: 1.2,
+    vibrateMs: 250,
+  },
+
+  // Red warning light for heavy things ahead.
+  warning: {
+    time: 1.8,           // warn this many seconds before you would reach it
+    minDist: 25,         // ...but never later than this distance
+    sideMargin: 1.0,     // also warn if you would only just scrape past
+    pulseHz: 2,          // pulse speed (kept under 3 Hz for comfort)
+  },
+
+  // "চিপা": squeezing past a vehicle without touching it. This is where points come from.
+  chipa: {
+    gap: 0.9,            // the side gap must be smaller than this to count
+    minSpeed: 15,        // and the bus must be at least this fast
+    comboWindow: 2.5,    // seconds to chain the next chipa into a combo
+    comboStep: 0.5,      // each combo step adds this to the multiplier (x1, x1.5, x2 ...)
+    comboMaxMult: 4,
   },
 
   fare: {
@@ -81,24 +122,60 @@ export const CFG = {
     intervalJitterMax: 1.3,
     spawnZ: -150,         // how far ahead vehicles appear
     lanes: [-5, -2.5, 0, 2.5, 5],
+    laneWidth: 2.5,       // distance between two lanes (used when vehicles change lane)
     laneJitter: 0.4,
     clearZ: 12,           // don't spawn if another vehicle is this close (ahead/behind)...
     clearX: 3,            // ...and this close sideways
     despawnBehind: 30,
     despawnAhead: -220,
     despawnSide: 40,
-    flingSpeed: 22,       // sideways speed of a vehicle after you hit it
-    flingSpin: 6,         // spin speed of a hit vehicle
-    wobbleBelow: 6,       // vehicles slower than this wobble (rickshaws)
-    wobbleFreq: 2,
-    wobbleAmount: 0.6,
-    // w/l/h = size, v = own speed, dmg = damage to bus, wt = how often it appears
+    followGap: 6,         // a vehicle slows down if another is this close in front of it
+    speedResponse: 2,     // how quickly vehicles change speed
+    laneResponse: 1.5,    // how quickly vehicles slide into a new lane
+    avoidDist: 30,        // vehicles change lane this far before a pillar
+
+    // Heavy hazards (trucks, rival buses) get more common the further you go.
+    heavyStartDist: 350,  // none at all before this distance (an easy first ~20 seconds)
+    heavyRampDist: 2000,  // their chance grows over this distance...
+    heavyMaxScale: 2,     // ...up to this many times their base weight
+    heavyGap: 30,         // never two heavy vehicles this close, so there's always a way through
+
+    // w/l/h = size, v = own speed, wt = how often it appears, mass = for launching,
+    // dmg = damage to the bus, fine = taka lost on a crash, chipa = points for squeezing past.
+    // wobble/weave = side-to-side movement, laneChange = chance per second to switch lane.
     types: [
-      { name: "rickshaw", w: 1.3, l: 2.6, h: 1.0, v: 5,  dmg: 6,  wt: 4,   colors: [0xff9800, 0x29b6f6, 0xec407a, 0xab47bc] },
-      { name: "cng",      w: 1.6, l: 2.8, h: 1.6, v: 12, dmg: 10, wt: 4,   colors: [0x2e9e4f] },
-      { name: "car",      w: 1.9, l: 4.2, h: 1.4, v: 15, dmg: 14, wt: 3,   colors: [0xe53935, 0x1e88e5, 0xfafafa, 0x424242, 0xfdd835] },
-      { name: "truck",    w: 2.6, l: 8,   h: 3.0, v: 9,  dmg: 24, wt: 1.5, colors: [0xf57c00, 0x5d4037, 0x1565c0] },
+      { name: "rickshaw", shape: "rickshaw", w: 1.3, l: 2.6, h: 1.0, v: 5,  wt: 4,   mass: 0.4, dmg: 6,  fine: 15, chipa: 10,
+        wobble: 0.6, wobbleFreq: 2, colors: [0xff9800, 0x29b6f6, 0xec407a, 0xab47bc] },
+      { name: "bike",     shape: "bike",     w: 0.8, l: 2.0, h: 1.3, v: 16, wt: 2.5, mass: 0.3, dmg: 4,  fine: 10, chipa: 15,
+        wobble: 1.2, wobbleFreq: 1.5, colors: [0x212121, 0xd32f2f, 0x1565c0] },
+      { name: "cng",      shape: "car",      w: 1.6, l: 2.8, h: 1.6, v: 12, wt: 3.5, mass: 0.6, dmg: 10, fine: 25, chipa: 15,
+        laneChange: 0.25, colors: [0x2e9e4f] },
+      { name: "car",      shape: "car",      w: 1.9, l: 4.2, h: 1.4, v: 15, wt: 3,   mass: 1.5, dmg: 14, fine: 40, chipa: 20,
+        colors: [0xe53935, 0x1e88e5, 0xfafafa, 0x424242, 0xfdd835] },
+      { name: "truck",    shape: "truck",    w: 2.6, l: 8,   h: 3.0, v: 9,  wt: 1.2, heavy: true, chipa: 40,
+        colors: [0xf57c00, 0x5d4037, 0x1565c0] },
+      { name: "bus",      shape: "bus",      w: 2.6, l: 7.5, h: 2.8, v: 11, wt: 1,   heavy: true, chipa: 40,
+        colors: [0xc62828, 0x1565c0, 0x6a1b9a] },
     ],
+  },
+
+  // Small roadside stalls poking into the outer lane. Crashable, but they cost money.
+  stall: {
+    name: "stall", w: 1.2, l: 2.2, h: 2.2, mass: 0.5, dmg: 5, fine: 30, chipa: 0,
+    x: 6.6,               // distance from the road centre
+    gapMin: 60, gapMax: 140,
+    colors: [0xe53935, 0x1e88e5, 0x43a047, 0xffb300],
+  },
+
+  // Flyover sections: a row of pillars down the middle of the road with the deck overhead.
+  pillar: {
+    name: "pillar", w: 1.4, l: 1.4, heavy: true, chipa: 25,
+    startDist: 450,       // first flyover after this distance
+    gapMin: 600, gapMax: 1000,
+    countMin: 4, countMax: 7,
+    spacing: 16,          // distance between two pillars
+    deckY: 7.6,           // height of the flyover deck
+    deckWidth: 9,
   },
 
   stops: {
