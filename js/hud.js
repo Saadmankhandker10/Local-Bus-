@@ -1,0 +1,40 @@
+// Everything drawn with HTML on top of the 3D view: numbers, bars, messages, screens.
+import { CFG } from "./config.js";
+import { $ } from "./utils.js";
+import { game } from "./state.js";
+
+let msgT = 0; // seconds left before the current message disappears
+
+/** Show a short message in the middle of the screen. */
+export function msg(text, ms = 1200) {
+  $("msg").textContent = text;
+  msgT = ms / 1000;
+}
+
+/** Copy the current game numbers into the HUD. Called once per frame. */
+export function updateHud(dt) {
+  $("fare").textContent = "৳" + Math.floor(game.fare);
+  $("pass").textContent = game.pass;
+  $("spd").textContent = Math.round(game.speed * CFG.hud.kmhPerSpeed);
+  $("dist").textContent = (game.dist / CFG.hud.unitsPerKm).toFixed(1);
+  $("fuelbar").style.width = game.fuel + "%";
+  $("hpbar").style.width = Math.max(0, game.hp) + "%";
+  if (msgT > 0) { msgT -= dt; if (msgT <= 0) $("msg").textContent = ""; }
+}
+
+/** Call fn when the start / play-again button is pressed. */
+export function onStartPressed(fn) {
+  $("go").onclick = fn;
+}
+
+export function hideScreen() {
+  $("screen").style.display = "none";
+}
+
+/** Show the game-over screen with the reason and the run summary. */
+export function showEndScreen(why) {
+  $("screen").style.display = "flex";
+  $("title").textContent = why;
+  $("sub").innerHTML = `মোট ভাড়া: ৳${Math.floor(game.fare)}<br>দূরত্ব: ${(game.dist / CFG.hud.unitsPerKm).toFixed(1)} কিমি`;
+  $("go").textContent = "আবার চালান";
+}
