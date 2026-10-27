@@ -1,27 +1,32 @@
 // Entry point: starts input, runs the game loop, and handles starting, pausing, and ending a run.
 import { CFG } from "./config.js";
 import { game, resetGame } from "./state.js";
-import { on } from "./events.js";
+import { on, emit } from "./events.js";
 import { renderer, scene, scrollWorld, setScenery, dressAll } from "./world.js";
-import { initInput, pollInput } from "./input.js";
+import { initInput, pollInput, onTap, onAnyInput } from "./input.js";
 import { resetBus, updateBus, updateBusVisual } from "./bus.js";
 import { cam, updateCamera } from "./camera.js";
 import { resetTraffic, updateTraffic } from "./traffic.js";
 import { resetMarks, updateMarks } from "./marks.js";
 import { crowd, resetCrowd, updateCrowd, updateCrowdVisual } from "./crowd.js";
 import { line, lineFrom, say, updateSpeech, clearSpeech } from "./speech.js";
-import { resetScore, saveBest, saveBestTime } from "./score.js";
+import { stats, resetScore, saveBest, saveBestTime, totalScore, bestScore } from "./score.js";
 import { journey, resetJourney, updateJourney, currentStage, sceneryAt, progress } from "./journey.js";
 import { resetLandmarks, updateLandmarks } from "./landmarks.js";
 import { applyTimeOfDay } from "./lighting.js";
-import { ROUTE } from "./route.js";
+import { unlockAudio, toggleMute, isMuted, horn, slap } from "./audio.js";
+import { ROUTE, TOTAL } from "./route.js";
+import { SHOUTS } from "./data/shouts.bn.js";
 import { HEAVY_HIT } from "./i18n.js";
-import { updateHud, onStartPressed, onPauseButton, hideScreen, showPause, showEndScreen, showCompleteScreen } from "./hud.js";
+import { pick, $ } from "./utils.js";
+import { updateHud, onStartPressed, onPauseButton, hideScreen, showPause, showRunEnd, crashList } from "./hud.js";
 
-let endReason = "";
+let endReason = "";   // title of the ending, e.g. "ট্রাকে ধাক্কা!"
+let endCause = "";    // what ended it: truck / bus / pillar / caught / fuel / complete
 let caughtT = 0;      // seconds left in the "surrounded" moment
 let shoutT = 0;       // time of the next crowd shout
 let lastEnd = "";     // "fail" or "complete": decides what the main button does
+let hornT = 0, shoutBtnT = 0; // earliest time the next horn / shout may play
 
 /**
  * Start a run from the beginning, or from the last checkpoint after a failed run.
@@ -41,17 +46,44 @@ function start(fromCheckpoint) {
   game.running = true;
   setPaused(false);
   hideScreen();
-  say("হেল্পার", lineFrom("helperStop", currentStage().id));
+  helperSays(lineFrom("helperStop", currentStage().id));
 }
 
 const startMain = () => start(lastEnd === "fail");
 const startFresh = () => start(false);
 
-function end(why) {
+/** The helper speaks from the door: bubble + subtitle + a slap on the bus side. */
+function helperSays(text) {
+  say("হেল্পার", text, CFG.shout.seconds, true);
+  slap();
+}
+
+/** Draw one fresh frame and keep it as a JPEG for the newspaper photo. */
+function snapshot() {
+  renderer.render(scene, cam);
+  return renderer.domElement.toDataURL("image/jpeg", CFG.paper.photoQuality);
+}
+
+/** Everything the newspaper needs to know about the run. */
+function runReport(isRecord, isBestTime) {
+  const light = Object.entries(stats.crashes).filter(([k]) => !HEAVY_HIT[k]).reduce((a, [, n]) => a + n, 0);
+  return {
+    cause: endCause, why: endReason,
+    stage: currentStage().name, stageIn: currentStage().nameIn, stageOf: currentStage().nameOf,
+    damage: Math.floor(game.damage), fare: Math.floor(game.fare), combo: stats.bestCombo,
+    fines: stats.fines, crashes: light, crashList: crashList(),
+    km: (Math.min(game.dist, TOTAL) / TOTAL * ROUTE.realKm).toFixed(1), totalKm: ROUTE.realKm,
+    time: game.journeyT, score: totalScore(), best: bestScore(), isRecord, isBestTime,
+  };
+}
+
+function end(why, cause) {
   game.running = false;
   game.crashing = false;
   lastEnd = "fail";
-  showEndScreen(why, saveBest(), journey.cp ? ROUTE.stages[journey.cp.stage].name : "");
+  endReason = why; endCause = cause;
+  const photo = snapshot();
+  showRunEnd(runReport(saveBest(), false), photo, journey.cp ? ROUTE.stages[journey.cp.stage].name : "");
 }
 
 function setPaused(on) {
@@ -63,6 +95,26 @@ function setPaused(on) {
 function onPauseInput(fromPad) {
   if (game.running) setPaused(!game.paused);
   else if (fromPad) startMain();
+}
+
+/* ====== Horn, shout, sound ====== */
+function doHorn() {
+  if (game.time < hornT) return;
+  hornT = game.time + CFG.horn.cooldown;
+  horn();
+  if (game.running) emit("horn");
+}
+
+function doShout() {
+  if (!game.running || game.time < shoutBtnT) return;
+  shoutBtnT = game.time + CFG.shout.cooldown;
+  const s = pick(SHOUTS);
+  say(s.who, s.text, CFG.shout.seconds, true);
+  if (s.who === "হেল্পার") slap();
+}
+
+function doMute() {
+  $("soundbtn").textContent = toggleMute() ? "🔇" : "🔊";
 }
 
 // A light crash shakes the camera and buzzes the phone.
@@ -81,6 +133,7 @@ on("heavyHit", e => {
   game.shake = C.shake;
   if (navigator.vibrate) navigator.vibrate(C.vibrateMs);
   endReason = HEAVY_HIT[e.type];
+  endCause = e.type;
 });
 
 // The crowd reached the bus: it stops, they stand around it, then the game-over screen.
@@ -94,14 +147,18 @@ on("caught", () => {
 on("crowdGaveUp", () => say("পাবলিক", line("crowdGaveUp")));
 
 // New stage: the helper shouts the stop name (the HUD shows the stage card).
-on("stageArrive", t => say("হেল্পার", lineFrom("helperStop", t.stage.id)));
+on("stageArrive", t => helperSays(lineFrom("helperStop", t.stage.id)));
 
 // Reached Dhaka University.
 on("journeyComplete", () => {
   game.running = false;
   lastEnd = "complete";
+  endReason = "পৌঁছে গেছি! ঢাকা বিশ্ববিদ্যালয় 🎓";
+  endCause = "complete";
+  helperSays(lineFrom("journeyDone"));
+  const photo = snapshot();
   const isBestTime = saveBestTime(game.journeyT);
-  showCompleteScreen(saveBest(), isBestTime, lineFrom("journeyDone"));
+  showRunEnd(runReport(saveBest(), isBestTime), photo, "");
 });
 
 /** Advance the game by exactly one fixed step of dt seconds. */
@@ -132,14 +189,14 @@ function step(dt) {
 
   if (game.crashing) {
     game.crashT -= dt;
-    if (game.crashT <= 0) end(endReason);
+    if (game.crashT <= 0) end(endReason, endCause);
   }
   else if (game.caught) {
     caughtT -= dt;
-    if (caughtT <= 0) end("পাবলিক ঘিরে ফেলেছে!");
+    if (caughtT <= 0) end("পাবলিক ঘিরে ফেলেছে!", "caught");
   }
   // Out of fuel in the open: if a crowd is chasing, they will reach the bus; otherwise it is over.
-  else if (game.fuel <= 0 && game.speed < .5 && game.onMark !== "cng" && !crowd.active) end("তেল শেষ!");
+  else if (game.fuel <= 0 && game.speed < .5 && game.onMark !== "cng" && !crowd.active) end("তেল শেষ!", "fuel");
 }
 
 /** Draw one frame. dt is the real time since the last frame (0 while paused). */
@@ -160,6 +217,12 @@ updateLandmarks(0);
 dressAll(0);
 
 initInput(onPauseInput);
+onAnyInput(unlockAudio);
+onTap("horn", doHorn);
+onTap("shout", doShout);
+onTap("mute", doMute);
+$("soundbtn").textContent = isMuted() ? "🔇" : "🔊";
+$("soundbtn").onclick = () => { unlockAudio(); doMute(); };
 onStartPressed(startMain, startFresh);
 onPauseButton(() => setPaused(!game.paused));
 // Switching to another tab pauses the run, so nobody crashes while away.

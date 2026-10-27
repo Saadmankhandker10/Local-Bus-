@@ -31,25 +31,44 @@
 <div id="subtitle" hidden></div>
 <div id="stagecard" hidden><div id="cardTitle"></div><div id="cardBody"></div></div>
 <div id="screen">
-  <h1 id="title">লোকাল বাস — ঢাকা রুট</h1>
-  <div id="route">মোহাম্মদপুর → ধানমন্ডি → সায়েন্সল্যাব → শাহবাগ → ঢাকা বিশ্ববিদ্যালয়</div>
-  <div id="sub">
-    রিকশা, বাইক, সিএনজি, গাড়ি আর দোকানে ধাক্কা দিলে <b>ড্যামেজ</b> বাড়ে, পরপর দিলে কম্বো!<br>
-    <b>ট্রাক, অন্য বাস আর পিলারে</b> লাগলেই খেলা শেষ ⚠<br>
-    ধাক্কার পর পাবলিক দৌড়াবে 🏃 ধরে ফেলার আগে পালান।<br>
-    হলুদ <b>⛽ সিএনজি</b> দাগে থেমে তেল নিন। গোলাপি <b>👮 পুলিশ</b> দাগে থেমে জরিমানা দিলে পাবলিক চলে যায়।<br>
-    নীল <b>বাস স্টপে</b> আস্তে থামলে যাত্রী ওঠে, ভাড়া বাড়ে।<br><br>
-    <b>W/↑</b> চালান &nbsp; <b>S/↓</b> ব্রেক &nbsp; <b>A D / ← →</b> ঘুরান &nbsp; <b>Shift/Space</b> বুস্ট &nbsp; <b>P/Esc</b> বিরতি
-  </div><br>
-  <div><button id="go">যাত্রা শুরু</button> <button id="restart" hidden>শুরু থেকে</button></div>
+  <div id="titleblock">
+    <h1 id="title">লোকাল বাস — ঢাকা রুট</h1>
+    <div id="route">মোহাম্মদপুর → ধানমন্ডি → সায়েন্সল্যাব → শাহবাগ → ঢাকা বিশ্ববিদ্যালয়</div>
+    <div id="sub">
+      রিকশা, বাইক, সিএনজি, গাড়ি আর দোকানে ধাক্কা দিলে <b>ড্যামেজ</b> বাড়ে, পরপর দিলে কম্বো!<br>
+      <b>ট্রাক, অন্য বাস আর পিলারে</b> লাগলেই খেলা শেষ ⚠<br>
+      ধাক্কার পর পাবলিক দৌড়াবে 🏃 ধরে ফেলার আগে পালান।<br>
+      হলুদ <b>⛽ সিএনজি</b> দাগে থেমে তেল নিন। গোলাপি <b>👮 পুলিশ</b> দাগে থেমে জরিমানা দিলে পাবলিক চলে যায়।<br>
+      নীল <b>বাস স্টপে</b> আস্তে থামলে যাত্রী ওঠে, ভাড়া বাড়ে।<br><br>
+      <b>W/↑</b> চালান &nbsp; <b>S/↓</b> ব্রেক &nbsp; <b>A D / ← →</b> ঘুরান &nbsp; <b>Shift/Space</b> বুস্ট<br>
+      <b>H</b> হর্ন &nbsp; <b>G</b> ওস্তাদের হাঁক &nbsp; <b>M</b> সাউন্ড &nbsp; <b>P/Esc</b> বিরতি
+    </div>
+    <div class="fiction">এটি একটি কাল্পনিক, ব্যঙ্গাত্মক গেম। বাস্তবে নিরাপদে চালান।</div>
+  </div>
+  <div id="paper" hidden>
+    <div id="pname"></div>
+    <div id="ptag"></div>
+    <div class="pline"><span id="pdate"></span><span id="pprice"></span></div>
+    <div id="pkicker"></div>
+    <h2 id="phead"></h2>
+    <div class="pbody">
+      <figure><img id="pphoto" alt=""><figcaption id="pcap"></figcaption></figure>
+      <div><p id="pstory"></p><div id="pstats"></div></div>
+    </div>
+    <div id="pnote"></div>
+  </div>
+  <div class="btns"><button id="go">যাত্রা শুরু</button> <button id="restart" hidden>শুরু থেকে</button> <button id="share" hidden>📰 ছবি সেভ / শেয়ার</button></div>
 </div>
 <div id="pause" hidden>
   <h1>বিরতি</h1>
   <button id="resume">চালিয়ে যান</button>
 </div>
+<button id="soundbtn" aria-label="সাউন্ড">🔊</button>
 <button id="pausebtn" hidden aria-label="বিরতি">❚❚</button>
+<div id="bubble" hidden></div>
 <div id="touch">
   <div><button id="tl">◀</button><button id="tr">▶</button></div>
+  <div class="mid"><button id="thorn">📯</button><button id="tshout">📣</button></div>
   <div><button id="tb">■</button><button id="tboost">⚡</button><button id="tg">▲</button></div>
 </div>
 

@@ -133,10 +133,42 @@ export const CFG = {
     despawnBehind: 45,
   },
 
+  audio: {
+    volume: 0.6,          // master volume (0..1)
+    hornNote1: [440, 554],// the two notes of the horn, each a small chord (Hz)
+    hornNote2: [392, 494],
+    hornLength: 0.16,     // seconds per note
+    hornGain: 0.25,
+    hornTone: 2200,       // higher = brighter, harsher horn
+    slapGain: 0.9,
+  },
+
+  // Horn and the "ওস্তাদ shout" button.
+  horn: {
+    cooldown: 0.45,       // seconds between two horns
+    reach: 35,            // light vehicles this far ahead in your lane move aside
+  },
+  shout: {
+    cooldown: 2.5,        // seconds between two shouts
+    seconds: 2.4,         // how long the bubble stays
+  },
+
+  // The newspaper end screen.
+  paper: {
+    bigCombo: 4,          // a combo this big can make the headline
+    highDamage: 300,      // so can this much Damage
+    specialChance: 0.5,   // chance to use a "special" headline when one fits
+    generalChance: 0.15,  // otherwise, chance of a general headline instead of one about the ending
+    photoQuality: 0.8,    // JPEG quality of the snapshot on the page
+  },
+
   speech: {
     rudeness: 1,          // 0 = no insults, 1 = mild banter (default), 2 = louder street banter
     subtitleSeconds: 2.2, // how long a line stays on screen
     crowdShoutEvery: 2.5, // seconds between crowd shouts while they are close
+    bubbleX: 1.3,         // where the bubble sits: next to the front door of the bus...
+    bubbleY: 3.6,         // ...above the roof...
+    bubbleZ: -2.6,        // ...near the front
   },
 
   fare: {

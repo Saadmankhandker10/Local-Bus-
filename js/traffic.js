@@ -5,7 +5,7 @@ import { rnd, pick, clamp } from "./utils.js";
 import { scene } from "./world.js";
 import { bus } from "./bus.js";
 import { game } from "./state.js";
-import { emit } from "./events.js";
+import { emit, on } from "./events.js";
 import { sweptHit, sideGap } from "./physics.js";
 import { makeVehicle, makeStall, makePillar, beaconMat } from "./vehicles.js";
 import { currentStage, flyoverAllowed } from "./journey.js";
@@ -219,3 +219,15 @@ export function updateTraffic(dt) {
   // Gentle pulse (2 Hz) instead of hard flashing.
   beaconMat.opacity = .55 + .45 * Math.sin(game.time * Math.PI * 2 * W.pulseHz);
 }
+
+// Horn: light vehicles just ahead in the bus's lane move one lane aside.
+on("horn", () => {
+  const bx = bus.position.x;
+  for (const o of objs) {
+    if (o.hit || o.isStatic || o.t.heavy) continue;
+    const ahead = -o.z;
+    if (ahead > 0 && ahead < CFG.horn.reach && Math.abs(o.x - bx) < B.hitHalfWidth + o.t.w / 2 + .5) {
+      o.targetX = clamp(o.x >= bx ? o.x + T.laneWidth : o.x - T.laneWidth, LANE_MIN, LANE_MAX);
+    }
+  }
+});

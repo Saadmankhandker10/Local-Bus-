@@ -1,7 +1,7 @@
 html,body{margin:0;height:100%;overflow:hidden;background:#222;font-family:system-ui,"Noto Sans Bengali","Segoe UI",sans-serif;color:#fff}
 canvas{display:block}
 [hidden]{display:none!important}
-#hud{position:fixed;top:42px;left:10px;right:64px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
+#hud{position:fixed;top:42px;left:10px;right:112px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
 .box{background:rgba(0,0,0,.55);padding:6px 10px;border-radius:8px;font-size:14px;min-width:90px}
 .bar{height:8px;background:#444;border-radius:4px;margin-top:5px;overflow:hidden}
 .bar i{display:block;height:100%;width:100%}
@@ -10,7 +10,7 @@ canvas{display:block}
 #fuelbox.low{animation:lowfuel 1s ease-in-out infinite alternate}
 @keyframes lowfuel{to{background:rgba(200,40,0,.75)}}
 #msg{position:fixed;top:110px;width:100%;text-align:center;font-size:22px;font-weight:700;text-shadow:0 2px 6px #000;pointer-events:none}
-#screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.72);text-align:center;padding:20px;line-height:1.6}
+#screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow-y:auto;background:rgba(0,0,0,.72);text-align:center;padding:20px;line-height:1.6}
 #screen h1{margin:0 0 8px;font-size:34px;color:#ffd600}
 button{font-size:20px;padding:12px 28px;border:0;border-radius:10px;background:#ffcc00;font-weight:700;cursor:pointer}
 #pause{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.6)}
@@ -41,7 +41,7 @@ button{font-size:20px;padding:12px 28px;border:0;border-radius:10px;background:#
 #touch button{width:70px;height:70px;font-size:26px;padding:0;opacity:.75}
 @media(pointer:coarse){#touch{display:flex}}
 /* Route progress along the top: one segment per stage, the bus icon slides along. */
-#progress{position:fixed;top:8px;left:10px;right:64px;height:26px;pointer-events:none}
+#progress{position:fixed;top:8px;left:10px;right:112px;height:26px;pointer-events:none}
 #ptrack{display:flex;height:100%;border-radius:13px;overflow:hidden;background:rgba(0,0,0,.55)}
 #ptrack .seg{display:flex;align-items:center;justify-content:center;font-size:12px;white-space:nowrap;overflow:hidden;
   border-right:2px solid rgba(255,214,0,.8)}
@@ -57,3 +57,29 @@ button{font-size:20px;padding:12px 28px;border:0;border-radius:10px;background:#
 #cardTitle{font-size:28px;font-weight:800;color:#ffeb3b}
 #cardBody{font-size:15px;margin-top:6px}
 #restart{background:#90caf9}
+.fiction{margin-top:10px;font-size:13px;opacity:.7}
+.btns{margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+#share{background:#fff;color:#1a1a1a}
+#soundbtn{position:fixed;top:10px;right:60px;width:44px;height:44px;padding:0;font-size:20px;opacity:.85}
+/* Fake newspaper front page (end of every run). */
+#paper{background:#f3ead7;color:#1a1a1a;width:min(760px,94vw);padding:18px 22px;border-radius:4px;text-align:left;
+  box-shadow:0 10px 30px rgba(0,0,0,.6);font-family:"Noto Sans Bengali","Nirmala UI",serif;line-height:1.45}
+#pname{font-size:clamp(30px,7vw,52px);font-weight:800;text-align:center;letter-spacing:1px}
+#ptag{text-align:center;font-size:14px;border-bottom:3px solid #1a1a1a;padding-bottom:6px}
+.pline{display:flex;justify-content:space-between;font-size:13px;border-bottom:1px solid #1a1a1a;padding:4px 0;margin-bottom:8px}
+#pkicker{color:#b71c1c;font-weight:700;font-size:15px}
+#phead{margin:2px 0 10px;font-size:clamp(20px,4.4vw,32px);line-height:1.25}
+.pbody{display:grid;grid-template-columns:1.1fr 1fr;gap:14px}
+@media(max-width:560px){.pbody{grid-template-columns:1fr}}
+.pbody figure{margin:0}
+#pphoto{width:100%;display:block;border:1px solid #1a1a1a;filter:sepia(.35) contrast(1.05)}
+#pcap{font-size:11px;font-style:italic}
+#pstory{margin:0 0 8px;font-size:14px}
+#pstats{font-size:13px;font-weight:600;border-top:1px solid #1a1a1a;padding-top:6px}
+#pnote{margin-top:10px;font-size:11px;text-align:center;opacity:.75}
+/* Speech bubble above a character; JS moves it to follow the 3D position. */
+#bubble{position:fixed;transform:translate(-50%,-100%);max-width:260px;background:#fff;color:#1a1a1a;padding:8px 12px;
+  border-radius:14px;font-size:16px;font-weight:700;pointer-events:none;box-shadow:0 3px 10px rgba(0,0,0,.4)}
+#bubble:after{content:"";position:absolute;left:50%;bottom:-10px;border:10px solid transparent;border-top-color:#fff;border-bottom:0;margin-left:-10px}
+#touch .mid{align-self:flex-end}
+#touch .mid button{width:58px;height:58px;font-size:24px}

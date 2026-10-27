@@ -13,6 +13,7 @@ export const ROUTE = {
     {
       id: "mohammadpur",
       name: "মোহাম্মদপুর",
+      nameIn: "মোহাম্মদপুরে", nameOf: "মোহাম্মদপুরের",   // "in X" and "of X" for headlines
       card: "মোহাম্মদপুর বাসস্ট্যান্ড",
       length: 2700,
       // Traffic: density multiplies how often vehicles appear; mix multiplies each type's chance.
@@ -31,6 +32,7 @@ export const ROUTE = {
     {
       id: "dhanmondi",
       name: "ধানমন্ডি",
+      nameIn: "ধানমন্ডিতে", nameOf: "ধানমন্ডির",
       card: "ধানমন্ডি",
       length: 2700,
       traffic: { density: 1.0, heavy: 0.9, mix: { rickshaw: 2.2, car: 1.3, bike: 1.2 } },
@@ -49,6 +51,7 @@ export const ROUTE = {
     {
       id: "shahbag",
       name: "শাহবাগ",
+      nameIn: "শাহবাগে", nameOf: "শাহবাগের",
       card: "সায়েন্সল্যাব — নিউমার্কেট — শাহবাগ",
       length: 2700,
       traffic: { density: 1.15, heavy: 1.1, mix: { rickshaw: 1.4, cng: 1.3, bus: 1.4 } },
@@ -69,6 +72,7 @@ export const ROUTE = {
     {
       id: "du",
       name: "ঢাকা বিশ্ববিদ্যালয়",
+      nameIn: "ঢাকা বিশ্ববিদ্যালয়ে", nameOf: "ঢাকা বিশ্ববিদ্যালয়ের",
       card: "ঢাকা বিশ্ববিদ্যালয়",
       length: 2700,
       traffic: { density: 0.9, heavy: 0.8, mix: { rickshaw: 2.4, bike: 1.3, truck: 0.4 } },

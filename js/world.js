@@ -28,16 +28,16 @@ addEventListener("resize", () => renderer.setSize(innerWidth, innerHeight));
 
 /* ====== Mesh helpers ====== */
 
-// Shared geometry and material caches: 200 boxes of the same size and colour use
-// one geometry and one material on the GPU instead of 200 copies.
-const geoCache = new Map(), matCache = new Map();
+// Every box in the game is the same 1×1×1 cube, stretched with `scale`, and boxes of the
+// same colour share one material. So the GPU stores one cube, not thousands of copies.
+const UNIT = new THREE.BoxGeometry(1, 1, 1);
+const matCache = new Map();
 
-/** A coloured box mesh at (x, y, z). Boxes with the same size/colour share GPU data. */
+/** A coloured box mesh of size w×h×d at (x, y, z). All boxes share GPU data. */
 export function box(w, h, d, color, x = 0, y = 0, z = 0) {
-  const gk = `${w}|${h}|${d}`;
-  if (!geoCache.has(gk)) geoCache.set(gk, new THREE.BoxGeometry(w, h, d));
   if (!matCache.has(color)) matCache.set(color, new THREE.MeshLambertMaterial({ color }));
-  const m = new THREE.Mesh(geoCache.get(gk), matCache.get(color));
+  const m = new THREE.Mesh(UNIT, matCache.get(color));
+  m.scale.set(w, h, d);
   m.position.set(x, y, z);
   return m;
 }
@@ -96,10 +96,9 @@ for (let i = 0; i < W.stripeCount; i++) for (const x of W.stripeLanesX) {
 
 // Buildings use one unit cube scaled to size, and each has its own material so it can
 // be recoloured when it is recycled into a new part of the route.
-const unitBox = new THREE.BoxGeometry(1, 1, 1);
 const blds = [];
 for (let i = 0; i < W.buildingCount; i++) {
-  const b = new THREE.Mesh(unitBox, new THREE.MeshLambertMaterial());
+  const b = new THREE.Mesh(UNIT, new THREE.MeshLambertMaterial());
   b.userData.side = i % 2 ? 1 : -1;
   b.position.z = -Math.floor(i / 2) * W.buildingGap;
   blds.push(b); scene.add(b);
