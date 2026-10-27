@@ -95,7 +95,7 @@ export function makePillar() {
   const g = new THREE.Group();
   g.add(box(P.w, P.deckY, P.l, 0xb0a99f, 0, P.deckY / 2, 0));               // pillar
   g.add(box(P.deckWidth * .8, .6, P.l * 1.6, 0xa1998f, 0, P.deckY - .3, 0)); // cap beam
-  g.add(box(P.deckWidth, .8, P.spacing, 0x9e978d, 0, P.deckY + .4, 0));      // deck slab
+
   const b = new THREE.Mesh(beaconGeo, beaconMat);
   b.position.set(0, 2.2, P.l / 2 + .2);
   b.visible = false;

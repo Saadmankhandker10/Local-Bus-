@@ -49,7 +49,8 @@ export function updateSpeech(dt) {
     bubbleT -= dt;
     if (bubbleT <= 0) { $("bubble").hidden = true; return; }
     // 3D point above the front door -> screen pixels.
-    anchor.set(bus.position.x + S.bubbleX, S.bubbleY, S.bubbleZ).project(cam);
+    bus.updateMatrixWorld();
+    bus.localToWorld(anchor.set(S.bubbleX, S.bubbleY, S.bubbleZ)).project(cam);
     $("bubble").style.left = ((anchor.x + 1) / 2 * innerWidth).toFixed(0) + "px";
     $("bubble").style.top = ((1 - anchor.y) / 2 * innerHeight).toFixed(0) + "px";
   }

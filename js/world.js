@@ -1,12 +1,11 @@
-// Renderer, scene, lights, and the scrolling road with buildings.
-// The bus never really moves forward: the world slides towards the camera instead,
-// which keeps all numbers small and avoids precision problems on long runs.
+// Renderer, scene, lights, shared mesh helpers, the curved roads (from map.js), and the
+// buildings beside them. The bus really drives through this world; see map.js for the roads.
 import * as THREE from "three";
 import { CFG } from "./config.js";
 import { rnd, pick } from "./utils.js";
+import { SEGS, here, sample, place, ahead, progressOf } from "./map.js";
 
 const W = CFG.world;
-const R = W.roadHalfWidth;
 
 /* ====== Renderer, scene, lights (the camera lives in camera.js) ====== */
 export const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -76,67 +75,196 @@ export function plate(text, w, h, bg, fg) {
   return new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: t }));
 }
 
-/* ====== Road, pavements, buildings ====== */
+/* ====== Ground ====== */
 /** The ground has its own material so time-of-day can tint it (grass, dust, night). */
 export const groundMat = new THREE.MeshLambertMaterial({ color: 0x8d8a7a });
-const ground = new THREE.Mesh(new THREE.BoxGeometry(400, .2, 400), groundMat);
-ground.position.set(0, -.15, -100);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(900, 900).rotateX(-Math.PI / 2), groundMat);
+ground.position.y = -.2;
 scene.add(ground);
-scene.add(box(R * 2, .1, 400, 0x3a3a3a, 0, -.05, -100)); // asphalt
-for (const s of [-1, 1]) {
-  scene.add(box(2, .25, 400, 0x9e9e9e, s * (R + 1), 0, -100)); // pavement
-  scene.add(box(.2, .03, 400, 0xffffff, s * (R - .2), .02, -100)); // edge line
+
+/** Keep the ground under the camera (the fog hides its edges). */
+export function followGround(x, z) {
+  ground.position.x = x;
+  ground.position.z = z;
 }
 
-const stripes = [];
-for (let i = 0; i < W.stripeCount; i++) for (const x of W.stripeLanesX) {
-  const s = box(.18, .02, 3, 0xffffff, x, .02, -i * W.stripeGap);
-  stripes.push(s); scene.add(s);
+/* ====== Roads: one long ribbon mesh per material, built once from map.js ====== */
+// Batching: every road piece with the same material goes into ONE geometry, so the
+// whole network costs only a handful of draw calls.
+const batches = new Map(); // material -> { pos: [], idx: [] }
+function batch(mat) {
+  if (!batches.has(mat)) batches.set(mat, { pos: [], idx: [] });
+  return batches.get(mat);
 }
 
-// Buildings use one unit cube scaled to size, and each has its own material so it can
-// be recoloured when it is recycled into a new part of the route.
-const blds = [];
-for (let i = 0; i < W.buildingCount; i++) {
-  const b = new THREE.Mesh(UNIT, new THREE.MeshLambertMaterial());
-  b.userData.side = i % 2 ? 1 : -1;
-  b.position.z = -Math.floor(i / 2) * W.buildingGap;
-  blds.push(b); scene.add(b);
-}
-
+const pt = { x: 0, y: 0, z: 0, yaw: 0, k: 0 };
 /**
- * Who decides how buildings look at a given spot of the route (set by the journey).
- * @type {(atDist: number, side: number) => {colors: number[], minH: number, maxH: number, hidden: boolean}}
+ * Add a flat band along a segment, from lateral x0 to x1, raised y above the road.
+ * dash = [on, period] makes it a dashed line.
  */
-let scenery = () => ({ colors: W.buildingColors, minH: 8, maxH: 26, hidden: false });
-export function setScenery(fn) { scenery = fn; }
-
-/** Give a building a new random size and colour that fits the route at that spot. */
-function dressBuilding(b, busDist) {
-  const s = scenery(busDist - b.position.z, b.userData.side);
-  const h = rnd(s.minH, s.maxH);
-  b.visible = !s.hidden;
-  b.scale.set(rnd(5, 9), h, rnd(6, 10));
-  b.position.set(b.userData.side * rnd(R + 6, R + 10), h / 2, b.position.z);
-  b.material.color.setHex(pick(s.colors));
-}
-
-/** Re-dress every building for the current spot (used when a run starts). */
-export function dressAll(busDist) {
-  for (const b of blds) dressBuilding(b, busDist);
-}
-
-/**
- * Slide the road and buildings towards the camera by d units.
- * Anything that passes behind the camera jumps back to the far end (recycling).
- * @param {number} busDist how far the bus has driven (used to style recycled buildings)
- */
-export function scrollWorld(d, busDist = 0) {
-  for (const s of stripes) { s.position.z += d; if (s.position.z > W.stripeRecycleAt) s.position.z -= W.recycleLength; }
-  for (const b of blds) {
-    b.position.z += d;
-    if (b.position.z > W.buildingRecycleAt) { b.position.z -= W.recycleLength; dressBuilding(b, busDist); }
+function band(seg, x0, x1, y, mat, dash) {
+  const b = batch(mat), S = SEGS[seg];
+  for (let i = 0; i < S.n; i++) {
+    sample(seg, i * S.step, pt);
+    const rx = Math.cos(pt.yaw), rz = -Math.sin(pt.yaw);
+    const base = b.pos.length / 3;
+    b.pos.push(pt.x + rx * x0, pt.y + y, pt.z + rz * x0, pt.x + rx * x1, pt.y + y, pt.z + rz * x1);
+    // For dashes, paint the piece from the previous point only if its middle is in a painted stretch.
+    const ok = !dash || ((i - .5) * S.step) % dash[1] < dash[0];
+    if (i > 0 && ok) b.idx.push(base - 2, base, base - 1, base - 1, base, base + 1);
   }
 }
 
-dressAll(0);
+/** Add a low wall along a segment at lateral x (flyover parapets). */
+function wall(seg, x, h, mat) {
+  const b = batch(mat), S = SEGS[seg];
+  for (let i = 0; i < S.n; i++) {
+    sample(seg, i * S.step, pt);
+    const rx = Math.cos(pt.yaw), rz = -Math.sin(pt.yaw);
+    const base = b.pos.length / 3;
+    b.pos.push(pt.x + rx * x, pt.y, pt.z + rz * x, pt.x + rx * x, pt.y + h, pt.z + rz * x);
+    if (i > 0) b.idx.push(base - 2, base, base - 1, base - 1, base, base + 1);
+  }
+}
+
+/** A straight side road leaving a junction (looks only; the kerb keeps the bus out). */
+function stub(seg, s, side) {
+  sample(seg, s, pt);
+  const S = SEGS[seg], h = W.stubWidth / 2, L = W.stubLength;
+  const rx = Math.cos(pt.yaw), rz = -Math.sin(pt.yaw);  // across the main road
+  const fx = -Math.sin(pt.yaw), fz = -Math.cos(pt.yaw); // along the main road
+  const ox = pt.x + rx * side * S.half, oz = pt.z + rz * side * S.half;
+  const corner = (d, a, y) => [ox + rx * side * d + fx * a, pt.y + y, oz + rz * side * d + fz * a];
+  const quad = (mat, a0, a1, y) => {
+    const b = batch(mat), base = b.pos.length / 3;
+    b.pos.push(...corner(0, a0, y), ...corner(0, a1, y), ...corner(L, a0, y), ...corner(L, a1, y));
+    b.idx.push(base, base + 2, base + 1, base + 1, base + 2, base + 3);
+  };
+  quad(MATS.road, -h, h, -.01);
+  quad(MATS.pave, h, h + 2, .1);
+  quad(MATS.pave, -h - 2, -h, .1);
+}
+
+const MATS = {
+  road: new THREE.MeshLambertMaterial({ color: 0x3a3a3a, side: THREE.DoubleSide }),
+  pave: new THREE.MeshLambertMaterial({ color: 0x9e9e9e, side: THREE.DoubleSide }),
+  line: new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide }),
+  wall: new THREE.MeshLambertMaterial({ color: 0xbdb5a6, side: THREE.DoubleSide }),
+};
+
+/** Build every road ribbon and the junction side roads. */
+function buildRoads() {
+  for (let i = 0; i < SEGS.length; i++) {
+    const S = SEGS[i], h = S.half;
+    // Side streets and flyovers sit a hair higher so they never flicker where they overlap the main road.
+    const lift = S.main ? 0 : .03;
+    band(i, -h, h, lift, MATS.road);
+    band(i, h - .35, h - .15, lift + .01, MATS.line);
+    band(i, -h + .15, -h + .35, lift + .01, MATS.line);
+    if (S.kind === "flyover") {
+      for (const s of [-1, 1]) wall(i, s * h, 1, MATS.wall);
+    } else {
+      band(i, h, h + 2, lift + .12, MATS.pave);
+      band(i, -h - 2, -h, lift + .12, MATS.pave);
+    }
+    if (S.kind !== "street") for (const s of [-1, 1]) band(i, s * h / 2 - .09, s * h / 2 + .09, lift + .015, MATS.line, W.dash);
+    for (const j of S.junctions || []) {
+      for (const side of j.type === "X" ? [-1, 1] : [j.side]) stub(i, j.at * S.len, side);
+    }
+  }
+  for (const [mat, b] of batches) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(b.pos, 3));
+    g.setIndex(b.idx);
+    g.computeVertexNormals();
+    const m = new THREE.Mesh(g, mat);
+    m.frustumCulled = false; // one mesh spans the whole city, so it is always "in view"
+    scene.add(m);
+  }
+}
+
+/* ====== Buildings: a pool of boxes reused along the road (streaming) ====== */
+// Pooling: instead of creating and destroying buildings, a fixed set of boxes is moved to
+// whichever spots are near the bus. Nothing new is created while driving.
+const pool = [];
+const placements = SEGS.map(() => []);   // per segment: { seg, s, side, w, d, h, off, color, hidden, mesh }
+const active = new Set();
+
+/** Is this spot taken by a side street running next to the road, or by a junction? */
+function blocked(seg, s, side) {
+  const S = SEGS[seg];
+  if (S.kind === "flyover") return true;
+  if (S.kind === "street" && side !== S.side) return true; // only the outer side of a lane
+  if (S.main && S.alt !== undefined) {
+    const A = SEGS[S.alt], t = s / S.len;
+    if (A.kind === "street" && A.side === side && t > .08 && t < .92) return true;
+  }
+  for (const j of S.junctions || []) {
+    if ((j.type === "X" || j.side === side) && Math.abs(j.at * S.len - s) < W.stubWidth / 2 + 6) return true;
+  }
+  return false;
+}
+
+/**
+ * Build the roads and plan every building spot along the network (cheap plain objects, made once).
+ * @param {(progress: number, side: number) => {colors: number[], minH: number, maxH: number, hidden: boolean}} scenery
+ */
+export function initWorld(scenery) {
+  buildRoads();
+  for (let i = 0; i < W.buildingPool; i++) {
+    const b = new THREE.Mesh(UNIT, new THREE.MeshLambertMaterial());
+    b.visible = false;
+    pool.push(b); scene.add(b);
+  }
+  for (let i = 0; i < SEGS.length; i++) {
+    const S = SEGS[i];
+    for (const side of [-1, 1]) {
+      for (let s = rnd(0, W.buildingGap); s < S.len; s += W.buildingGap + rnd(-2, 2)) {
+        if (blocked(i, s, side)) continue;
+        const look = scenery(progressOf(i, s), side);
+        const w = rnd(5, 9);
+        placements[i].push({ seg: i, s, side, w, d: rnd(6, 10), h: rnd(look.minH, look.maxH),
+          off: S.half + 3 + w / 2 + rnd(0, 3), color: pick(look.colors), hidden: look.hidden, mesh: null });
+      }
+    }
+  }
+}
+
+function release(p) {
+  p.mesh.visible = false;
+  pool.push(p.mesh);
+  p.mesh = null;
+  active.delete(p);
+}
+
+/** Take every building off the road (new run). */
+export function resetWorld() {
+  for (const p of [...active]) release(p);
+}
+
+const near = []; // reused list of segments near the bus
+/** Move pooled buildings onto the spots near the bus. Call once per step. */
+export function updateWorld() {
+  for (const p of active) {
+    const a = ahead(p.seg, p.s);
+    if (!(a > -W.buildingBehind && a < W.buildingAhead)) release(p);
+  }
+  const cur = SEGS[here.seg];
+  near.length = 0;
+  near.push(here.seg, ...cur.next);
+  if (here.prev >= 0) near.push(here.prev);
+  for (let i = 0; i < SEGS.length; i++) if (i !== here.seg && SEGS[i].from === cur.from) near.push(i);
+  for (const seg of near) {
+    for (const p of placements[seg]) {
+      if (p.mesh || p.hidden || !pool.length) continue;
+      const a = ahead(seg, p.s);
+      if (!(a > -W.buildingBehind && a < W.buildingAhead)) continue;
+      p.mesh = pool.pop();
+      p.mesh.scale.set(p.w, p.h, p.d);
+      place(p.mesh, seg, p.s, p.side * p.off, p.h / 2);
+      p.mesh.material.color.setHex(p.color);
+      p.mesh.visible = true;
+      active.add(p);
+    }
+  }
+}

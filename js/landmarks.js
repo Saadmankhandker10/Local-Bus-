@@ -7,6 +7,7 @@ import { rnd, pick } from "./utils.js";
 import { scene, box, plate } from "./world.js";
 import { makeVehicle } from "./vehicles.js";
 import { game } from "./state.js";
+import { ahead, place, fromProgress } from "./map.js";
 
 const R = CFG.world.roadHalfWidth, J = CFG.journey;
 
@@ -236,30 +237,32 @@ for (const [i, st] of ROUTE.stages.entries()) {
   }
 }
 placements.sort((a, b) => a.at - b.at);
+// Each landmark sits on the main road at its journey progress.
+for (const p of placements) fromProgress(p.at, p);
 
-const active = [];  // { m, at }
+const active = [];  // { m, p }
 let next = 0;       // index of the next placement to spawn
 
-/** Clear all landmarks and continue from this distance (start or checkpoint). */
-export function resetLandmarks(fromDist) {
+/** Clear all landmarks and continue from this journey progress (start or checkpoint). */
+export function resetLandmarks(fromProg) {
   for (const a of active) scene.remove(a.m);
   active.length = 0;
-  next = placements.findIndex(p => p.at >= fromDist - J.despawnBehind);
+  next = placements.findIndex(p => p.at >= fromProg - J.despawnBehind);
   if (next < 0) next = placements.length;
 }
 
-/** Spawn landmarks coming into view and move all of them with the road. */
-export function updateLandmarks(d) {
-  while (next < placements.length && placements[next].at <= game.dist + J.spawnAhead) {
+/** Build landmarks coming into view and remove the ones left behind. */
+export function updateLandmarks() {
+  while (next < placements.length && placements[next].at <= game.prog + J.spawnAhead) {
     const p = placements[next++];
     const m = PREFABS[p.prefab](p);
-    m.position.z = game.dist - p.at;
+    // Prefabs are built facing "forward = -z, right = +x", which place() turns to follow the road.
+    place(m, p.seg, p.s, 0);
     scene.add(m);
-    active.push({ m, at: p.at });
+    active.push({ m, p });
   }
   for (let i = active.length - 1; i >= 0; i--) {
-    const a = active[i];
-    a.m.position.z += d;
-    if (a.m.position.z > J.despawnBehind) { scene.remove(a.m); active.splice(i, 1); }
+    const a = ahead(active[i].p.seg, active[i].p.s);
+    if (!(a > -J.despawnBehind)) { scene.remove(active[i].m); active.splice(i, 1); }
   }
 }

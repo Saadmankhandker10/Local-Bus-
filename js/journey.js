@@ -72,7 +72,7 @@ export function resetJourney(fromCheckpoint) {
     // Coming back costs a little: a share of the score is lost.
     const keep = 1 - J.checkpointPenalty;
     journey.stage = cp.stage;
-    game.dist = cp.dist;
+    game.dist = game.prog = cp.dist;
     game.damage = Math.floor(cp.damage * keep);
     game.fare = Math.floor(cp.fare * keep);
     game.pass = cp.pass;
@@ -80,7 +80,7 @@ export function resetJourney(fromCheckpoint) {
   } else {
     journey.stage = 0;
     journey.cp = null;
-    game.dist = 0;
+    game.dist = game.prog = 0;
     game.journeyT = 0;
   }
   journey.stageStartDamage = game.damage;
@@ -90,12 +90,12 @@ export function resetJourney(fromCheckpoint) {
 /** Check for arriving at a new stage or the destination. Call once per step. */
 export function updateJourney() {
   if (journey.done) return;
-  if (game.dist >= TOTAL) {
+  if (game.prog >= TOTAL - CFG.journey.finishSlack) {
     journey.done = true;
     emit("journeyComplete");
     return;
   }
-  const i = stageAt(game.dist);
+  const i = stageAt(game.prog);
   if (i === journey.stage) return;
   journey.stage = i;
 

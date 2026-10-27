@@ -17,23 +17,20 @@ export const CFG = {
     boostHold: 1.2,      // boost (and auto-drive) keeps going this long after you let go,
                          // so your hand can move to the steering keys
 
-    // --- Steering (sideways movement) ---
-    steerSpeed: 9,          // top sideways speed
-    steerResponse: 4,       // how fast the bus reaches that sideways speed (lower = heavier)
-    steerLowSpeedMin: 0.35, // steering strength at standstill (0..1)
-    steerFullAt: 12,        // speed where steering reaches full strength
-    steerHighSpeedCut: 0.35,// part of steering lost at boost top speed (keeps it stable)
+    // --- Turning (the bus has a real heading) ---
+    turnRadiusMin: 9,       // tightest turning circle, at walking speed
+    turnRadiusPerSpeed: 0.45, // the circle grows this much per unit of speed (heavy bus)
+    alignRate: 1.8,         // with no steering, the bus lines up with the road at this rate
+    maxRelYaw: 0.5,         // the most the bus can point away from the road (radians)
 
     // --- Road edge (soft bump instead of a wall) ---
-    edgeX: 5.2,          // past this, the kerb starts pushing the bus back
-    edgeHardX: 5.8,      // the bus can never go past this
-    edgeSpring: 40,      // how hard the kerb pushes back
+    edgeInset: 1.8,      // the kerb starts pushing this far inside the road edge
+    edgeHardInset: 1.2,  // the bus centre never gets closer to the edge than this
+    edgeYawPush: 0.6,    // how hard the kerb turns the nose back in
     edgeScrapeDrag: 8,   // speed lost per second while scraping
     edgeShake: 0.12,     // small camera shake while scraping
 
     // --- Look only (never changes the collision box) ---
-    yawPerSideSpeed: 0.025, // nose turns towards where the bus slides
-    maxYaw: 0.16,
     rollPerSideSpeed: 0.012,// body leans outwards in a turn
     pitchPerAccel: 0.004,   // nose dips when braking, lifts when speeding up
     maxPitch: 0.06,
@@ -129,6 +126,7 @@ export const CFG = {
     passengersOnMin: 3,     // ...and this many new ones get on
     passengersOnMax: 8,
     spawnAhead: 170,        // landmarks appear this far ahead (just inside the fog)
+    finishSlack: 1,         // the journey ends this close to the end of the last road
     landmarkClear: 25,      // around a one-sided landmark, normal buildings stay away this far
     despawnBehind: 45,
   },
@@ -184,7 +182,7 @@ export const CFG = {
     rampDistance: 3500,   // interval shrinks by 1 s every this much distance
     intervalJitterMin: 0.7,
     intervalJitterMax: 1.3,
-    spawnZ: -150,         // how far ahead vehicles appear
+    spawnAhead: 150,      // how far ahead (along the road) vehicles appear
     lanes: [-5, -2.5, 0, 2.5, 5],
     laneWidth: 2.5,       // distance between two lanes (used when vehicles change lane)
     laneJitter: 0.4,
@@ -192,7 +190,7 @@ export const CFG = {
     clearX: 3,            // ...and this close sideways
     despawnBehind: 30,
     despawnAhead: -220,
-    despawnSide: 40,
+    despawnSide: 30,      // removed when this far outside the road edge
     followGap: 6,         // a vehicle slows down if another is this close in front of it
     speedResponse: 2,     // how quickly vehicles change speed
     laneResponse: 1.5,    // how quickly vehicles slide into a new lane
@@ -223,10 +221,16 @@ export const CFG = {
     ],
   },
 
+  // Traffic mix on special roads (multiplies each type's chance; 0 = never).
+  roadKinds: {
+    flyover: { rickshaw: 0, bike: 0.5, truck: 1.5 }, // fast, no rickshaws, but trucks love it
+    street: { truck: 0, bus: 0, rickshaw: 1.8 },     // narrow lanes: rickshaws everywhere
+  },
+
   // Small roadside stalls poking into the outer lane. Crashable, and they break apart.
   stall: {
     name: "stall", w: 1.2, l: 2.2, h: 2.2, mass: 0.5, damage: 25,
-    x: 6.6,               // distance from the road centre
+    edgeOffset: -0.4,     // stall centre sits this far inside the road edge
     gapMin: 60, gapMax: 140,
     colors: [0xe53935, 0x1e88e5, 0x43a047, 0xffb300],
   },
@@ -246,7 +250,7 @@ export const CFG = {
     first: 120,           // distance of the first bus stop
     gapMin: 250,          // distance between stops
     gapMax: 400,
-    sideX: 5,             // stops sit this far left or right of centre
+    edgeInset: 2,         // stop centre sits this far inside the road edge
     people: 5,            // passengers waiting at each stop
     boardMaxSpeed: 10,    // bus must be slower than this to board passengers
     boardInterval: 0.35,  // seconds between two passengers boarding
@@ -259,7 +263,7 @@ export const CFG = {
   // Road marks you must STOP on (be slower than stopSpeed while the bus is over them).
   // Both sit in an outer lane, on a random side.
   marks: {
-    sideX: 4,             // distance of the mark's centre from the road centre
+    edgeInset: 3,         // mark centre sits this far inside the road edge
     width: 3.6,
     length: 14,
     stopSpeed: 6,         // slower than this counts as "stopped on the mark"
@@ -285,19 +289,24 @@ export const CFG = {
     finePerPerson: 3,     // ...plus this much for every person in the crowd
   },
 
+  map: {
+    forkLat: 1.5,         // at a fork, be this far towards a side to take that branch
+    altShare: 0.35,       // share of traffic that takes a side street or flyover
+    forkWarn: 140,        // the helper calls the fork this far before it
+  },
+
   world: {
     roadHalfWidth: 7,
     skyColor: 0xcfe3ee,
     fogNear: 50,
     fogFar: 170,
-    stripeCount: 30,
-    stripeGap: 10,
-    stripeLanesX: [-3.5, 3.5],
-    stripeRecycleAt: 20,  // when a stripe passes this z behind the camera...
-    buildingCount: 40,
-    buildingGap: 15,
-    buildingRecycleAt: 25,
-    recycleLength: 300,   // ...it jumps this far forward again
+    dash: [3, 10],        // lane markings: 3 units of paint every 10 units
+    stubWidth: 12,        // side roads at junctions (just scenery)
+    stubLength: 70,
+    buildingGap: 15,      // distance between buildings along the road
+    buildingPool: 110,    // how many building boxes exist (they are reused)
+    buildingAhead: 280,   // buildings are placed this far ahead of the bus...
+    buildingBehind: 50,   // ...and kept until this far behind
     buildingColors: [0xd7ccc8, 0xffe0b2, 0xb0bec5, 0xc5e1a5, 0xf8bbd0, 0xbcaaa4],
   },
 
@@ -308,10 +317,13 @@ export const CFG = {
     fovSmoothing: 3,      // how quickly the view widens / narrows
     followX: 0.6,         // how much the camera follows the bus sideways (0..1)
     followSmoothing: 5,   // lower = camera lags more behind sideways moves
+    followYaw: 0.5,       // how much the camera turns with the bus (1) or the road (0)
+    yawSmoothing: 4,      // lower = camera swings round bends more lazily
+    roadMargin: 1.5,      // the camera never goes further than this outside the road edge
     height: 6.2,
     distance: 13,
     lookY: 1.5,
-    lookZ: -14,
+    lookAhead: 14,        // the camera looks at a point this far ahead of the bus
     shakeDecay: 1.5,      // how fast shake fades
     shakeScale: 1,        // set to 0 to turn camera shake off
     boostFovKick: 9,      // extra field of view while boosting

@@ -11,6 +11,9 @@ export const game = {
   time: 0,    // seconds of simulation since the page loaded
   speed: 0,   // forward speed
   vx: 0,      // sideways speed (steering)
+  lat: 0,     // how far right of the road centre the bus is
+  yaw: 0,     // which way the bus points, compared with the road (radians, right = +)
+  prog: 0,    // journey progress along the main route (0 .. route length)
   accel: 0,   // change in speed per second this step (used to tilt the body)
   boostT: 0,  // seconds of boost left; above 0 means boosting
   invulnT: 0, // seconds left in which heavy things can't end the run
@@ -33,6 +36,9 @@ export function resetGame() {
   game.caught = false;
   game.speed = CFG.bus.startSpeed;
   game.vx = 0;
+  game.lat = 0;
+  game.yaw = 0;
+  game.prog = 0;
   game.accel = 0;
   game.boostT = 0;
   game.invulnT = 0;

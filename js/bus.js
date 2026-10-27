@@ -5,6 +5,7 @@ import { clamp } from "./utils.js";
 import { scene, box, plate } from "./world.js";
 import { input } from "./input.js";
 import { game } from "./state.js";
+import { SEGS, here, sample, place, fromProgress, progressOf } from "./map.js";
 
 const B = CFG.bus;
 
@@ -53,11 +54,22 @@ function buildBus() {
 buildBus();
 scene.add(bus);
 
-/** Put the bus back in the middle of the road, standing straight. */
-export function resetBus() {
-  bus.position.x = 0;
-  bus.rotation.y = 0;
+const pos = { x: 0, y: 0, z: 0, yaw: 0, k: 0 }; // reused road sample
+
+/** Put the bus on the main road at a journey progress value, facing along the road. */
+export function resetBus(progress = 0) {
+  fromProgress(progress, here);
+  here.prev = -1;
+  game.lat = 0;
+  game.yaw = 0;
+  game.prog = progress;
   body.rotation.set(0, 0, 0);
+  placeBus();
+}
+
+/** Move the 3D bus to its spot on the road. */
+function placeBus() {
+  place(bus, here.seg, here.s, game.lat, 0, -game.yaw);
 }
 
 /**
@@ -68,8 +80,17 @@ function approach(current, target, rate, dt) {
   return current + (target - current) * (1 - Math.exp(-rate * dt));
 }
 
+/** At the end of a road piece, take the branch on the side the bus is driving. */
+function chooseNext(list) {
+  for (const n of list) {
+    const S = SEGS[n];
+    if (S.side && Math.sign(game.lat) === S.side && Math.abs(game.lat) > CFG.map.forkLat) return n;
+  }
+  return list[0];
+}
+
 /**
- * One physics step for the bus: boost, speed, steering, road edge, fuel.
+ * One physics step for the bus: boost, speed, steering, road edge, fuel, moving along the road.
  * @returns {number} distance travelled this step
  */
 export function updateBus(dt) {
@@ -96,37 +117,55 @@ export function updateBus(dt) {
   game.accel = (speed - v) / dt;
   game.speed = speed;
 
-  // Steering sets a target sideways speed; the bus reaches it slowly because it is heavy.
-  // Weak when nearly stopped, full at medium speed, a bit calmer at boost speed.
-  const lowFactor = clamp(B.steerLowSpeedMin + speed / B.steerFullAt, 0, 1);
-  const highFactor = 1 - B.steerHighSpeedCut * clamp(speed / B.boostSpeed, 0, 1);
-  game.vx = approach(game.vx, ctl.steer * B.steerSpeed * lowFactor * highFactor, B.steerResponse, dt);
+  // Turning: the bus has a heading (game.yaw, measured from the road's direction).
+  // Steering turns it, faster at speed but with a wider turning circle, like a heavy bus.
+  // When the road bends, the road turns under the bus, so you must steer into the bend.
+  sample(here.seg, here.s, pos);
+  const radius = B.turnRadiusMin + speed * B.turnRadiusPerSpeed;
+  const turnRate = ctl.steer * speed / radius;
+  game.yaw += (turnRate - pos.k * speed * Math.cos(game.yaw)) * dt;
+  // Arcade help: with no steering the bus slowly lines up with the road again.
+  if (Math.abs(ctl.steer) < .1) game.yaw = approach(game.yaw, 0, B.alignRate, dt);
+  game.yaw = clamp(game.yaw, -B.maxRelYaw, B.maxRelYaw);
 
-  let x = bus.position.x + game.vx * dt;
-  // Road edge: past edgeX the kerb pushes back like a spring and scrapes off some speed.
-  const over = Math.abs(x) - B.edgeX;
+  const S = SEGS[here.seg];
+  game.vx = speed * Math.sin(game.yaw);
+  let x = game.lat + game.vx * dt;
+  // Road edge: past the edge the kerb pushes the nose back and scrapes off some speed.
+  const edge = S.half - B.edgeInset, hard = S.half - B.edgeHardInset;
+  const over = Math.abs(x) - edge;
   if (over > 0) {
-    game.vx -= Math.sign(x) * B.edgeSpring * over * dt;
+    game.yaw -= Math.sign(x) * B.edgeYawPush * over * dt;
     game.speed = Math.max(0, game.speed - B.edgeScrapeDrag * dt);
     game.shake = Math.max(game.shake, B.edgeShake);
   }
-  if (Math.abs(x) > B.edgeHardX) {
-    x = Math.sign(x) * B.edgeHardX;
-    if (Math.sign(game.vx) === Math.sign(x)) game.vx = 0;
+  if (Math.abs(x) > hard) {
+    x = Math.sign(x) * hard;
+    if (Math.sign(game.yaw) === Math.sign(x)) game.yaw *= .5;
   }
-  bus.position.x = x;
+  game.lat = x;
+
+  // Move along the road; at the end of a piece, continue on the next one (or the branch we chose).
+  const ds = game.speed * Math.cos(game.yaw) * dt;
+  here.s += ds;
+  while (here.s > SEGS[here.seg].len && SEGS[here.seg].next.length) {
+    here.s -= SEGS[here.seg].len;
+    here.prev = here.seg;
+    here.seg = chooseNext(SEGS[here.seg].next);
+  }
+  here.s = Math.min(here.s, SEGS[here.seg].len);
+  game.prog = progressOf(here.seg, here.s);
 
   game.fuel -= (F.baseDrain + game.speed / F.speedDrainRef * F.speedDrain + (boosting ? F.boostDrain : 0)) * dt;
   game.fuel = Math.max(0, game.fuel);
-
-  return game.speed * dt;
+  placeBus();
+  return ds;
 }
 
 /** Animate the look of the bus (lean, nose dip, wheels, brake lights). Call once per frame. */
 export function updateBusVisual(dt) {
   const k = B.visualSmoothing;
-  // Nose points where the bus is sliding; body leans outwards; nose dips when braking.
-  bus.rotation.y = approach(bus.rotation.y, clamp(-game.vx * B.yawPerSideSpeed, -B.maxYaw, B.maxYaw), k, dt);
+  // Body leans outwards in a turn; nose dips when braking. (Only the body: physics is untouched.)
   body.rotation.z = approach(body.rotation.z, game.vx * B.rollPerSideSpeed, k, dt);
   body.rotation.x = approach(body.rotation.x, clamp(game.accel * B.pitchPerAccel, -B.maxPitch, B.maxPitch), k, dt);
 

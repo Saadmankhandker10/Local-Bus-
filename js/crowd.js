@@ -4,7 +4,7 @@ import * as THREE from "three";
 import { CFG } from "./config.js";
 import { rnd, pick } from "./utils.js";
 import { scene } from "./world.js";
-import { bus } from "./bus.js";
+import { SEGS, here, sample } from "./map.js";
 import { game } from "./state.js";
 import { on, emit } from "./events.js";
 
@@ -32,6 +32,19 @@ for (let i = 0; i < K.maxSize; i++) {
   bodies.setColorAt(i, tmpColor.setHex(pick(SHIRTS)));
 }
 const dummy = new THREE.Object3D(); // reused to build each matrix
+const rp = { x: 0, y: 0, z: 0, yaw: 0, k: 0 };
+
+/**
+ * Put `dummy` at a spot given relative to the bus: lat = right of the road centre,
+ * back = distance behind the bus along the road (it may be on the previous road piece).
+ */
+function toWorld(lat, back, up) {
+  let seg = here.seg, s = here.s - back;
+  if (s < 0 && here.prev >= 0) { seg = here.prev; s += SEGS[seg].len; }
+  sample(seg, s, rp);
+  dummy.position.set(rp.x + Math.cos(rp.yaw) * lat, rp.y + up, rp.z - Math.sin(rp.yaw) * lat);
+  dummy.rotation.y = rp.yaw;
+}
 
 /** Remove the crowd (new run). */
 export function resetCrowd() {
@@ -56,7 +69,7 @@ on("crash", () => {
   if (!crowd.active) {
     crowd.active = true;
     crowd.gap = K.startGap;
-    for (let i = 0; i < K.maxSize; i++) { px[i] = bus.position.x + ox[i]; pz[i] = crowd.gap + oz[i]; }
+    for (let i = 0; i < K.maxSize; i++) { px[i] = game.lat + ox[i]; pz[i] = crowd.gap + oz[i]; }
     emit("chaseStart");
   } else {
     // People from the new crash join in, closer than the ones who were far behind.
@@ -87,16 +100,16 @@ export function updateCrowdVisual(dt) {
       // Stand in an oval around the bus (it is long, so the oval is stretched along z).
       const a = (i / crowd.size) * Math.PI * 2;
       const r = K.ringRadius * (1 + .15 * (i % 3));
-      tx = bus.position.x + Math.cos(a) * r * .7;
+      tx = game.lat + Math.cos(a) * r * .7;
       tz = Math.sin(a) * r * 1.4;
       bob = 0;
       px[i] += (tx - px[i]) * k; pz[i] += (tz - pz[i]) * k;
     } else {
-      px[i] += (bus.position.x * .5 + ox[i] - px[i]) * k;
+      px[i] += (game.lat * .5 + ox[i] - px[i]) * k;
       pz[i] = crowd.gap + oz[i];
       bob = Math.abs(Math.sin(game.time * K.runBobHz * Math.PI + ph[i])) * K.runBob;
     }
-    dummy.position.set(px[i], bob, pz[i]);
+    toWorld(px[i], pz[i], bob);
     dummy.updateMatrix();
     bodies.setMatrixAt(i, dummy.matrix);
     heads.setMatrixAt(i, dummy.matrix);

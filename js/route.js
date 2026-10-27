@@ -2,9 +2,12 @@
 // Change names, lengths, traffic, scenery, or landmarks here without touching game code.
 //
 // Distances are in world units (the bus covers about 30 per second at normal speed).
+// The length of each stage comes from the roads drawn in map.js.
 // `at`, `from`, `to` inside a stage are fractions of that stage: 0 = start, 1 = end.
 // Landmarks: `at` places one, `every` repeats one; no `side` means both sides of the road.
 // `clear` keeps the normal buildings away for that many units around a big landmark.
+
+import { STAGE_LENGTHS, ROUTE_LENGTH } from "./map.js";
 
 export const ROUTE = {
   realKm: 7,   // the real trip is about 7 km; the HUD scales the distance to this
@@ -15,7 +18,6 @@ export const ROUTE = {
       name: "মোহাম্মদপুর",
       nameIn: "মোহাম্মদপুরে", nameOf: "মোহাম্মদপুরের",   // "in X" and "of X" for headlines
       card: "মোহাম্মদপুর বাসস্ট্যান্ড",
-      length: 2700,
       // Traffic: density multiplies how often vehicles appear; mix multiplies each type's chance.
       traffic: { density: 0.85, heavy: 0.8, mix: { rickshaw: 1.3, bus: 1.6, truck: 1.0 } },
       marks: { cng: [450, 650], police: [700, 1000], stops: [250, 400] },
@@ -34,17 +36,16 @@ export const ROUTE = {
       name: "ধানমন্ডি",
       nameIn: "ধানমন্ডিতে", nameOf: "ধানমন্ডির",
       card: "ধানমন্ডি",
-      length: 2700,
       traffic: { density: 1.0, heavy: 0.9, mix: { rickshaw: 2.2, car: 1.3, bike: 1.2 } },
       marks: { cng: [450, 700], police: [700, 1000], stops: [250, 400] },
       stalls: 0.6,
       buildings: { colors: [0xfff3e0, 0xf8bbd0, 0xc5e1a5, 0xb3e5fc, 0xffe0b2], minH: 10, maxH: 26 },
       // Along the lake there are no buildings on that side.
-      zones: [{ type: "lake", side: -1, from: 0.15, to: 0.7 }],
+      zones: [{ type: "lake", side: 1, from: 0.15, to: 0.7 }],
       landmarks: [
-        { prefab: "lake", every: 40, from: 0.15, to: 0.7, side: -1 },
-        { prefab: "tree", every: 22, from: 0, to: 1, side: 1 },
-        { prefab: "tree", every: 22, from: 0.7, to: 1, side: -1 },
+        { prefab: "lake", every: 40, from: 0.15, to: 0.7, side: 1 },
+        { prefab: "tree", every: 22, from: 0, to: 1, side: -1 },
+        { prefab: "tree", every: 22, from: 0.7, to: 1, side: 1 },
         { prefab: "coachingBanner", every: 220, from: 0.05, to: 1 },
       ],
     },
@@ -53,7 +54,6 @@ export const ROUTE = {
       name: "শাহবাগ",
       nameIn: "শাহবাগে", nameOf: "শাহবাগের",
       card: "সায়েন্সল্যাব — নিউমার্কেট — শাহবাগ",
-      length: 2700,
       traffic: { density: 1.15, heavy: 1.1, mix: { rickshaw: 1.4, cng: 1.3, bus: 1.4 } },
       marks: { cng: [450, 700], police: [600, 900], stops: [220, 350] },
       stalls: 1.6,
@@ -74,7 +74,6 @@ export const ROUTE = {
       name: "ঢাকা বিশ্ববিদ্যালয়",
       nameIn: "ঢাকা বিশ্ববিদ্যালয়ে", nameOf: "ঢাকা বিশ্ববিদ্যালয়ের",
       card: "ঢাকা বিশ্ববিদ্যালয়",
-      length: 2700,
       traffic: { density: 0.9, heavy: 0.8, mix: { rickshaw: 2.4, bike: 1.3, truck: 0.4 } },
       marks: { cng: [500, 750], police: [700, 1000], stops: [250, 400] },
       stalls: 0.8,
@@ -102,7 +101,9 @@ export const ROUTE = {
 };
 
 /** Total length of the journey in world units. */
-export const TOTAL = ROUTE.stages.reduce((a, s) => a + s.length, 0);
+ROUTE.stages.forEach((s, i) => { s.length = STAGE_LENGTHS[i]; });
+
+export const TOTAL = ROUTE_LENGTH;
 
 /** Distance where each stage starts. */
 export const STAGE_START = ROUTE.stages.map((_, i) => ROUTE.stages.slice(0, i).reduce((a, s) => a + s.length, 0));

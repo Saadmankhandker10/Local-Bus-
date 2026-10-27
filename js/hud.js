@@ -66,11 +66,11 @@ export function updateHud(dt, boostFx) {
   $("pass").textContent = game.pass;
   $("spd").textContent = Math.round(game.speed * CFG.hud.kmhPerSpeed);
   // The route is scaled so the whole trip reads as the real ~7 km.
-  $("dist").textContent = (Math.min(game.dist, TOTAL) / TOTAL * ROUTE.realKm).toFixed(1);
+  $("dist").textContent = (Math.min(game.prog, TOTAL) / TOTAL * ROUTE.realKm).toFixed(1);
   $("fuelbar").style.width = game.fuel + "%";
   $("fuelbox").classList.toggle("low", game.fuel < CFG.hud.lowFuel);
   $("speedlines").style.opacity = (boostFx * CFG.camera.speedLinesOpacity).toFixed(3);
-  $("pbus").style.left = (progress(game.dist) * 100).toFixed(2) + "%";
+  $("pbus").style.left = (progress(game.prog) * 100).toFixed(2) + "%";
 
   // Crowd: a bar that fills as they get closer, plus an orange glow at the bottom edge
   // (the crowd is behind the bus, so the cue is where they come from).

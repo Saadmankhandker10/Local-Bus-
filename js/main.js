@@ -2,10 +2,10 @@
 import { CFG } from "./config.js";
 import { game, resetGame } from "./state.js";
 import { on, emit } from "./events.js";
-import { renderer, scene, scrollWorld, setScenery, dressAll } from "./world.js";
+import { renderer, scene, initWorld, resetWorld, updateWorld } from "./world.js";
 import { initInput, pollInput, onTap, onAnyInput } from "./input.js";
 import { resetBus, updateBus, updateBusVisual } from "./bus.js";
-import { cam, updateCamera } from "./camera.js";
+import { cam, updateCamera, resetCamera } from "./camera.js";
 import { resetTraffic, updateTraffic } from "./traffic.js";
 import { resetMarks, updateMarks } from "./marks.js";
 import { crowd, resetCrowd, updateCrowd, updateCrowdVisual } from "./crowd.js";
@@ -38,11 +38,14 @@ function start(fromCheckpoint) {
   resetJourney(fromCheckpoint && !!journey.cp);
   resetTraffic(game.dist);
   resetMarks(game.dist);
-  resetLandmarks(game.dist);
-  dressAll(game.dist);
+  resetLandmarks(game.prog);
+  resetWorld();
   resetCrowd();
   clearSpeech();
-  resetBus();
+  resetBus(game.prog);
+  resetCamera();
+  updateWorld();
+  updateLandmarks();
   game.running = true;
   setPaused(false);
   hideScreen();
@@ -72,7 +75,7 @@ function runReport(isRecord, isBestTime) {
     stage: currentStage().name, stageIn: currentStage().nameIn, stageOf: currentStage().nameOf,
     damage: Math.floor(game.damage), fare: Math.floor(game.fare), combo: stats.bestCombo,
     fines: stats.fines, crashes: light, crashList: crashList(),
-    km: (Math.min(game.dist, TOTAL) / TOTAL * ROUTE.realKm).toFixed(1), totalKm: ROUTE.realKm,
+    km: (Math.min(game.prog, TOTAL) / TOTAL * ROUTE.realKm).toFixed(1), totalKm: ROUTE.realKm,
     time: game.journeyT, score: totalScore(), best: bestScore(), isRecord, isBestTime,
   };
 }
@@ -172,13 +175,13 @@ function step(dt) {
   // Passengers on board keep paying while the bus moves.
   game.fare += game.pass * game.speed * CFG.fare.travelRate * dt;
   game.dist += d;
-  scrollWorld(d, game.dist);
-  updateLandmarks(d);
+  updateWorld();
+  updateLandmarks();
   updateJourney();
   if (!game.running) return; // the journey just finished
 
   updateTraffic(dt);
-  updateMarks(dt, d);
+  updateMarks(dt);
   updateCrowd(dt);
 
   // The crowd shouts while it is close behind the bus.
@@ -201,7 +204,7 @@ function step(dt) {
 
 /** Draw one frame. dt is the real time since the last frame (0 while paused). */
 function render(dt) {
-  applyTimeOfDay(progress(game.dist));
+  applyTimeOfDay(progress(game.prog));
   updateBusVisual(dt);
   updateCrowdVisual(dt);
   updateSpeech(dt);
@@ -210,11 +213,13 @@ function render(dt) {
   updateHud(dt, boostFx);
 }
 
-setScenery(sceneryAt);
+initWorld(sceneryAt);
 // Behind the title screen: the bus stand at Mohammadpur, early morning.
+resetBus(0);
+resetCamera();
+updateWorld();
 resetLandmarks(0);
-updateLandmarks(0);
-dressAll(0);
+updateLandmarks();
 
 initInput(onPauseInput);
 onAnyInput(unlockAudio);

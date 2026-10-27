@@ -7,15 +7,19 @@ import * as THREE from "three";
 import { CFG } from "./config.js";
 import { rnd, pick } from "./utils.js";
 import { scene, box, plate, person } from "./world.js";
-import { bus } from "./bus.js";
+
 import { game } from "./state.js";
 import { emit } from "./events.js";
 import { crowd } from "./crowd.js";
 import { msg } from "./hud.js";
 import { line, say } from "./speech.js";
 import { currentStage } from "./journey.js";
+import { SEGS, here, ahead, walk, place } from "./map.js";
 
-const S = CFG.stops, M = CFG.marks, SPAWN_Z = CFG.traffic.spawnZ;
+const S = CFG.stops, M = CFG.marks, AHEAD = CFG.traffic.spawnAhead;
+const spot = { seg: 0, s: 0 }; // reused spawn position
+/** Marks are painted on the main road (a side street or flyover gets none). */
+const mainFirst = list => list[0];
 
 const stops = [], marks = [];
 let nextStop, nextCng, nextPolice; // distance where the next one appears
@@ -103,37 +107,55 @@ function gap(kind, min, max) {
   return r ? rnd(r[0], r[1]) : rnd(min, max);
 }
 
-/** Is another stop or mark already near the spawn point? */
-function spawnBusy() {
-  return [...stops, ...marks].some(o => Math.abs(o.z - SPAWN_Z) < M.length + 6);
+/** Find the spawn spot ahead on the road. @returns {boolean} false if it's not a good place now */
+function findSpot() {
+  walk(here.seg, here.s, AHEAD, mainFirst, spot);
+  if (SEGS[spot.seg].kind === "flyover" || ahead(spot.seg, spot.s) < AHEAD * .5) return false;
+  // Is another stop or mark already near that spot?
+  return ![...stops, ...marks].some(o => o.seg === spot.seg && Math.abs(o.s - spot.s) < M.length + 6);
 }
 
 function spawnMark(kind) {
   const side = pick([-1, 1]);
   const m = kind === "cng" ? makeCngMark(side) : makePoliceMark(side);
-  const x = side * M.sideX;
-  m.position.set(x, 0, SPAWN_Z); scene.add(m);
-  marks.push({ m, kind, x, z: SPAWN_Z, payT: 0, done: false });
+  const x = side * (SEGS[spot.seg].half - M.edgeInset);
+  scene.add(m);
+  marks.push({ m, kind, seg: spot.seg, s: spot.s, x, z: 0, payT: 0, done: false });
 }
 
 function spawn() {
   if (game.dist >= nextStop) {
-    if (spawnBusy()) nextStop += 20;
+    if (!findSpot()) nextStop += 20;
     else {
       nextStop = game.dist + gap("stops", S.gapMin, S.gapMax);
       const side = pick([-1, 1]), { g, people } = makeStop(side);
-      g.position.set(side * S.sideX, 0, SPAWN_Z); scene.add(g);
-      stops.push({ m: g, x: side * S.sideX, z: SPAWN_Z, people });
+      scene.add(g);
+      stops.push({ m: g, seg: spot.seg, s: spot.s, x: side * (SEGS[spot.seg].half - S.edgeInset), z: 0, people });
     }
   }
   if (game.dist >= nextCng) {
-    if (spawnBusy()) nextCng += 20;
+    if (!findSpot()) nextCng += 20;
     else { nextCng = game.dist + gap("cng", CFG.cng.gapMin, CFG.cng.gapMax); spawnMark("cng"); }
   }
   if (game.dist >= nextPolice) {
-    if (spawnBusy()) nextPolice += 20;
+    if (!findSpot()) nextPolice += 20;
     else { nextPolice = game.dist + gap("police", CFG.police.gapMin, CFG.police.gapMax); spawnMark("police"); }
   }
+}
+
+/** Work out where a stop/mark is relative to the bus and move its 3D model. @returns {boolean} still useful */
+function track(o) {
+  o.z = -ahead(o.seg, o.s);
+  if (Number.isNaN(o.z) || o.z > M.despawnBehind) return false;
+  place(o.m, o.seg, o.s, o.x);
+  // Only marks on the bus's own road count (not the road next to a side street).
+  o.onRoad = o.seg === here.seg || o.seg === here.prev || SEGS[here.seg].next.includes(o.seg);
+  return true;
+}
+
+/** Stops and marks still ahead of the bus (for the minimap). */
+export function upcomingMarks() {
+  return [...stops.map(o => ({ kind: "stop", z: o.z, x: o.x, left: o.people.length })), ...marks.map(o => ({ kind: o.kind, z: o.z, x: o.x }))];
 }
 
 /** Show a hint now and then (not every frame). */
@@ -145,16 +167,16 @@ function hint(text) {
 
 /* ====== Update ====== */
 
-/** Spawn, scroll, and handle the bus standing on stops and marks. d = distance the bus moved. */
-export function updateMarks(dt, d) {
+/** Spawn, move, and handle the bus standing on stops and marks. */
+export function updateMarks(dt) {
   spawn();
-  const bx = bus.position.x;
+  const bx = game.lat;
   game.onMark = "";
 
   for (let i = stops.length - 1; i >= 0; i--) {
     const s = stops[i];
-    s.z += d; s.m.position.z = s.z;
-    const atStop = Math.abs(bx - s.x) < S.reachX && Math.abs(s.z) < S.reachZ;
+    if (!track(s)) { scene.remove(s.m); stops.splice(i, 1); continue; }
+    const atStop = s.onRoad && Math.abs(bx - s.x) < S.reachX && Math.abs(s.z) < S.reachZ;
     if (atStop && s.people.length) {
       if (game.speed < S.boardMaxSpeed) {
         // Passengers board one by one while the bus waits at the stop.
@@ -168,14 +190,13 @@ export function updateMarks(dt, d) {
         }
       } else hint("আস্তে! বাস থামান, যাত্রী উঠবে");
     }
-    if (s.z > S.despawnBehind) { scene.remove(s.m); stops.splice(i, 1); }
   }
 
   for (let i = marks.length - 1; i >= 0; i--) {
     const k = marks[i];
-    k.z += d; k.m.position.z = k.z;
+    if (!track(k)) { scene.remove(k.m); marks.splice(i, 1); continue; }
     // "On the mark" means the bus centre is over it, with some room at both ends.
-    const on = Math.abs(bx - k.x) < M.reachX && Math.abs(k.z) < M.length / 2 - 1;
+    const on = k.onRoad && Math.abs(bx - k.x) < M.reachX && Math.abs(k.z) < M.length / 2 - 1;
     const stopped = game.speed < M.stopSpeed;
 
     if (on && k.kind === "cng") {
@@ -204,6 +225,5 @@ export function updateMarks(dt, d) {
       } else if (crowd.active) hint("থামুন! জরিমানা দিয়ে কেস ক্লোজ করুন 👮");
     }
 
-    if (k.z > M.despawnBehind) { scene.remove(k.m); marks.splice(i, 1); }
   }
 }
