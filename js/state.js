@@ -21,6 +21,7 @@ export const game = {
   combo: 0,   // crashes in a row
   pass: 0,    // passengers on board
   dist: 0,
+  journeyT: 0, // seconds since the journey started (kept across checkpoints)
   shake: 0,   // camera shake strength, fades over time
   onMark: "", // "cng" or "police" while the bus stands on that mark
 };

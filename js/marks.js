@@ -6,13 +6,14 @@
 import * as THREE from "three";
 import { CFG } from "./config.js";
 import { rnd, pick } from "./utils.js";
-import { scene, box, plate } from "./world.js";
+import { scene, box, plate, person } from "./world.js";
 import { bus } from "./bus.js";
 import { game } from "./state.js";
 import { emit } from "./events.js";
 import { crowd } from "./crowd.js";
 import { msg } from "./hud.js";
 import { line, say } from "./speech.js";
+import { currentStage } from "./journey.js";
 
 const S = CFG.stops, M = CFG.marks, SPAWN_Z = CFG.traffic.spawnZ;
 
@@ -52,17 +53,6 @@ const policeMat = new THREE.MeshLambertMaterial({ map: markTexture("#ff6fb5", do
 const stopSign = plate("বাস স্টপ", 1.4, .5, "#1565c0", "#fff");
 const cngSign = plate("সিএনজি", 1.4, .5, "#ffd600", "#111");
 
-/** A simple standing person: body cylinder plus head. */
-function mkPerson(shirt, cap) {
-  const g = new THREE.Group();
-  const b = new THREE.Mesh(new THREE.CylinderGeometry(.25, .3, 1.1, 8), new THREE.MeshLambertMaterial({ color: shirt }));
-  b.position.y = .55;
-  const h = new THREE.Mesh(new THREE.SphereGeometry(.22, 8, 8), new THREE.MeshLambertMaterial({ color: 0xc68642 }));
-  h.position.y = 1.3;
-  g.add(b, h);
-  if (cap) g.add(box(.5, .12, .5, cap, 0, 1.5, 0));
-  return g;
-}
 
 function makeCngMark(side) {
   const g = new THREE.Group();
@@ -78,7 +68,7 @@ function makePoliceMark(side) {
   const g = new THREE.Group();
   const decal = new THREE.Mesh(markGeo, policeMat); decal.position.y = .03; g.add(decal);
   const px = side * (M.width / 2 + .8);
-  const sergeant = mkPerson(0xf5f5f5, 0x1a237e); sergeant.position.set(px, 0, 0); g.add(sergeant);
+  const sergeant = person(0xf5f5f5, 0, 0x1a237e); sergeant.position.set(px, 0, 0); g.add(sergeant);
   g.add(box(.08, 1.6, .08, 0x555555, px + side * .5, .8, 0));   // stop-sign pole
   g.add(box(.6, .6, .06, 0xd32f2f, px + side * .5, 1.7, .05));  // stop sign
   return g;
@@ -90,7 +80,7 @@ function makeStop(side) {
   g.add(box(.15, 3, .15, 0x555555, side * 2.3, 1.5, -7));       // sign pole
   const s = stopSign.clone(); s.position.set(side * 2.3, 3.1, -6.9); g.add(s);
   for (let i = 0; i < S.people; i++) {
-    const p = mkPerson(pick([0xe53935, 0x1e88e5, 0x43a047, 0xfb8c00, 0x8e24aa, 0xffffff]));
+    const p = person(pick([0xe53935, 0x1e88e5, 0x43a047, 0xfb8c00, 0x8e24aa, 0xffffff]));
     p.position.set(side * 1.5, 0, rnd(-6, 6)); g.add(p); people.push(p);
   }
   return { g, people };
@@ -98,13 +88,19 @@ function makeStop(side) {
 
 /* ====== Spawning ====== */
 
-/** Remove all stops and marks and restart their distance counters. */
-export function resetMarks() {
+/** Remove all stops and marks and restart their distance counters from this distance. */
+export function resetMarks(fromDist = 0) {
   for (const o of [...stops, ...marks]) scene.remove(o.m);
   stops.length = marks.length = 0;
-  nextStop = S.first;
-  nextCng = CFG.cng.first;
-  nextPolice = CFG.police.first;
+  nextStop = fromDist + S.first;
+  nextCng = fromDist + CFG.cng.first;
+  nextPolice = fromDist + CFG.police.first;
+}
+
+/** Distance to the next stop / CNG / police mark: the stage can set its own range in route.js. */
+function gap(kind, min, max) {
+  const r = currentStage().marks?.[kind];
+  return r ? rnd(r[0], r[1]) : rnd(min, max);
 }
 
 /** Is another stop or mark already near the spawn point? */
@@ -124,7 +120,7 @@ function spawn() {
   if (game.dist >= nextStop) {
     if (spawnBusy()) nextStop += 20;
     else {
-      nextStop = game.dist + rnd(S.gapMin, S.gapMax);
+      nextStop = game.dist + gap("stops", S.gapMin, S.gapMax);
       const side = pick([-1, 1]), { g, people } = makeStop(side);
       g.position.set(side * S.sideX, 0, SPAWN_Z); scene.add(g);
       stops.push({ m: g, x: side * S.sideX, z: SPAWN_Z, people });
@@ -132,11 +128,11 @@ function spawn() {
   }
   if (game.dist >= nextCng) {
     if (spawnBusy()) nextCng += 20;
-    else { nextCng = game.dist + rnd(CFG.cng.gapMin, CFG.cng.gapMax); spawnMark("cng"); }
+    else { nextCng = game.dist + gap("cng", CFG.cng.gapMin, CFG.cng.gapMax); spawnMark("cng"); }
   }
   if (game.dist >= nextPolice) {
     if (spawnBusy()) nextPolice += 20;
-    else { nextPolice = game.dist + rnd(CFG.police.gapMin, CFG.police.gapMax); spawnMark("police"); }
+    else { nextPolice = game.dist + gap("police", CFG.police.gapMin, CFG.police.gapMax); spawnMark("police"); }
   }
 }
 

@@ -15,6 +15,7 @@
 <div id="speedlines"></div>
 <div id="vignette"></div>
 <div id="crowdcue"></div>
+<div id="progress"><div id="ptrack"></div><div id="pbus">🚌</div></div>
 <div id="hud">
   <div class="box">ড্যামেজ<br><b id="damage">0</b> <span id="combo"></span></div>
   <div class="box">ভাড়া<br><b id="fare">৳0</b></div>
@@ -28,8 +29,10 @@
 <div id="dmgPop"></div>
 <div id="warn" hidden>⚠ সামনে বিপদ!</div>
 <div id="subtitle" hidden></div>
+<div id="stagecard" hidden><div id="cardTitle"></div><div id="cardBody"></div></div>
 <div id="screen">
   <h1 id="title">লোকাল বাস — ঢাকা রুট</h1>
+  <div id="route">মোহাম্মদপুর → ধানমন্ডি → সায়েন্সল্যাব → শাহবাগ → ঢাকা বিশ্ববিদ্যালয়</div>
   <div id="sub">
     রিকশা, বাইক, সিএনজি, গাড়ি আর দোকানে ধাক্কা দিলে <b>ড্যামেজ</b> বাড়ে, পরপর দিলে কম্বো!<br>
     <b>ট্রাক, অন্য বাস আর পিলারে</b> লাগলেই খেলা শেষ ⚠<br>
@@ -38,7 +41,7 @@
     নীল <b>বাস স্টপে</b> আস্তে থামলে যাত্রী ওঠে, ভাড়া বাড়ে।<br><br>
     <b>W/↑</b> চালান &nbsp; <b>S/↓</b> ব্রেক &nbsp; <b>A D / ← →</b> ঘুরান &nbsp; <b>Shift/Space</b> বুস্ট &nbsp; <b>P/Esc</b> বিরতি
   </div><br>
-  <button id="go">খেলা শুরু</button>
+  <div><button id="go">যাত্রা শুরু</button> <button id="restart" hidden>শুরু থেকে</button></div>
 </div>
 <div id="pause" hidden>
   <h1>বিরতি</h1>

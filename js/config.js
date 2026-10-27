@@ -122,6 +122,17 @@ export const CFG = {
     ringSpeed: 6,        // how fast they walk into the ring
   },
 
+  journey: {
+    checkpointPenalty: 0.1, // restarting from a checkpoint keeps 90% of score and fare
+    cardSeconds: 3.5,       // how long the stage-title card stays up
+    passengersOffShare: 0.5,// at each checkpoint about half the passengers get off...
+    passengersOnMin: 3,     // ...and this many new ones get on
+    passengersOnMax: 8,
+    spawnAhead: 170,        // landmarks appear this far ahead (just inside the fog)
+    landmarkClear: 25,      // around a one-sided landmark, normal buildings stay away this far
+    despawnBehind: 45,
+  },
+
   speech: {
     rudeness: 1,          // 0 = no insults, 1 = mild banter (default), 2 = louder street banter
     subtitleSeconds: 2.2, // how long a line stays on screen
@@ -247,7 +258,6 @@ export const CFG = {
     skyColor: 0xcfe3ee,
     fogNear: 50,
     fogFar: 170,
-    idleScrollSpeed: 10,  // road scroll speed behind the title screen
     stripeCount: 30,
     stripeGap: 10,
     stripeLanesX: [-3.5, 3.5],

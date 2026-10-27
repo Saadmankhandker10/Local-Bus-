@@ -3,7 +3,7 @@
 import * as THREE from "three";
 import { CFG } from "./config.js";
 import { pick } from "./utils.js";
-import { box, plate } from "./world.js";
+import { box, plate, person } from "./world.js";
 
 // Shared materials: one copy on the GPU, used by many meshes.
 const DARK = 0x263238, TYRE = 0x111111;
@@ -11,15 +11,6 @@ const DARK = 0x263238, TYRE = 0x111111;
 export const beaconMat = new THREE.MeshBasicMaterial({ color: 0xff1a1a, transparent: true, opacity: 0.9 });
 const beaconGeo = new THREE.SphereGeometry(.35, 10, 8);
 
-function person(color, y) {
-  const g = new THREE.Group();
-  const b = new THREE.Mesh(new THREE.CylinderGeometry(.22, .26, .8, 8), new THREE.MeshLambertMaterial({ color }));
-  b.position.y = y + .4;
-  const h = new THREE.Mesh(new THREE.SphereGeometry(.2, 8, 8), new THREE.MeshLambertMaterial({ color: 0xc68642 }));
-  h.position.y = y + 1.0;
-  g.add(b, h);
-  return g;
-}
 
 function car(t, c) {
   const g = new THREE.Group();
@@ -45,8 +36,7 @@ function bike(t, c) {
   g.add(box(.35, .5, t.l * .8, c, 0, .6, 0));
   for (const z of [-1, 1]) g.add(box(.12, .6, .6, TYRE, 0, .3, z * t.l * .38));
   g.add(person(pick([0x37474f, 0x1565c0, 0x6d4c41]), .7));
-  const helmet = new THREE.Mesh(new THREE.SphereGeometry(.24, 8, 8), new THREE.MeshLambertMaterial({ color: 0xffeb3b }));
-  helmet.position.y = 1.75; g.add(helmet);
+  g.add(box(.5, .3, .5, 0xffeb3b, 0, 1.95, 0)); // helmet
   return g;
 }
 

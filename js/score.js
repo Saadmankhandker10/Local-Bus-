@@ -37,6 +37,21 @@ export function bestScore() {
   return Number(localStorage.getItem(BEST_KEY)) || 0;
 }
 
+const TIME_KEY = "localbus.bestTime";
+
+/** Best (fastest) full-journey time in seconds, or 0 if never finished. */
+export function bestTime() {
+  return Number(localStorage.getItem(TIME_KEY)) || 0;
+}
+
+/** Save the journey time if it is the fastest. @returns {boolean} true if it is a new record */
+export function saveBestTime(seconds) {
+  const best = bestTime();
+  if (best && seconds >= best) return false;
+  localStorage.setItem(TIME_KEY, String(Math.round(seconds)));
+  return true;
+}
+
 /** Save the score if it beats the best. @returns {boolean} true if it is a new record */
 export function saveBest() {
   const score = totalScore();

@@ -14,6 +14,12 @@ export function line(situation) {
   return pool.length ? pick(pool) : "";
 }
 
+/** A random line from a plain list, or from a list inside a group (e.g. helperStop.dhanmondi). */
+export function lineFrom(situation, key) {
+  const list = key ? DIALOGUE[situation]?.[key] : DIALOGUE[situation];
+  return list && list.length ? pick(list) : "";
+}
+
 /** Show who says what in the subtitle strip at the bottom. */
 export function say(who, text, seconds = CFG.speech.subtitleSeconds) {
   if (!text) return;

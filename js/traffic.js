@@ -8,6 +8,7 @@ import { game } from "./state.js";
 import { emit } from "./events.js";
 import { sweptHit, sideGap } from "./physics.js";
 import { makeVehicle, makeStall, makePillar, beaconMat } from "./vehicles.js";
+import { currentStage, flyoverAllowed } from "./journey.js";
 
 const T = CFG.traffic, B = CFG.bus, I = CFG.impact, W = CFG.warning;
 const LIGHT = T.types.filter(t => !t.heavy);
@@ -22,13 +23,13 @@ let nextPillar = 0;   // distance where the next pillar of this flyover appears
 
 const ease = (rate, dt) => 1 - Math.exp(-rate * dt);
 
-/** Remove everything and restart all spawn counters. */
-export function resetTraffic() {
+/** Remove everything and restart all spawn counters from this distance (start or checkpoint). */
+export function resetTraffic(fromDist = 0) {
   for (const o of objs) scene.remove(o.m);
   objs.length = 0;
   spawnTimer = T.firstSpawnDelay;
-  nextStall = rnd(CFG.stall.gapMin, CFG.stall.gapMax);
-  nextFlyover = CFG.pillar.startDist;
+  nextStall = fromDist + rnd(CFG.stall.gapMin, CFG.stall.gapMax);
+  nextFlyover = Math.max(fromDist, CFG.pillar.startDist);
   pillarsLeft = 0;
 }
 
@@ -51,12 +52,13 @@ function spawnBlocked(x) {
   return objs.some(o => Math.abs(o.z - T.spawnZ) < T.clearZ && Math.abs(o.x - x) < T.clearX);
 }
 
-/** Pick a vehicle type by weight; heavy types grow more common with distance. */
+/** Pick a vehicle type by weight: the stage mix, and heavy types growing more common with distance. */
 function pickType() {
   const heavyOk = game.dist >= T.heavyStartDist &&
     !objs.some(o => o.t.heavy && Math.abs(o.z - T.spawnZ) < T.heavyGap);
-  const heavyScale = heavyOk ? clamp(1 + (game.dist - T.heavyStartDist) / T.heavyRampDist, 1, T.heavyMaxScale) : 0;
-  const weight = t => t.wt * (t.heavy ? heavyScale : 1);
+  const tr = currentStage().traffic;
+  const heavyScale = heavyOk ? clamp(1 + (game.dist - T.heavyStartDist) / T.heavyRampDist, 1, T.heavyMaxScale) * tr.heavy : 0;
+  const weight = t => t.wt * (t.heavy ? heavyScale : 1) * (tr.mix[t.name] ?? 1);
   let r = Math.random() * T.types.reduce((a, t) => a + weight(t), 0);
   for (const t of T.types) { if ((r -= weight(t)) <= 0) return t; }
   return LIGHT[0];
@@ -66,7 +68,8 @@ function spawn(dt) {
   // Traffic: vehicles come more often the further you drive, up to a limit.
   spawnTimer -= dt;
   if (spawnTimer <= 0) {
-    spawnTimer = Math.max(T.minInterval, T.startInterval - game.dist / T.rampDistance) * rnd(T.intervalJitterMin, T.intervalJitterMax);
+    // Busier stages (density > 1) send vehicles more often.
+    spawnTimer = Math.max(T.minInterval, T.startInterval - game.dist / T.rampDistance) * rnd(T.intervalJitterMin, T.intervalJitterMax) / currentStage().traffic.density;
     const t = pickType();
     // Under a flyover the middle lane belongs to the pillars.
     const lanes = pillarsLeft > 0 ? T.lanes.filter(l => l !== 0) : T.lanes;
@@ -76,14 +79,15 @@ function spawn(dt) {
 
   // Stalls on a random side of the road.
   if (game.dist >= nextStall) {
-    nextStall = game.dist + rnd(CFG.stall.gapMin, CFG.stall.gapMax);
+    nextStall = game.dist + rnd(CFG.stall.gapMin, CFG.stall.gapMax) / currentStage().stalls;
     const x = pick([-1, 1]) * CFG.stall.x;
     if (!spawnBlocked(x)) add(CFG.stall, makeStall(), x, true);
   }
 
-  // Flyovers: a row of pillars placed one by one as the bus moves forward.
+  // Flyovers: a row of pillars placed one by one, only where the route has a flyover
+  // (checked at the spawn point, which is |spawnZ| ahead of the bus).
   const P = CFG.pillar;
-  if (pillarsLeft === 0 && game.dist >= nextFlyover) {
+  if (pillarsLeft === 0 && game.dist >= nextFlyover && flyoverAllowed(game.dist - T.spawnZ)) {
     pillarsLeft = Math.round(rnd(P.countMin, P.countMax));
     nextPillar = game.dist;
   }

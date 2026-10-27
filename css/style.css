@@ -1,7 +1,7 @@
 html,body{margin:0;height:100%;overflow:hidden;background:#222;font-family:system-ui,"Noto Sans Bengali","Segoe UI",sans-serif;color:#fff}
 canvas{display:block}
 [hidden]{display:none!important}
-#hud{position:fixed;top:10px;left:10px;right:64px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
+#hud{position:fixed;top:42px;left:10px;right:64px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
 .box{background:rgba(0,0,0,.55);padding:6px 10px;border-radius:8px;font-size:14px;min-width:90px}
 .bar{height:8px;background:#444;border-radius:4px;margin-top:5px;overflow:hidden}
 .bar i{display:block;height:100%;width:100%}
@@ -9,7 +9,7 @@ canvas{display:block}
 /* Low fuel: a slow 1 Hz glow, well under the 3 Hz flash limit. */
 #fuelbox.low{animation:lowfuel 1s ease-in-out infinite alternate}
 @keyframes lowfuel{to{background:rgba(200,40,0,.75)}}
-#msg{position:fixed;top:78px;width:100%;text-align:center;font-size:22px;font-weight:700;text-shadow:0 2px 6px #000;pointer-events:none}
+#msg{position:fixed;top:110px;width:100%;text-align:center;font-size:22px;font-weight:700;text-shadow:0 2px 6px #000;pointer-events:none}
 #screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.72);text-align:center;padding:20px;line-height:1.6}
 #screen h1{margin:0 0 8px;font-size:34px;color:#ffd600}
 button{font-size:20px;padding:12px 28px;border:0;border-radius:10px;background:#ffcc00;font-weight:700;cursor:pointer}
@@ -25,7 +25,7 @@ button{font-size:20px;padding:12px 28px;border:0;border-radius:10px;background:#
 /* Red edges when a heavy hazard is ahead. JS sets the opacity (pulses at 2 Hz). */
 #vignette{position:fixed;inset:0;pointer-events:none;opacity:0;
   background:radial-gradient(ellipse at center,transparent 55%,rgba(255,0,0,.85) 100%)}
-#warn{position:fixed;top:120px;width:100%;text-align:center;font-size:26px;font-weight:800;color:#fff;
+#warn{position:fixed;top:150px;width:100%;text-align:center;font-size:26px;font-weight:800;color:#fff;
   text-shadow:0 0 8px #f00,0 2px 4px #000;pointer-events:none}
 #dmgPop{position:fixed;top:40%;width:100%;text-align:center;font-size:30px;font-weight:800;color:#ffd600;
   text-shadow:0 2px 6px #000;pointer-events:none;opacity:0}
@@ -40,3 +40,20 @@ button{font-size:20px;padding:12px 28px;border:0;border-radius:10px;background:#
 #touch div{display:flex;gap:10px}
 #touch button{width:70px;height:70px;font-size:26px;padding:0;opacity:.75}
 @media(pointer:coarse){#touch{display:flex}}
+/* Route progress along the top: one segment per stage, the bus icon slides along. */
+#progress{position:fixed;top:8px;left:10px;right:64px;height:26px;pointer-events:none}
+#ptrack{display:flex;height:100%;border-radius:13px;overflow:hidden;background:rgba(0,0,0,.55)}
+#ptrack .seg{display:flex;align-items:center;justify-content:center;font-size:12px;white-space:nowrap;overflow:hidden;
+  border-right:2px solid rgba(255,214,0,.8)}
+#ptrack .seg:last-child{border-right:0}
+#pbus{position:absolute;top:-2px;font-size:22px;transform:translateX(-50%) scaleX(-1);transition:left .2s linear}
+#route{color:#ffd600;margin-bottom:10px;font-size:16px}
+/* Stage card with a rickshaw-art style double border in bright colours. */
+#stagecard{position:fixed;top:23%;left:50%;transform:translateX(-50%);min-width:300px;max-width:90%;text-align:center;
+  padding:14px 26px;border-radius:16px;background:#1b5e20;border:5px double #ffd600;
+  box-shadow:0 0 0 4px #e91e63,0 0 0 8px #00bcd4,0 8px 24px rgba(0,0,0,.5);pointer-events:none}
+#stagecard.pop{animation:cardin .5s ease-out}
+@keyframes cardin{from{opacity:0;transform:translateX(-50%) scale(.7)}to{opacity:1;transform:translateX(-50%) scale(1)}}
+#cardTitle{font-size:28px;font-weight:800;color:#ffeb3b}
+#cardBody{font-size:15px;margin-top:6px}
+#restart{background:#90caf9}
