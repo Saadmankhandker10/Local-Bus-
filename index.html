@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Local Bus - Dhaka Route</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#222;font-family:system-ui,"Noto Sans Bengali","Segoe UI",sans-serif;color:#fff}
+canvas{display:block}
+#hud{position:fixed;top:10px;left:10px;right:10px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
+.box{background:rgba(0,0,0,.55);padding:6px 10px;border-radius:8px;font-size:14px;min-width:90px}
+.bar{height:8px;background:#444;border-radius:4px;margin-top:5px;overflow:hidden}
+.bar i{display:block;height:100%;width:100%}
+#fuelbar{background:#2ea8ff}#hpbar{background:#4cd964}
+#msg{position:fixed;top:78px;width:100%;text-align:center;font-size:22px;font-weight:700;text-shadow:0 2px 6px #000;pointer-events:none}
+#screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.72);text-align:center;padding:20px;line-height:1.6}
+#screen h1{margin:0 0 8px;font-size:34px;color:#ffd600}
+button{font-size:20px;padding:12px 28px;border:0;border-radius:10px;background:#ffcc00;font-weight:700;cursor:pointer}
+#touch{position:fixed;bottom:14px;left:0;right:0;display:none;justify-content:space-between;padding:0 14px}
+#touch div{display:flex;gap:10px}
+#touch button{width:70px;height:70px;font-size:26px;padding:0;opacity:.75}
+@media(pointer:coarse){#touch{display:flex}}
+</style>
+</head>
+<body>
+<div id="hud">
+  <div class="box">ভাড়া<br><b id="fare">৳0</b></div>
+  <div class="box">যাত্রী<br><b id="pass">0</b></div>
+  <div class="box">গতি<br><b id="spd">0</b> কিমি/ঘ</div>
+  <div class="box">দূরত্ব<br><b id="dist">0.0</b> কিমি</div>
+  <div class="box">তেল<div class="bar"><i id="fuelbar"></i></div></div>
+  <div class="box">বাসের অবস্থা<div class="bar"><i id="hpbar"></i></div></div>
+</div>
+<div id="msg"></div>
+<div id="screen">
+  <h1 id="title">লোকাল বাস — ঢাকা রুট</h1>
+  <div id="sub">
+    স্টপে হলুদ দাগে বাস ধীর করে যাত্রী তুলুন, ভাড়া বাড়ান।<br>
+    রিকশা, সিএনজি, গাড়ি আর ট্রাকে ধাক্কা লাগাবেন না।<br>
+    নীল তেলের ড্রাম ধরে তেল ভরুন।<br><br>
+    <b>W/↑</b> চালান &nbsp; <b>S/↓</b> ব্রেক &nbsp; <b>A D / ← →</b> ঘুরান &nbsp; <b>Shift/Space</b> বুস্ট
+  </div><br>
+  <button id="go">খেলা শুরু</button>
+</div>
+<div id="touch">
+  <div><button id="tl">◀</button><button id="tr">▶</button></div>
+  <div><button id="tb">■</button><button id="tg">▲</button></div>
+</div>
+
+<script type="module">
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+
+/* ====== সহজে বদলানোর সেটিং (এখানে নাম্বার বদলালেই গেম বদলাবে) ====== */
+const CFG = {
+  maxSpeed: 38,        // সাধারণ সর্বোচ্চ গতি
+  boostSpeed: 55,      // বুস্ট দিলে সর্বোচ্চ গতি
+  fuelBase: 0.8,       // তেল খরচের বেসিক রেট
+  fuelPickup: 40,      // একটা তেলের ড্রামে কত তেল
+  farePerPassenger: 10,// একজন যাত্রী উঠলে ভাড়া
+  hitDamageScale: 1,   // ধাক্কায় ক্ষতি (বাড়ালে কঠিন)
+  trafficStart: 1.5,   // শুরুতে ট্রাফিক আসার ব্যবধান (সেকেন্ড)
+};
+
+const $ = id => document.getElementById(id);
+const rnd = (a, b) => a + Math.random() * (b - a);
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const R = 7; // রাস্তার অর্ধেক প্রস্থ
+
+/* ====== সিন ====== */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xcfe3ee);
+scene.fog = new THREE.Fog(0xcfe3ee, 50, 170);
+const cam = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 300);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x556655, 1.0));
+const sun = new THREE.DirectionalLight(0xfff2cc, 1.2);
+sun.position.set(20, 40, 10);
+scene.add(sun);
+addEventListener("resize", () => {
+  renderer.setSize(innerWidth, innerHeight);
+  cam.aspect = innerWidth / innerHeight;
+  cam.updateProjectionMatrix();
+});
+
+const box = (w, h, d, c, x = 0, y = 0, z = 0) => {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: c }));
+  m.position.set(x, y, z);
+  return m;
+};
+
+/* ====== রাস্তা, ফুটপাথ, দালান ====== */
+scene.add(box(400, .2, 400, 0x8d8a7a, 0, -.15, -100));
+scene.add(box(R * 2, .1, 400, 0x3a3a3a, 0, -.05, -100));
+for (const s of [-1, 1]) {
+  scene.add(box(2, .25, 400, 0x9e9e9e, s * (R + 1), 0, -100));
+  scene.add(box(.2, .03, 400, 0xffffff, s * (R - .2), .02, -100));
+}
+const stripes = [];
+for (let i = 0; i < 30; i++) for (const x of [-3.5, 3.5]) {
+  const s = box(.18, .02, 3, 0xffffff, x, .02, -i * 10);
+  stripes.push(s); scene.add(s);
+}
+const blds = [];
+for (let i = 0; i < 40; i++) {
+  const side = i % 2 ? 1 : -1, h = rnd(8, 26);
+  const b = box(rnd(5, 9), h, rnd(6, 10),
+    pick([0xd7ccc8, 0xffe0b2, 0xb0bec5, 0xc5e1a5, 0xf8bbd0, 0xbcaaa4]),
+    side * rnd(R + 6, R + 10), h / 2, -Math.floor(i / 2) * 15);
+  blds.push(b); scene.add(b);
+}
+
+/* ====== আমাদের বাস ====== */
+function plate(text, w, h, bg, fg) {
+  const c = document.createElement("canvas"); c.width = 256; c.height = Math.round(256 * h / w);
+  const g = c.getContext("2d");
+  g.fillStyle = bg; g.fillRect(0, 0, c.width, c.height);
+  g.fillStyle = fg; g.font = "bold 38px sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
+  g.fillText(text, c.width / 2, c.height / 2);
+  const t = new THREE.CanvasTexture(c);
+  return new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: t }));
+}
+function makeBus() {
+  const g = new THREE.Group();
+  g.add(box(2.6, 2.3, 7, 0x2e7d32, 0, 1.5, 0));
+  g.add(box(2.62, .45, 7.02, 0xfdd835, 0, .95, 0));
+  g.add(box(2.64, .8, 5.8, 0x263238, 0, 2.2, .3));
+  g.add(box(2.2, .8, .05, 0x263238, 0, 2.2, -3.52));
+  g.add(box(2.4, .15, 6.8, 0xeeeeee, 0, 2.72, 0));
+  for (const s of [-1, 1]) {
+    g.add(box(.4, .3, .1, 0xffffaa, s * .9, 1.0, -3.52));
+    g.add(box(.3, .25, .1, 0xff1111, s * 1.0, 1.0, 3.52));
+    for (const z of [-2.3, 2.3]) {
+      const w = new THREE.Mesh(new THREE.CylinderGeometry(.55, .55, .4, 12), new THREE.MeshLambertMaterial({ color: 0x111111 }));
+      w.rotation.z = Math.PI / 2; w.position.set(s * 1.3, .55, z); g.add(w);
+    }
+  }
+  const p = plate("ঢাকা লোকাল", 2.2, .6, "#ffeb3b", "#b71c1c");
+  p.position.set(0, 1.75, 3.53); g.add(p);
+  return g;
+}
+const bus = makeBus();
+scene.add(bus);
+
+/* ====== ট্রাফিক ====== */
+const TYPES = [
+  { w: 1.3, l: 2.6, v: 5,  dmg: 6,  wt: 4,   h: 1.0, c: [0xff9800, 0x29b6f6, 0xec407a, 0xab47bc] },   // রিকশা
+  { w: 1.6, l: 2.8, v: 12, dmg: 10, wt: 4,   h: 1.6, c: [0x2e9e4f] },                                  // সিএনজি
+  { w: 1.9, l: 4.2, v: 15, dmg: 14, wt: 3,   h: 1.4, c: [0xe53935, 0x1e88e5, 0xfafafa, 0x424242, 0xfdd835] }, // গাড়ি
+  { w: 2.6, l: 8,   v: 9,  dmg: 24, wt: 1.5, h: 3.0, c: [0xf57c00, 0x5d4037, 0x1565c0] },              // ট্রাক
+];
+function pickType() {
+  let r = Math.random() * TYPES.reduce((a, t) => a + t.wt, 0);
+  for (const t of TYPES) { if ((r -= t.wt) <= 0) return t; }
+  return TYPES[0];
+}
+function mkVeh(t) {
+  const g = new THREE.Group(), c = pick(t.c);
+  g.add(box(t.w, t.h * .6, t.l, c, 0, t.h * .3 + .3, 0));
+  g.add(box(t.w * .85, t.h * .45, t.l * .45, 0x37474f, 0, t.h * .6 + .3 + t.h * .2, -t.l * .12));
+  for (const s of [-1, 1]) g.add(box(.25, .5, t.l * .8, 0x111111, s * t.w * .5, .3, 0));
+  return g;
+}
+function mkPerson() {
+  const g = new THREE.Group();
+  const b = new THREE.Mesh(new THREE.CylinderGeometry(.25, .3, 1.1, 8), new THREE.MeshLambertMaterial({ color: pick([0xe53935, 0x1e88e5, 0x43a047, 0xfb8c00, 0x8e24aa, 0xffffff]) }));
+  b.position.y = .55;
+  const h = new THREE.Mesh(new THREE.SphereGeometry(.22, 8, 8), new THREE.MeshLambertMaterial({ color: 0xc68642 }));
+  h.position.y = 1.3;
+  g.add(b, h);
+  return g;
+}
+
+/* ====== গেমের অবস্থা ====== */
+let running = false, speed = 0, fuel = 100, hp = 100, fare = 0, pass = 0, dist = 0;
+let tTraffic = 1, nextStop = 120, nextFuel = 250, msgT = 0, shake = 0, boardT = 0, time = 0, slowWarn = 0;
+const veh = [], stops = [], fuels = [];
+const keys = {};
+
+function msg(t, ms = 1200) { $("msg").textContent = t; msgT = ms / 1000; }
+function clearAll() {
+  [...veh, ...stops, ...fuels].forEach(o => scene.remove(o.m));
+  veh.length = stops.length = fuels.length = 0;
+}
+function start() {
+  clearAll();
+  speed = 12; fuel = 100; hp = 100; fare = 0; pass = 0; dist = 0;
+  tTraffic = 1; nextStop = 120; nextFuel = 250; bus.position.x = 0;
+  running = true; $("screen").style.display = "none";
+}
+function end(why) {
+  running = false;
+  $("screen").style.display = "flex";
+  $("title").textContent = why;
+  $("sub").innerHTML = `মোট ভাড়া: ৳${Math.floor(fare)}<br>দূরত্ব: ${(dist / 100).toFixed(1)} কিমি`;
+  $("go").textContent = "আবার চালান";
+}
+$("go").onclick = start;
+
+/* ====== ইনপুট ====== */
+const map = { ArrowUp: "up", KeyW: "up", ArrowDown: "down", KeyS: "down", ArrowLeft: "left", KeyA: "left", ArrowRight: "right", KeyD: "right", ShiftLeft: "boost", ShiftRight: "boost", Space: "boost" };
+addEventListener("keydown", e => { if (map[e.code]) { keys[map[e.code]] = true; e.preventDefault(); } });
+addEventListener("keyup", e => { if (map[e.code]) keys[map[e.code]] = false; });
+for (const [id, k] of [["tl", "left"], ["tr", "right"], ["tb", "down"], ["tg", "up"]]) {
+  const el = $(id);
+  el.addEventListener("pointerdown", e => { keys[k] = true; e.preventDefault(); });
+  for (const ev of ["pointerup", "pointerleave", "pointercancel"]) el.addEventListener(ev, () => keys[k] = false);
+}
+
+/* ====== আপডেট ====== */
+function scroll(d) {
+  for (const s of stripes) { s.position.z += d; if (s.position.z > 20) s.position.z -= 300; }
+  for (const b of blds) { b.position.z += d; if (b.position.z > 25) b.position.z -= 300; }
+}
+
+function step(dt) {
+  time += dt;
+  if (!running) { scroll(10 * dt); return; }
+
+  const boost = keys.boost && fuel > 0;
+  const acc = (keys.up ? 15 : 0) + (boost ? 20 : 0) - (keys.down ? 32 : 0) - (fuel <= 0 ? 12 : 2.5);
+  speed = clamp(speed + acc * dt, 0, CFG.boostSpeed);
+  if (!boost && speed > CFG.maxSpeed) speed = Math.max(CFG.maxSpeed, speed - 15 * dt);
+
+  const dir = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+  bus.position.x = clamp(bus.position.x + dir * 13 * Math.min(1, .3 + speed / 15) * dt, -5.5, 5.5);
+  bus.rotation.y += (-dir * .12 - bus.rotation.y) * Math.min(1, dt * 8);
+
+  fuel -= (CFG.fuelBase + speed / 40 * 1.4 + (boost ? 2 : 0)) * dt;
+  fuel = Math.max(0, fuel);
+  fare += pass * speed * .015 * dt;
+  const d = speed * dt;
+  dist += d;
+  scroll(d);
+
+  /* ট্রাফিক তৈরি */
+  tTraffic -= dt;
+  if (tTraffic <= 0) {
+    tTraffic = Math.max(.45, CFG.trafficStart - dist / 3500) * rnd(.7, 1.3);
+    const t = pickType(), x = pick([-5, -2.5, 0, 2.5, 5]) + rnd(-.4, .4);
+    if (!veh.some(v => Math.abs(v.z + 150) < 12 && Math.abs(v.x - x) < 3)) {
+      const m = mkVeh(t); m.position.set(x, 0, -150); scene.add(m);
+      veh.push({ m, t, x, z: -150, hit: false, fx: 0, ph: rnd(0, 6) });
+    }
+  }
+  /* স্টপ ও তেলের ড্রাম */
+  if (dist >= nextStop) {
+    nextStop = dist + rnd(250, 400);
+    const side = Math.random() < .5 ? -1 : 1, m = new THREE.Group(), people = [];
+    m.add(box(3.6, .04, 16, 0xffd600, 0, .03, 0));
+    const pole = box(.15, 3, .15, 0x555555, side * 2.3, 1.5, -7); m.add(pole);
+    m.add(box(1.2, .8, .1, 0xd32f2f, side * 2.3, 3.1, -7));
+    for (let i = 0; i < 5; i++) { const p = mkPerson(); p.position.set(side * 1.5, 0, rnd(-6, 6)); m.add(p); people.push(p); }
+    m.position.set(side * 5, 0, -150); scene.add(m);
+    stops.push({ m, x: side * 5, z: -150, people });
+  }
+  if (dist >= nextFuel) {
+    nextFuel = dist + rnd(350, 550);
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(.6, .6, 1.3, 12), new THREE.MeshLambertMaterial({ color: 0x1e88e5 }));
+    const x = rnd(-5, 5); m.position.set(x, .8, -150); scene.add(m);
+    fuels.push({ m, x, z: -150 });
+  }
+
+  /* গাড়ি আপডেট ও ধাক্কা */
+  for (let i = veh.length - 1; i >= 0; i--) {
+    const v = veh[i];
+    v.z += (speed - v.t.v) * dt;
+    if (v.hit) { v.x += v.fx * dt; v.m.rotation.y += dt * 6; }
+    else {
+      if (v.t.v < 6) v.x += Math.sin(time * 2 + v.ph) * .6 * dt;
+      if (Math.abs(v.x - bus.position.x) < v.t.w / 2 + 1.25 && Math.abs(v.z) < v.t.l / 2 + 3.4) {
+        v.hit = true; v.fx = (v.x >= bus.position.x ? 1 : -1) * 22;
+        hp -= v.t.dmg * CFG.hitDamageScale * (.5 + speed / 40);
+        speed *= .6; shake = .6;
+        if (pass > 0) pass = Math.max(0, pass - 2);
+        msg("ধাক্কা! 💥", 900);
+      }
+    }
+    v.m.position.set(v.x, 0, v.z);
+    if (v.z > 30 || v.z < -220 || Math.abs(v.x) > 40) { scene.remove(v.m); veh.splice(i, 1); }
+  }
+  for (let i = stops.length - 1; i >= 0; i--) {
+    const s = stops[i];
+    s.z += d; s.m.position.z = s.z;
+    if (Math.abs(bus.position.x - s.x) < 2.4 && Math.abs(s.z) < 8 && s.people.length) {
+      if (speed < 10) {
+        boardT -= dt;
+        if (boardT <= 0) {
+          boardT = .35;
+          s.m.remove(s.people.pop());
+          pass = Math.min(30, pass + 1); fare += CFG.farePerPassenger;
+          msg(`যাত্রী উঠছে! +৳${CFG.farePerPassenger}`, 500);
+        }
+      } else if (time > slowWarn) { slowWarn = time + 1.5; msg("আস্তে! বাস থামান", 800); }
+    }
+    if (s.z > 25) { scene.remove(s.m); stops.splice(i, 1); }
+  }
+  for (let i = fuels.length - 1; i >= 0; i--) {
+    const f = fuels[i];
+    f.z += d; f.m.position.z = f.z; f.m.rotation.y += dt * 3;
+    if (Math.abs(f.x - bus.position.x) < 2.2 && Math.abs(f.z) < 4) {
+      fuel = Math.min(100, fuel + CFG.fuelPickup);
+      msg("তেল ভরা হলো! ⛽", 900);
+      scene.remove(f.m); fuels.splice(i, 1); continue;
+    }
+    if (f.z > 20) { scene.remove(f.m); fuels.splice(i, 1); }
+  }
+
+  if (hp <= 0) end("বাস ভেঙে গেছে!");
+  else if (fuel <= 0 && speed < .5) end("তেল শেষ!");
+}
+
+function render(dt) {
+  shake = Math.max(0, shake - dt * 1.5);
+  const cx = bus.position.x * .6;
+  cam.position.set(cx + rnd(-1, 1) * shake, 6.2 + rnd(-1, 1) * shake, 13);
+  cam.lookAt(cx, 1.5, -14);
+  const fov = 68 + speed * .35;
+  if (Math.abs(cam.fov - fov) > .1) { cam.fov = fov; cam.updateProjectionMatrix(); }
+  renderer.render(scene, cam);
+
+  $("fare").textContent = "৳" + Math.floor(fare);
+  $("pass").textContent = pass;
+  $("spd").textContent = Math.round(speed * 2.2);
+  $("dist").textContent = (dist / 100).toFixed(1);
+  $("fuelbar").style.width = fuel + "%";
+  $("hpbar").style.width = Math.max(0, hp) + "%";
+  if (msgT > 0) { msgT -= dt; if (msgT <= 0) $("msg").textContent = ""; }
+}
+
+let last = performance.now();
+(function loop(now) {
+  requestAnimationFrame(loop);
+  const dt = Math.min(.05, (now - last) / 1000);
+  last = now;
+  step(dt);
+  render(dt);
+})(last);
+</script>
+</body>
+</html>
