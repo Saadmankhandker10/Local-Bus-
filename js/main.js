@@ -13,6 +13,7 @@ import { line, lineFrom, say, updateSpeech, clearSpeech } from "./speech.js";
 import { stats, resetScore, saveBest, saveBestTime, totalScore, bestScore } from "./score.js";
 import { journey, resetJourney, updateJourney, currentStage, sceneryAt, progress } from "./journey.js";
 import { resetLandmarks, updateLandmarks } from "./landmarks.js";
+import { resetNav, navStep, drawNav } from "./nav.js";
 import { applyTimeOfDay } from "./lighting.js";
 import { unlockAudio, toggleMute, isMuted, horn, slap } from "./audio.js";
 import { ROUTE, TOTAL } from "./route.js";
@@ -41,6 +42,7 @@ function start(fromCheckpoint) {
   resetLandmarks(game.prog);
   resetWorld();
   resetCrowd();
+  resetNav();
   clearSpeech();
   resetBus(game.prog);
   resetCamera();
@@ -149,6 +151,9 @@ on("caught", () => {
 
 on("crowdGaveUp", () => say("পাবলিক", line("crowdGaveUp")));
 
+// The helper calling the way ahead (turns, forks) from nav.js.
+on("helperSay", helperSays);
+
 // New stage: the helper shouts the stop name (the HUD shows the stage card).
 on("stageArrive", t => helperSays(lineFrom("helperStop", t.stage.id)));
 
@@ -182,6 +187,7 @@ function step(dt) {
 
   updateTraffic(dt);
   updateMarks(dt);
+  navStep();
   updateCrowd(dt);
 
   // The crowd shouts while it is close behind the bus.
@@ -211,6 +217,7 @@ function render(dt) {
   const boostFx = updateCamera(dt);
   renderer.render(scene, cam);
   updateHud(dt, boostFx);
+  drawNav(dt);
 }
 
 initWorld(sceneryAt);

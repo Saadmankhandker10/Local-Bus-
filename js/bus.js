@@ -81,7 +81,7 @@ function approach(current, target, rate, dt) {
 }
 
 /** At the end of a road piece, take the branch on the side the bus is driving. */
-function chooseNext(list) {
+export function chooseNext(list) {
   for (const n of list) {
     const S = SEGS[n];
     if (S.side && Math.sign(game.lat) === S.side && Math.abs(game.lat) > CFG.map.forkLat) return n;

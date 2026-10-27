@@ -295,6 +295,21 @@ export const CFG = {
     forkWarn: 140,        // the helper calls the fork this far before it
   },
 
+  nav: {
+    arrowAhead: 50,       // the GPS arrow points at the road this far ahead of the bus
+    showAhead: 450,       // the next turn or fork appears in the GPS box from this far
+    turnCall: 110,        // the helper calls out a turn this far before it
+    turnMinDeg: 60,       // gentler bends are not called out
+    uTurnDeg: 150,        // a turn this sharp or more is a U-turn
+    mapRange: 230,        // world units from the bus to the edge of the minimap
+    mapBusY: 0.64,        // the bus sits this far down the minimap, so more road ahead shows
+    mapHz: 15,            // minimap redraws per second (it does not need all 60)
+    mapRoadScale: 1.6,    // roads are drawn wider than real so they read at this small size
+    routeStep: 8,         // spacing of the points on the yellow route line
+    routeWidth: 7,        // width of the yellow route line, in world units
+    markPx: 4,            // size of the stop / CNG / police icons on the minimap (CSS pixels)
+  },
+
   world: {
     roadHalfWidth: 7,
     skyColor: 0xcfe3ee,

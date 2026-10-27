@@ -1,7 +1,7 @@
 html,body{margin:0;height:100%;overflow:hidden;background:#222;font-family:system-ui,"Noto Sans Bengali","Segoe UI",sans-serif;color:#fff}
 canvas{display:block}
 [hidden]{display:none!important}
-#hud{position:fixed;top:42px;left:10px;right:112px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
+#hud{position:fixed;top:42px;left:10px;right:146px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
 .box{background:rgba(0,0,0,.55);padding:6px 10px;border-radius:8px;font-size:14px;min-width:90px}
 .bar{height:8px;background:#444;border-radius:4px;margin-top:5px;overflow:hidden}
 .bar i{display:block;height:100%;width:100%}
@@ -83,3 +83,13 @@ button{font-size:20px;padding:12px 28px;border:0;border-radius:10px;background:#
 #bubble:after{content:"";position:absolute;left:50%;bottom:-10px;border:10px solid transparent;border-top-color:#fff;border-bottom:0;margin-left:-10px}
 #touch .mid{align-self:flex-end}
 #touch .mid button{width:58px;height:58px;font-size:24px}
+/* Minimap and GPS box, top right. The map turns with the bus; JS draws it a few times a second. */
+#nav{position:fixed;top:60px;right:10px;width:124px;pointer-events:none}
+#minimap{display:block;box-sizing:border-box;width:124px;height:124px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.75);box-shadow:0 2px 8px rgba(0,0,0,.5)}
+#gps{margin-top:6px;background:rgba(0,0,0,.6);border-radius:8px;padding:5px 7px;font-size:13px;line-height:1.35}
+#gpsTo{display:flex;align-items:center;gap:6px;font-weight:700}
+#gpsDest{white-space:pre-line}
+#gpsArrow{width:22px;height:22px;flex:none;fill:#ffd600;stroke:#000;stroke-width:1}
+#gpsNext{color:#ffeb3b;margin-top:2px}
+@media(max-width:600px){#hud{right:118px}#nav{width:96px}#minimap{width:96px;height:96px}#gps{font-size:11px}}

@@ -108,6 +108,21 @@ function makeSeg(points, props) {
   return { ...props, len, n, step, X, Y, Z, A, K, next: [] };
 }
 
+/**
+ * Where the turns of a leg are, measured along it: { s: start, end, dir: "l" | "r", deg }.
+ * Used by the GPS box and by the helper calling out turns.
+ */
+function turnsOf(cmds) {
+  const out = [];
+  let d = 0;
+  for (const [type, a, r] of cmds) {
+    const len = type === "s" ? a : a * Math.PI / 180 * r;
+    if (type !== "s") out.push({ s: d, end: d + len, dir: type, deg: a });
+    d += len;
+  }
+  return out;
+}
+
 /** The side road / flyover next to a main leg. */
 function makeAlt(main, alt) {
   const pts = [], m = Math.ceil(main.len / (SAMPLE * 3));
@@ -146,13 +161,16 @@ const MAIN = [];
   for (const [li, leg] of MAP.legs.entries()) {
     const seg = makeSeg(commandPoints(leg.path, pose), {
       id: leg.id, kind: "main", side: 0, half: MAP.width / 2, stage: leg.stage, main: true,
-      junctions: leg.junctions || [], from: li,
+      junctions: leg.junctions || [], from: li, turns: turnsOf(leg.path),
     });
     seg.p0 = prog; prog += seg.len; seg.p1 = prog;
     MAIN.push(SEGS.length); SEGS.push(seg);
     if (leg.alt) {
       const a = makeAlt(seg, leg.alt);
       a.p0 = seg.p0; a.p1 = seg.p1; a.from = li; a.junctions = [];
+      // The side road follows the main road's shape, so it has the same turns (scaled).
+      const f = a.len / seg.len;
+      a.turns = seg.turns.map(t => ({ ...t, s: t.s * f, end: t.end * f }));
       seg.alt = SEGS.length;
       SEGS.push(a);
       if (leg.alt.kind === "flyover") {

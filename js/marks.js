@@ -153,9 +153,10 @@ function track(o) {
   return true;
 }
 
-/** Stops and marks still ahead of the bus (for the minimap). */
-export function upcomingMarks() {
-  return [...stops.map(o => ({ kind: "stop", z: o.z, x: o.x, left: o.people.length })), ...marks.map(o => ({ kind: o.kind, z: o.z, x: o.x }))];
+/** Call fn(kind, worldX, worldZ) for every stop and mark (for the minimap). */
+export function eachMark(fn) {
+  for (const o of stops) fn("stop", o.m.position.x, o.m.position.z);
+  for (const o of marks) fn(o.kind, o.m.position.x, o.m.position.z);
 }
 
 /** Show a hint now and then (not every frame). */

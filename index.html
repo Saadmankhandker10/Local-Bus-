@@ -25,6 +25,13 @@
   <div class="box" id="fuelbox">⛽ তেল<div class="bar"><i id="fuelbar"></i></div></div>
   <div class="box" id="crowdbox" hidden>🏃 পাবলিক<div class="bar"><i id="crowdbar"></i></div></div>
 </div>
+<div id="nav" hidden>
+  <canvas id="minimap"></canvas>
+  <div id="gps">
+    <div id="gpsTo"><svg id="gpsArrow" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1 L18 18 L10 13 L2 18 Z"/></svg><span id="gpsDest"></span></div>
+    <div id="gpsNext" hidden></div>
+  </div>
+</div>
 <div id="msg"></div>
 <div id="dmgPop"></div>
 <div id="warn" hidden>⚠ সামনে বিপদ!</div>
@@ -39,7 +46,8 @@
       <b>ট্রাক, অন্য বাস আর পিলারে</b> লাগলেই খেলা শেষ ⚠<br>
       ধাক্কার পর পাবলিক দৌড়াবে 🏃 ধরে ফেলার আগে পালান।<br>
       হলুদ <b>⛽ সিএনজি</b> দাগে থেমে তেল নিন। গোলাপি <b>👮 পুলিশ</b> দাগে থেমে জরিমানা দিলে পাবলিক চলে যায়।<br>
-      নীল <b>বাস স্টপে</b> আস্তে থামলে যাত্রী ওঠে, ভাড়া বাড়ে।<br><br>
+      নীল <b>বাস স্টপে</b> আস্তে থামলে যাত্রী ওঠে, ভাড়া বাড়ে।<br>
+      কোণের <b>ম্যাপে হলুদ লাইন</b> ধরে চলুন। রাস্তা দুই ভাগ হলে ডানে বা বামে চেপে থাকলে অন্য রাস্তা (ফ্লাইওভার, গলি) ধরবেন।<br><br>
       <b>W/↑</b> চালান &nbsp; <b>S/↓</b> ব্রেক &nbsp; <b>A D / ← →</b> ঘুরান &nbsp; <b>Shift/Space</b> বুস্ট<br>
       <b>H</b> হর্ন &nbsp; <b>G</b> ওস্তাদের হাঁক &nbsp; <b>M</b> সাউন্ড &nbsp; <b>P/Esc</b> বিরতি
     </div>

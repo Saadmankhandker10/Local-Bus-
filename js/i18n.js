@@ -43,4 +43,12 @@ export const UI = {
   route: "পথ", time: "সময়", crashes: "ধাক্কা", none: "একটাও না", best: "সেরা স্কোর", bestTime: "সেরা সময়",
   record: "🏆 নতুন রেকর্ড!", fastest: "⏱ সবচেয়ে দ্রুত!", km: "কিমি", lastNews: "শেষ খবর",
   saveImage: "📰 ছবি সেভ / শেয়ার",
+  m: "মি", left: "বামে", right: "ডানে", uTurn: "ইউ-টার্ন",
+};
+
+/** Names of the side streets and flyovers (keyed by the alt id in map.js), for the GPS and the helper. */
+export const ROADS = {
+  flyover: "ফ্লাইওভার",
+  "kalabagan-lane": "কলাবাগানের গলি",
+  "katabon-lane": "কাঁটাবনের গলি",
 };
