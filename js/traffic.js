@@ -63,6 +63,7 @@ export function updateTraffic(dt) {
         game.hp -= v.t.dmg * H.hitDamageScale * (H.hitBase + game.speed / H.hitSpeedRef);
         game.speed *= H.hitSpeedKeep; game.shake = H.hitShake;
         if (game.pass > 0) game.pass = Math.max(0, game.pass - CFG.fare.lostOnHit);
+        if (navigator.vibrate) navigator.vibrate(H.hitVibrateMs);
         msg("ধাক্কা! 💥", 900);
       }
     }

@@ -4,8 +4,12 @@ import { CFG } from "./config.js";
 
 export const game = {
   running: false,
-  time: 0,    // seconds since the page loaded
-  speed: 0,
+  paused: false,
+  time: 0,    // seconds of simulation since the page loaded
+  speed: 0,   // forward speed
+  vx: 0,      // sideways speed (steering)
+  accel: 0,   // change in speed per second this step (used to tilt the body)
+  boostT: 0,  // seconds of boost left; above 0 means boosting
   fuel: CFG.fuel.max,
   hp: CFG.hp.max,
   fare: 0,
@@ -17,9 +21,13 @@ export const game = {
 /** Reset the numbers for a fresh run. */
 export function resetGame() {
   game.speed = CFG.bus.startSpeed;
+  game.vx = 0;
+  game.accel = 0;
+  game.boostT = 0;
   game.fuel = CFG.fuel.max;
   game.hp = CFG.hp.max;
   game.fare = 0;
   game.pass = 0;
   game.dist = 0;
+  game.shake = 0;
 }

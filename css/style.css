@@ -1,6 +1,7 @@
 html,body{margin:0;height:100%;overflow:hidden;background:#222;font-family:system-ui,"Noto Sans Bengali","Segoe UI",sans-serif;color:#fff}
 canvas{display:block}
-#hud{position:fixed;top:10px;left:10px;right:10px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
+[hidden]{display:none!important}
+#hud{position:fixed;top:10px;left:10px;right:64px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
 .box{background:rgba(0,0,0,.55);padding:6px 10px;border-radius:8px;font-size:14px;min-width:90px}
 .bar{height:8px;background:#444;border-radius:4px;margin-top:5px;overflow:hidden}
 .bar i{display:block;height:100%;width:100%}
@@ -9,6 +10,14 @@ canvas{display:block}
 #screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.72);text-align:center;padding:20px;line-height:1.6}
 #screen h1{margin:0 0 8px;font-size:34px;color:#ffd600}
 button{font-size:20px;padding:12px 28px;border:0;border-radius:10px;background:#ffcc00;font-weight:700;cursor:pointer}
+#pause{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.6)}
+#pause h1{margin:0 0 16px;font-size:34px;color:#ffd600}
+#pausebtn{position:fixed;top:10px;right:10px;width:44px;height:44px;padding:0;font-size:16px;opacity:.85}
+/* Boost speed lines: thin rays from the centre, faded out in the middle. JS only changes opacity. */
+#speedlines{position:fixed;inset:0;pointer-events:none;opacity:0;
+  background:repeating-conic-gradient(from 0deg at 50% 45%,rgba(255,255,255,.6) 0deg 1deg,transparent 1deg 9deg);
+  -webkit-mask-image:radial-gradient(circle at 50% 45%,transparent 35%,#000 80%);
+  mask-image:radial-gradient(circle at 50% 45%,transparent 35%,#000 80%)}
 #touch{position:fixed;bottom:14px;left:0;right:0;display:none;justify-content:space-between;padding:0 14px}
 #touch div{display:flex;gap:10px}
 #touch button{width:70px;height:70px;font-size:26px;padding:0;opacity:.75}

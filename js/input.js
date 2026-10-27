@@ -1,32 +1,89 @@
-// Turns keyboard and touch buttons into simple actions: up, down, left, right, boost.
-// Game code only reads `keys.up` etc., so adding gamepad later won't touch anything else.
-import { $ } from "./utils.js";
+// Turns keyboard, touch buttons, and gamepads into one set of actions.
+// The game only reads `input.throttle`, `input.steer` etc., so it never cares
+// which device the player is using.
+import { CFG } from "./config.js";
+import { $, clamp } from "./utils.js";
 
-/** Current state of each action (true while held). */
-export const keys = {};
+/** The combined player input, refreshed once per frame by pollInput(). */
+export const input = {
+  throttle: 0, // 0..1
+  brake: 0,    // 0..1
+  steer: 0,    // -1 (left) .. 1 (right)
+  boost: false,
+};
+
+const held = {}; // actions held on keyboard or touch buttons
 
 const KEY_MAP = {
   ArrowUp: "up", KeyW: "up",
   ArrowDown: "down", KeyS: "down",
   ArrowLeft: "left", KeyA: "left",
   ArrowRight: "right", KeyD: "right",
+  // Right Shift too: some keyboards can't register Up + Left + Space at the same time.
   ShiftLeft: "boost", ShiftRight: "boost", Space: "boost",
 };
+const PAUSE_KEYS = ["KeyP", "Escape"];
 
-const TOUCH_MAP = [["tl", "left"], ["tr", "right"], ["tb", "down"], ["tg", "up"]];
+const TOUCH_MAP = [["tl", "left"], ["tr", "right"], ["tb", "down"], ["tg", "up"], ["tboost", "boost"]];
 
-/** Start listening to keyboard and on-screen buttons. */
-export function initInput() {
+// Standard gamepad button numbers (same on Xbox and PlayStation pads in the browser).
+const PAD = { A: 0, RB: 5, LT: 6, RT: 7, START: 9, UP: 12, DOWN: 13, LEFT: 14, RIGHT: 15 };
+
+let onPause = () => {};
+let padStartWasDown = false;
+
+/**
+ * Start listening to keyboard and on-screen buttons.
+ * @param {(fromPad: boolean) => void} pauseHandler called when P / Esc / pad Start is pressed
+ */
+export function initInput(pauseHandler) {
+  onPause = pauseHandler;
+
   addEventListener("keydown", e => {
-    if (KEY_MAP[e.code]) { keys[KEY_MAP[e.code]] = true; e.preventDefault(); }
+    if (KEY_MAP[e.code]) { held[KEY_MAP[e.code]] = true; e.preventDefault(); }
+    else if (PAUSE_KEYS.includes(e.code) && !e.repeat) onPause(false);
   });
   addEventListener("keyup", e => {
-    if (KEY_MAP[e.code]) keys[KEY_MAP[e.code]] = false;
+    if (KEY_MAP[e.code]) held[KEY_MAP[e.code]] = false;
   });
+  // If the window loses focus, keyup never arrives, so let go of everything.
+  addEventListener("blur", () => { for (const k in held) held[k] = false; });
 
   for (const [id, action] of TOUCH_MAP) {
     const el = $(id);
-    el.addEventListener("pointerdown", e => { keys[action] = true; e.preventDefault(); });
-    for (const ev of ["pointerup", "pointerleave", "pointercancel"]) el.addEventListener(ev, () => keys[action] = false);
+    el.addEventListener("pointerdown", e => { held[action] = true; e.preventDefault(); });
+    for (const ev of ["pointerup", "pointerleave", "pointercancel"]) el.addEventListener(ev, () => held[action] = false);
   }
+}
+
+/** Read a gamepad stick axis, ignoring tiny movements near the centre. */
+function axis(v) {
+  const dead = CFG.input.stickDeadzone;
+  if (Math.abs(v) < dead) return 0;
+  return Math.sign(v) * (Math.abs(v) - dead) / (1 - dead);
+}
+
+/** Combine keyboard, touch, and gamepads into `input`. Call once per frame. */
+export function pollInput() {
+  let padSteer = 0, padThrottle = 0, padBrake = 0, padBoost = false, padStart = false;
+  // Gamepads can't send events for held buttons, so we ask for their state every frame.
+  const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+  for (const p of pads) {
+    if (!p) continue;
+    const btn = i => (p.buttons[i] ? p.buttons[i].value : 0);
+    padSteer += axis(p.axes[0] || 0) + btn(PAD.RIGHT) - btn(PAD.LEFT);
+    padThrottle = Math.max(padThrottle, btn(PAD.RT), btn(PAD.UP));
+    padBrake = Math.max(padBrake, btn(PAD.LT), btn(PAD.DOWN));
+    padBoost = padBoost || btn(PAD.A) > .5 || btn(PAD.RB) > .5;
+    padStart = padStart || btn(PAD.START) > .5;
+  }
+
+  input.steer = clamp((held.right ? 1 : 0) - (held.left ? 1 : 0) + padSteer, -1, 1);
+  input.throttle = Math.max(held.up ? 1 : 0, padThrottle);
+  input.brake = Math.max(held.down ? 1 : 0, padBrake);
+  input.boost = !!held.boost || padBoost;
+
+  // Fire pause only on the moment Start goes down, not every frame it is held.
+  if (padStart && !padStartWasDown) onPause(true);
+  padStartWasDown = padStart;
 }

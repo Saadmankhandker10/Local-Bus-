@@ -3,21 +3,45 @@
 
 export const CFG = {
   bus: {
+    // --- Speed ---
     startSpeed: 12,      // speed the bus has when a run begins
     maxSpeed: 38,        // normal top speed
     boostSpeed: 55,      // top speed while boosting
-    accel: 15,           // speed gained per second while holding drive
-    boostAccel: 20,      // extra acceleration while boosting
-    brake: 32,           // speed lost per second while braking
-    drag: 2.5,           // speed lost per second when nothing is pressed
+    accel: 11,           // engine pull at low speed (a heavy bus pulls gently)
+    boostAccel: 16,      // extra pull while boosting
+    brake: 30,           // speed lost per second with full brake
+    rollDrag: 1.5,       // speed lost per second when coasting
+    airDrag: 0.0012,     // extra drag that grows with speed², so top speed feels soft
     emptyTankDrag: 12,   // drag when fuel is empty (bus rolls to a stop)
-    overSpeedDecel: 15,  // how fast the bus drops back to maxSpeed after a boost
-    steerSpeed: 13,      // sideways speed when steering
-    steerMinFactor: 0.3, // steering strength at standstill (0..1)
-    steerFullAt: 15,     // speed at which steering reaches full strength
-    maxX: 5.5,           // how far left/right the bus can go
-    leanAngle: 0.12,     // how much the bus turns its nose when steering (radians)
-    leanSmoothing: 8,    // higher = nose turns back faster
+    overSpeedDecel: 12,  // how fast the bus drops back to maxSpeed after a boost
+    boostHold: 1.2,      // boost (and auto-drive) keeps going this long after you let go,
+                         // so your hand can move to the steering keys
+
+    // --- Steering (sideways movement) ---
+    steerSpeed: 9,          // top sideways speed
+    steerResponse: 4,       // how fast the bus reaches that sideways speed (lower = heavier)
+    steerLowSpeedMin: 0.35, // steering strength at standstill (0..1)
+    steerFullAt: 12,        // speed where steering reaches full strength
+    steerHighSpeedCut: 0.35,// part of steering lost at boost top speed (keeps it stable)
+
+    // --- Road edge (soft bump instead of a wall) ---
+    edgeX: 5.2,          // past this, the kerb starts pushing the bus back
+    edgeHardX: 5.8,      // the bus can never go past this
+    edgeSpring: 40,      // how hard the kerb pushes back
+    edgeScrapeDrag: 8,   // speed lost per second while scraping
+    edgeShake: 0.12,     // small camera shake while scraping
+
+    // --- Look only (never changes the collision box) ---
+    yawPerSideSpeed: 0.025, // nose turns towards where the bus slides
+    maxYaw: 0.16,
+    rollPerSideSpeed: 0.012,// body leans outwards in a turn
+    pitchPerAccel: 0.004,   // nose dips when braking, lifts when speeding up
+    maxPitch: 0.06,
+    visualSmoothing: 6,     // higher = body movement follows faster
+    wheelRadius: 0.55,
+    brakeLightGlow: 2.5,    // tail light brightness while braking
+
+    // --- Collision ---
     hitHalfWidth: 1.25,  // collision box half width
     hitHalfLength: 3.4,  // collision box half length
   },
@@ -38,6 +62,7 @@ export const CFG = {
     hitSpeedRef: 40,     // ...plus 1 more for every 40 speed
     hitSpeedKeep: 0.6,   // fraction of speed kept after a crash
     hitShake: 0.6,       // camera shake strength after a crash
+    hitVibrateMs: 80,    // phone vibration on a crash (0 = off)
   },
 
   fare: {
@@ -122,18 +147,33 @@ export const CFG = {
     fov: 70,              // starting field of view
     baseFov: 68,          // field of view at speed 0...
     fovPerSpeed: 0.35,    // ...widened by this much per unit of speed
+    fovSmoothing: 3,      // how quickly the view widens / narrows
     followX: 0.6,         // how much the camera follows the bus sideways (0..1)
+    followSmoothing: 5,   // lower = camera lags more behind sideways moves
     height: 6.2,
     distance: 13,
     lookY: 1.5,
     lookZ: -14,
     shakeDecay: 1.5,      // how fast shake fades
+    shakeScale: 1,        // set to 0 to turn camera shake off
+    boostFovKick: 9,      // extra field of view while boosting
+    boostPullBack: 1.2,   // camera drops back a little while boosting
+    boostFxSmoothing: 4,  // how fast the boost effect fades in and out
+    speedLinesOpacity: 0.5, // set to 0 to hide the boost speed lines
     far: 300,
+  },
+
+  input: {
+    stickDeadzone: 0.15,  // gamepad stick movement smaller than this is ignored
+  },
+
+  loop: {
+    hz: 60,               // simulation steps per second (fixed timestep)
+    maxFrameDt: 0.25,     // after a long freeze, simulate at most this much time
   },
 
   render: {
     maxPixelRatio: 2,     // lower to 1 for more speed on phones
-    maxDt: 0.05,          // longest frame step (stops huge jumps after lag)
   },
 
   hud: {

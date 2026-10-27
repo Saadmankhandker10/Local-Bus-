@@ -1,4 +1,4 @@
-// Renderer, scene, lights, camera, and the scrolling road with buildings.
+// Renderer, scene, lights, and the scrolling road with buildings.
 // The bus never really moves forward: the world slides towards the camera instead,
 // which keeps all numbers small and avoids precision problems on long runs.
 import * as THREE from "three";
@@ -8,7 +8,7 @@ import { rnd, pick } from "./utils.js";
 const W = CFG.world;
 const R = W.roadHalfWidth;
 
-/* ====== Renderer, scene, camera ====== */
+/* ====== Renderer, scene, lights (the camera lives in camera.js) ====== */
 export const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(innerWidth, innerHeight);
 renderer.setPixelRatio(Math.min(devicePixelRatio, CFG.render.maxPixelRatio));
@@ -18,17 +18,12 @@ export const scene = new THREE.Scene();
 scene.background = new THREE.Color(W.skyColor);
 scene.fog = new THREE.Fog(W.skyColor, W.fogNear, W.fogFar);
 
-export const cam = new THREE.PerspectiveCamera(CFG.camera.fov, innerWidth / innerHeight, 0.1, CFG.camera.far);
 scene.add(new THREE.HemisphereLight(0xffffff, 0x556655, 1.0));
 const sun = new THREE.DirectionalLight(0xfff2cc, 1.2);
 sun.position.set(20, 40, 10);
 scene.add(sun);
 
-addEventListener("resize", () => {
-  renderer.setSize(innerWidth, innerHeight);
-  cam.aspect = innerWidth / innerHeight;
-  cam.updateProjectionMatrix();
-});
+addEventListener("resize", () => renderer.setSize(innerWidth, innerHeight));
 
 /* ====== Mesh helpers ====== */
 
@@ -82,16 +77,3 @@ export function scrollWorld(d) {
   for (const b of blds) { b.position.z += d; if (b.position.z > W.buildingRecycleAt) b.position.z -= W.recycleLength; }
 }
 
-/* ====== Camera and drawing ====== */
-
-/** Move the chase camera behind the bus, add shake, widen the view with speed, and draw. */
-export function renderWorld(dt, busX, speed, shake) {
-  const C = CFG.camera;
-  const cx = busX * C.followX;
-  cam.position.set(cx + rnd(-1, 1) * shake, C.height + rnd(-1, 1) * shake, C.distance);
-  cam.lookAt(cx, C.lookY, C.lookZ);
-  const fov = C.baseFov + speed * C.fovPerSpeed;
-  // Rebuilding the projection is not free, so only do it when the change is visible.
-  if (Math.abs(cam.fov - fov) > .1) { cam.fov = fov; cam.updateProjectionMatrix(); }
-  renderer.render(scene, cam);
-}
