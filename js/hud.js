@@ -231,11 +231,11 @@ export function onStartPressed(main, fromStart) {
   }
   if ($("startPlaceBtn")) {
     const spots = [
-      { idx: -1, label: "অটো রোটেশন (মোহাম্মদপুর / ধানমন্ডি / শাহবাগ / ঢাবি)" },
-      { idx: 0,  label: "মোহাম্মদপুর বাসস্ট্যান্ড" },
+      { idx: 0,  label: "মোহাম্মদপুর বাসস্ট্যান্ড (শুরু থেকে)" },
       { idx: 1,  label: "ধানমন্ডি ২৭ — লেকপাড়" },
       { idx: 2,  label: "সায়েন্সল্যাব — শাহবাগ মোড়" },
       { idx: 3,  label: "ঢাকা বিশ্ববিদ্যালয় — টিএসসি" },
+      { idx: -1, label: "অটো রোটেশন (প্রতিবার নতুন এলাকা)" },
     ];
     let cur = 0;
     $("startPlaceBtn").onclick = () => {

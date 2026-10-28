@@ -7,7 +7,7 @@ import { rnd, pick } from "./utils.js";
 import { scene, box, plate } from "./world.js";
 import { makeVehicle } from "./vehicles.js";
 import { game } from "./state.js";
-import { SEGS, ahead, place, fromProgress } from "./map.js";
+import { SEGS, ahead, sample, place, fromProgress, hitsAnyRoad } from "./map.js";
 import { metroPass } from "./audio.js";
 import { BANNERS } from "./data/banners.bn.js";
 
@@ -420,9 +420,10 @@ let lastPassCycle = -1;
 
 /* ====== Placements along the route ====== */
 const placements = [];   // { at, prefab, side, text } sorted by distance
+const GATE_OFFSETS = [0, 28, 108, 198];
 for (const [i, st] of ROUTE.stages.entries()) {
   const start = STAGE_START[i];
-  if (i > 0) placements.push({ at: start, prefab: "stageGate", side: 0, text: `স্বাগতম — ${st.name}` });
+  if (i > 0) placements.push({ at: start + (GATE_OFFSETS[i] || 0), prefab: "stageGate", side: 0, text: `স্বাগতম — ${st.name}` });
   for (const lm of st.landmarks) {
     const sides = ACROSS.has(lm.prefab) ? [0] : lm.side ? [lm.side] : [-1, 1];
     const spots = lm.at !== undefined ? [lm.at]
@@ -435,8 +436,29 @@ for (const [i, st] of ROUTE.stages.entries()) {
   }
 }
 placements.sort((a, b) => a.at - b.at);
-// Each landmark sits on the main road at its journey progress.
-for (const p of placements) fromProgress(p.at, p);
+// Each landmark sits on the main road at its journey progress; filter out any landmark that overlaps a road/junction.
+const lmPt = { x: 0, y: 0, z: 0, yaw: 0, k: 0 };
+for (let i = placements.length - 1; i >= 0; i--) {
+  const p = placements[i];
+  fromProgress(p.at, p);
+  sample(p.seg, p.s, lmPt);
+  if (p.side !== 0) {
+    const off = R + (p.prefab === "shopRow" ? 6 : p.prefab === "lake" ? 17 : 5);
+    const wx = lmPt.x + Math.cos(lmPt.yaw) * p.side * off;
+    const wz = lmPt.z - Math.sin(lmPt.yaw) * p.side * off;
+    const rad = p.prefab === "shopRow" ? 11 : 4.5;
+    if (hitsAnyRoad(wx, wz, rad, p.seg, p.s)) {
+      placements.splice(i, 1);
+    }
+  } else if (p.prefab === "wires") {
+    // Keep utility wire poles away from sharp curves and cross-road intersections.
+    const lx = lmPt.x - Math.cos(lmPt.yaw) * (R + 2.2), lz = lmPt.z + Math.sin(lmPt.yaw) * (R + 2.2);
+    const rx = lmPt.x + Math.cos(lmPt.yaw) * (R + 2.2), rz = lmPt.z - Math.sin(lmPt.yaw) * (R + 2.2);
+    if (Math.abs(lmPt.k) > 0.008 || hitsAnyRoad(lx, lz, 2.0, p.seg, p.s) || hitsAnyRoad(rx, rz, 2.0, p.seg, p.s)) {
+      placements.splice(i, 1);
+    }
+  }
+}
 
 const active = [];  // { m, p }
 let next = 0;       // index of the next placement to spawn

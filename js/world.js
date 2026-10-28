@@ -4,7 +4,7 @@
 import * as THREE from "three";
 import { CFG } from "./config.js";
 import { rnd, pick } from "./utils.js";
-import { SEGS, here, sample, place, ahead, progressOf } from "./map.js";
+import { SEGS, here, sample, place, ahead, progressOf, hitsAnyRoad } from "./map.js";
 
 const W = CFG.world;
 
@@ -390,13 +390,18 @@ const active = new Set();
 function blocked(seg, s, side) {
   const S = SEGS[seg];
   if (S.kind === "flyover") return true;
-  if (S.kind === "street" && side !== S.side) return true;
-  if (S.main && S.alt !== undefined) {
-    const A = SEGS[S.alt], t = s / S.len;
-    if (A.kind === "street" && A.side === side && t > .08 && t < .92) return true;
+  if (!S.main) {
+    if (side !== S.side || s < 36 || s > S.len - 36) return true;
+  }
+  if (S.main && S.alts?.length) {
+    const t = s / S.len;
+    for (const altIdx of S.alts) {
+      const A = SEGS[altIdx];
+      if (A.side === side && t > .04 && t < .96) return true;
+    }
   }
   for (const j of S.junctions || []) {
-    if ((j.type === "X" || j.side === side) && Math.abs(j.at * S.len - s) < W.stubWidth / 2 + 6) return true;
+    if ((j.type === "X" || j.side === side) && Math.abs(j.at * S.len - s) < W.stubWidth / 2 + 12) return true;
   }
   return false;
 }
@@ -410,14 +415,20 @@ export function initWorld(scenery) {
     const S = SEGS[i];
     const gap = S.main ? 10.5 : W.buildingGap; // denser continuous street wall on main boulevards
     for (const side of [-1, 1]) {
-      for (let s = rnd(0, gap); s < S.len; s += gap + rnd(-1, 1.5)) {
+      for (let s = rnd(8, gap + 6); s < S.len - 8; s += gap + rnd(-1, 1.5)) {
         if (blocked(i, s, side)) continue;
         const look = scenery(progressOf(i, s), side);
-        const w = rnd(7.5, 11.5);
+        const w = rnd(7.5, 11.5), d = rnd(8.5, 11.5);
         const h = rnd(Math.max(12, look.minH + 4), look.maxH + 6);
+        const off = S.half + 3.4 + w / 2;
+        sample(i, s, pt);
+        const wx = pt.x + Math.cos(pt.yaw) * side * off;
+        const wz = pt.z - Math.sin(pt.yaw) * side * off;
+        const radius = Math.hypot(w / 2 + 2.4, d / 2 + 1.2);
+        if (hitsAnyRoad(wx, wz, radius, i, s)) continue;
         placements[i].push({
-          seg: i, s, side, w, d: rnd(8.5, 11.5), h,
-          off: S.half + 3.4 + w / 2, hidden: look.hidden, mesh: null,
+          seg: i, s, side, w, d, h,
+          off, hidden: look.hidden, mesh: null,
         });
       }
     }

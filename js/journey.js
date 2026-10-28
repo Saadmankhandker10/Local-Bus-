@@ -65,6 +65,8 @@ export function sceneryAt(dist, side) {
 }
 
 let autoRotateIdx = -1;
+// Safe straight-boulevard offset past the initial 90-degree entry corner of each stage.
+const SAFE_STAGE_OFFSET = [0, 20, 95, 190];
 
 /** Start the journey from the beginning (or selected/rotating Dhaka area), or from the last checkpoint. */
 export function resetJourney(fromCheckpoint) {
@@ -74,17 +76,17 @@ export function resetJourney(fromCheckpoint) {
     // Coming back costs a little: a share of the score is lost.
     const keep = 1 - J.checkpointPenalty;
     journey.stage = cp.stage;
-    game.dist = game.prog = cp.dist;
+    game.dist = game.prog = cp.dist + (SAFE_STAGE_OFFSET[cp.stage] || 0);
     game.damage = Math.floor(cp.damage * keep);
     game.fare = Math.floor(cp.fare * keep);
     game.pass = cp.pass;
     game.journeyT = cp.time;
   } else {
-    autoRotateIdx = (autoRotateIdx + 1) % 3; // rotates 0 (Mohammadpur), 1 (Dhanmondi), 2 (Shahbag)
+    autoRotateIdx = (autoRotateIdx + 1) % 3;
     const startSt = game.startStage >= 0 ? game.startStage : autoRotateIdx;
     journey.stage = startSt;
     journey.cp = null;
-    game.dist = game.prog = STAGE_START[startSt] || 0;
+    game.dist = game.prog = (STAGE_START[startSt] || 0) + (SAFE_STAGE_OFFSET[startSt] || 0);
     game.journeyT = 0;
   }
   journey.stageStartDamage = game.damage;

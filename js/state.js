@@ -33,7 +33,7 @@ export const game = {
   busY: 0,         // vertical height of the bus above the road (when jumping ramps / trenches)
   busVy: 0,        // vertical velocity of the bus
   autopilot: true, // true while the menu background autopilot demo is running
-  startStage: -1,  // -1 = rotate automatically each run, or 0..3 for a specific Dhaka spot
+  startStage: 0,   // 0 = Mohammadpur (default), 1..3 = specific stage, -1 = rotate automatically
   morName: "মোহাম্মদপুর বাসস্ট্যান্ড", // current Dhaka intersection / live TV location badge
 };
 

@@ -20,78 +20,66 @@ export const MAP = {
     { id: "mohammadpur-stand", mor: "মোহাম্মদপুর বাসস্ট্যান্ড মোড়", stage: 0,
       path: [["s", 380], ["r", 12, 300], ["s", 300], ["l", 20, 240], ["s", 260]],
       junctions: [
-        { at: 0.32, type: "X", name: "তাজমহল রোড মোড়" },
-        { at: 0.68, type: "X", name: "টাউন হল মোড়" },
+        { at: 0.35, type: "X", name: "তাজমহল রোড মোড়" },
+        { at: 0.72, type: "X", name: "টাউন হল মোড়" },
       ] },
     { id: "mohammadpur-flyover", mor: "শ্যামলী — লালমাটিয়া মোড়", stage: 0,
       path: [["s", 200], ["r", 10, 450], ["s", 420], ["l", 10, 450], ["s", 200]],
-      alt: { id: "mohammadpur-lane", mor: "তাজমহল রোড — রিং রোড মোড়", kind: "main", side: 1, width: 14, bulge: 38, chord: 0.45 },
-      alt2: { id: "shyamoli-ring-road", mor: "শ্যামলী — কল্যাণপুর মোড়", kind: "main", side: -1, width: 14, bulge: 38, chord: 0.45 },
+      alt: { id: "mohammadpur-lane", mor: "তাজমহল রোড — রিং রোড মোড়", kind: "street", side: 1, width: 10, bulge: 30, chord: 0 },
+      alt2: { id: "shyamoli-ring-road", mor: "শ্যামলী — কল্যাণপুর মোড়", kind: "street", side: -1, width: 10, bulge: 30, chord: 0 },
       junctions: [
-        { at: 0.25, type: "X", name: "নূরজাহান রোড মোড়" },
-        { at: 0.72, type: "X", name: "লালমাটিয়া আড়ং মোড়" },
+        { at: 0.5, type: "X", name: "লালমাটিয়া আড়ং মোড়" },
       ] },
     { id: "asad-gate", mor: "আসাদগেট মোড়", stage: 0,
-      path: [["s", 360], ["r", 90, 45], ["s", 300]],
-      alt: { id: "mirpur-road-north", mor: "ফার্মগেট — মিরপুর ১০ গোলচত্বর", kind: "main", side: -1, width: 14, bulge: 46, chord: 0.35 },
+      path: [["s", 360], ["r", 90, 55], ["s", 300]],
       junctions: [
-        { at: 0.45, type: "X", name: "আসাদগেট — সংসদ ভবন মোড়" },
-        { at: 0.85, type: "X", name: "মানিক মিয়া অ্যাভিনিউ মোড়" },
+        { at: 0.38, type: "X", name: "আসাদগেট — সংসদ ভবন মোড়" },
       ] },
 
     // ---- Stage 2: Dhanmondi (heading south) ----
     { id: "dhanmondi-north", mor: "ধানমন্ডি ২৭ মোড়", stage: 1,
       path: [["s", 260], ["l", 8, 500], ["s", 360]],
-      alt: { id: "satmasjid-road", mor: "সাতমসজিদ রোড — জিগাতলা মোড়", kind: "main", side: 1, width: 14, bulge: 42, chord: 0.4 },
       junctions: [
-        { at: 0.35, type: "X", name: "ধানমন্ডি ২৭ মোড়" },
-        { at: 0.78, type: "X", name: "শংকর বাসস্ট্যান্ড মোড়" },
+        { at: 0.45, type: "X", name: "ধানমন্ডি ২৭ মোড়" },
       ] },
     { id: "dhanmondi-mid", mor: "কলাবাগান — ধানমন্ডি ১৫ মোড়", stage: 1,
       path: [["s", 260], ["r", 18, 280], ["s", 320], ["l", 18, 280], ["s", 260]],
-      alt: { id: "kalabagan-lane", mor: "কলাবাগান — গ্রিন রোড মোড়", kind: "main", side: -1, width: 14, bulge: 38, chord: 0.5 },
+      alt: { id: "kalabagan-lane", mor: "কলাবাগান — গ্রিন রোড মোড়", kind: "street", side: -1, width: 10, bulge: 30, chord: 0 },
+      alt2: { id: "satmasjid-road", mor: "সাতমসজিদ রোড — জিগাতলা মোড়", kind: "street", side: 1, width: 10, bulge: 30, chord: 0 },
       junctions: [
-        { at: 0.28, type: "X", name: "ধানমন্ডি ১৫ মোড়" },
-        { at: 0.65, type: "X", name: "কলাবাগান মাঠ মোড়" },
+        { at: 0.5, type: "X", name: "কলাবাগান মাঠ মোড়" },
       ] },
     { id: "dhanmondi-south", mor: "ধানমন্ডি ২ — সিটি কলেজ মোড়", stage: 1,
       path: [["s", 320], ["l", 10, 320], ["s", 420]],
-      alt: { id: "newmarket-azimpur", mor: "নিউমার্কেট — আজিমপুর মোড়", kind: "main", side: 1, width: 14, bulge: 44, chord: 0.4 },
       junctions: [
-        { at: 0.45, type: "X", name: "ল্যাবএইড — গ্রিন রোড মোড়" },
-        { at: 0.94, type: "X", name: "সায়েন্সল্যাব চৌরাস্তা" },
+        { at: 0.48, type: "X", name: "ল্যাবএইড — গ্রিন রোড মোড়" },
       ] },
 
-    // ---- Stage 3: Science Lab, New Market, Shahbag ----
+    // ---- Stage 3: Science Lab, New Market, Shahbag (clean boulevard without self-overlapping hairpin) ----
     { id: "science-lab", mor: "সায়েন্সল্যাব মোড়", stage: 2,
-      path: [["l", 90, 40], ["s", 360], ["l", 180, 22], ["s", 80], ["r", 90, 30], ["s", 140], ["r", 90, 36], ["s", 320]],
-      alt: { id: "karwan-farmgate", mor: "কারওয়ান বাজার — ফার্মগেট মোড়", kind: "main", side: -1, width: 14, bulge: 42, chord: 0.35 },
+      path: [["l", 90, 55], ["s", 380], ["r", 14, 340], ["s", 260], ["l", 14, 340], ["s", 320]],
       junctions: [
-        { at: 0.06, type: "X", name: "সায়েন্সল্যাব মোড়" },
-        { at: 0.42, type: "X", name: "নিউমার্কেট গেট মোড়" },
-        { at: 0.78, type: "X", name: "বাটা সিগন্যাল — এলিফ্যান্ট রোড মোড়" },
+        { at: 0.35, type: "X", name: "সায়েন্সল্যাব — নিউমার্কেট মোড়" },
+        { at: 0.72, type: "X", name: "বাটা সিগন্যাল — এলিফ্যান্ট রোড মোড়" },
       ] },
     { id: "shahbag-approach", mor: "শাহবাগ মোড়", stage: 2,
       path: [["s", 420], ["l", 6, 600], ["s", 320]],
-      alt: { id: "katabon-lane", mor: "কাঁটাবন — বাংলামোটর মোড়", kind: "main", side: -1, width: 14, bulge: 36, chord: 0.3 },
-      alt2: { id: "nilkhet-palashi", mor: "নীলক্ষেত — পলাশী মোড়", kind: "main", side: 1, width: 14, bulge: 38, chord: 0.35 },
+      alt: { id: "katabon-lane", mor: "কাঁটাবন — বাংলামোটর মোড়", kind: "street", side: -1, width: 10, bulge: 30, chord: 0 },
+      alt2: { id: "nilkhet-palashi", mor: "নীলক্ষেত — পলাশী মোড়", kind: "street", side: 1, width: 10, bulge: 30, chord: 0 },
       junctions: [
-        { at: 0.25, type: "X", name: "কাঁটাবন ঢাল মোড়" },
-        { at: 0.94, type: "X", name: "শাহবাগ জাতীয় জাদুঘর মোড়" },
+        { at: 0.88, type: "X", name: "শাহবাগ জাতীয় জাদুঘর মোড়" },
       ] },
 
     // ---- Stage 4: Dhaka University (heading south) ----
     { id: "du-north", mor: "টিএসসি — চারুকলা মোড়", stage: 3,
-      path: [["s", 70], ["r", 90, 40], ["s", 320], ["l", 15, 300], ["s", 260]],
-      alt: { id: "matsya-motijheel", mor: "মৎস্য ভবন — পল্টন — মতিঝিল মোড়", kind: "main", side: -1, width: 14, bulge: 44, chord: 0.4 },
+      path: [["s", 90], ["r", 90, 55], ["s", 320], ["l", 15, 300], ["s", 260]],
       junctions: [
-        { at: 0.18, type: "X", name: "চারুকলা — ছবির হাট মোড়" },
         { at: 0.65, type: "X", name: "টিএসসি রাজু ভাস্কর্য মোড়" },
       ] },
     { id: "du-campus", mor: "কার্জন হল — দোয়েল চত্বর মোড়", stage: 3,
       path: [["s", 320], ["r", 20, 260], ["s", 420], ["l", 20, 260], ["s", 320]],
       junctions: [
-        { at: 0.32, type: "X", name: "শহীদ মিনার — মেডিকেল মোড়" },
+        { at: 0.35, type: "X", name: "শহীদ মিনার — মেডিকেল মোড়" },
         { at: 0.72, type: "X", name: "দোয়েল চত্বর — কার্জন হল মোড়" },
       ] },
   ],
@@ -322,4 +310,42 @@ export function walk(seg, s, d, pick, out) {
 export function lanesOf(seg, lanes) {
   const h = SEGS[seg].half;
   return lanes.filter(l => Math.abs(l) <= h - 2);
+}
+
+/**
+ * Global 2D spatial check: returns true if world point (wx, wz) comes within
+ * `S.half + pad` of ANY road segment in SEGS (or any cross-road junction stub).
+ * Used to guarantee that buildings, hawker stalls, and landmarks never overlap any road.
+ */
+export function hitsAnyRoad(wx, wz, pad = 4, ownSeg = -1, ownS = 0) {
+  for (let si = 0; si < SEGS.length; si++) {
+    const S = SEGS[si];
+    const minD2 = (S.half + pad) ** 2;
+    const X = S.X, Z = S.Z, n = S.n, step = S.step;
+    for (let i = 0; i < n; i += 2) {
+      if (si === ownSeg && Math.abs(i * step - ownS) < 32) continue;
+      const dx = wx - X[i], dz = wz - Z[i];
+      if (dx * dx + dz * dz < minD2) return true;
+    }
+    if (!(si === ownSeg && Math.abs(S.len - ownS) < 32)) {
+      const dxLast = wx - X[n - 1], dzLast = wz - Z[n - 1];
+      if (dxLast * dxLast + dzLast * dzLast < minD2) return true;
+    }
+
+    // Also check cross-road junction stubs on this segment.
+    for (const j of S.junctions || []) {
+      sample(si, j.at * S.len, tmp);
+      const rx = Math.cos(tmp.yaw), rz = -Math.sin(tmp.yaw);
+      const sides = j.type === "X" ? [-1, 1] : [j.side];
+      const stubClear2 = (7.5 + pad) ** 2;
+      for (const side of sides) {
+        for (let d = 0; d <= 96; d += 6) {
+          const sx = tmp.x + rx * side * (S.half + d);
+          const sz = tmp.z + rz * side * (S.half + d);
+          if ((wx - sx) ** 2 + (wz - sz) ** 2 < stubClear2) return true;
+        }
+      }
+    }
+  }
+  return false;
 }
