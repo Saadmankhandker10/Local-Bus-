@@ -217,15 +217,16 @@ function drawMap(tod) {
   ctx.clearRect(0, 0, W, W);
   ctx.save();
   ctx.beginPath(); ctx.arc(R, R, R, 0, Math.PI * 2); ctx.clip();
-  ctx.fillStyle = tod.bg;
+  ctx.fillStyle = "rgba(22, 22, 28, 0.55)";
   ctx.fillRect(0, 0, W, W);
 
-  // Subtle holographic radar grid rings.
-  ctx.strokeStyle = "rgba(53, 224, 194, 0.14)";
+  // Subtle radar crosshairs and rings.
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.14)";
   ctx.lineWidth = 1;
-  for (const rFrac of [0.35, 0.68]) {
-    ctx.beginPath(); ctx.arc(cx, cy, R * rFrac, 0, Math.PI * 2); ctx.stroke();
-  }
+  ctx.beginPath();
+  ctx.moveTo(0, cy); ctx.lineTo(W, cy);
+  ctx.moveTo(cx, 0); ctx.lineTo(cx, W);
+  ctx.stroke();
 
   const yaw = bus.rotation.y, a = Math.cos(yaw) * k, b = Math.sin(yaw) * k;
   const bx = bus.position.x, bz = bus.position.z;
@@ -587,7 +588,7 @@ function updateGps() {
     $("gpsArrow").style.transform = `rotate(${ang.toFixed(3)}rad)`;
   }
 
-  const dest = destName() + "\n" + fmtDist(destProgress() - game.prog);
+  const dest = `${destName()} ${fmtDist(destProgress() - game.prog)} সামনে`;
   if (dest !== shownDest) { shownDest = dest; $("gpsDest").textContent = dest; }
 
   const m = findNext(N.showAhead);

@@ -382,9 +382,9 @@ export const CFG = {
     dash: [3, 10],        // lane markings: 3 units of paint every 10 units
     stubWidth: 12,        // side roads at junctions (just scenery)
     stubLength: 70,
-    buildingGap: 15,      // distance between buildings along the road
-    buildingPool: 110,    // how many building boxes exist (they are reused)
-    buildingAhead: 280,   // buildings are placed this far ahead of the bus...
+    buildingGap: 11,      // distance between buildings along the road
+    buildingPool: 160,    // how many building groups exist (they are reused)
+    buildingAhead: 260,   // buildings are placed this far ahead of the bus...
     buildingBehind: 50,   // ...and kept until this far behind
     buildingColors: [0xd7ccc8, 0xffe0b2, 0xb0bec5, 0xc5e1a5, 0xf8bbd0, 0xbcaaa4],
   },

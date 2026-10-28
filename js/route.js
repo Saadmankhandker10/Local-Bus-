@@ -44,9 +44,10 @@ export const ROUTE = {
       zones: [{ type: "lake", side: 1, from: 0.15, to: 0.7 }],
       landmarks: [
         { prefab: "lake", every: 40, from: 0.15, to: 0.7, side: 1 },
+        { prefab: "wires", every: 55, from: 0, to: 1 },
         { prefab: "tree", every: 22, from: 0, to: 1, side: -1 },
         { prefab: "tree", every: 22, from: 0.7, to: 1, side: 1 },
-        { prefab: "coachingBanner", every: 220, from: 0.05, to: 1 },
+        { prefab: "coachingBanner", every: 140, from: 0.05, to: 1 },
       ],
     },
     {
@@ -62,6 +63,7 @@ export const ROUTE = {
       zones: [{ type: "shops", from: 0, to: 0.6 }],
       landmarks: [
         { prefab: "shopRow", every: 28, from: 0, to: 0.6 },
+        { prefab: "wires", every: 55, from: 0, to: 0.8 },
         { prefab: "marketSign", at: 0.12, text: "মার্কেট এলাকা — সাবধানে চলুন" },
         { prefab: "footbridge", at: 0.28, text: "সায়েন্সল্যাব ফুটওভার ব্রিজ" },
         { prefab: "footbridge", at: 0.68, text: "ফুটওভার ব্রিজ — পথচারী পারাপার" },
@@ -96,14 +98,13 @@ export const ROUTE = {
   ],
 
   // Time of day along the whole journey (p = 0 at the start, 1 at the end).
-  // Colours fade smoothly from one key to the next.
+  // Warm Dhaka golden-afternoon / sunset boulevard atmosphere fading into dusk.
   sky: [
-    { p: 0.00, sky: 0xdcd6cc, fog: 0xdcd6cc, fogFar: 140, sun: 0xffd9a8, sunI: 0.9, hemiI: 0.9, ground: 0x8d8a7a, sunPos: [40, 15, -30] }, // early morning haze
-    { p: 0.22, sky: 0xa9d4f0, fog: 0xbcdcf0, fogFar: 180, sun: 0xfffbe8, sunI: 1.3, hemiI: 1.0, ground: 0x7d8f5a, sunPos: [10, 50, 10] },  // bright late morning
-    { p: 0.48, sky: 0xa9d4f0, fog: 0xbcdcf0, fogFar: 180, sun: 0xfffbe8, sunI: 1.3, hemiI: 1.0, ground: 0x8d8a7a, sunPos: [0, 50, 0] },
-    { p: 0.62, sky: 0xf4c27c, fog: 0xf0c89a, fogFar: 170, sun: 0xffb35c, sunI: 1.2, hemiI: 0.9, ground: 0x9a8a6a, sunPos: [-40, 18, -20] }, // golden afternoon
-    { p: 0.78, sky: 0xc9786a, fog: 0xb8766e, fogFar: 160, sun: 0xff8a5c, sunI: 0.7, hemiI: 0.75, ground: 0x6f7a50, sunPos: [-50, 8, -30] }, // dusk
-    { p: 1.00, sky: 0x1f2747, fog: 0x1f2747, fogFar: 150, sun: 0x8899ff, sunI: 0.3, hemiI: 0.5, ground: 0x2e3a28, sunPos: [-20, 30, 10] }, // early night
+    { p: 0.00, sky: 0xd99672, fog: 0xe3ab84, fogFar: 175, sun: 0xffc680, sunI: 1.25, hemiI: 0.95, ground: 0x6d5e4e, sunPos: [25, 22, -40] },
+    { p: 0.28, sky: 0xe8b282, fog: 0xedc093, fogFar: 185, sun: 0xffd699, sunI: 1.3,  hemiI: 1.0,  ground: 0x6e6452, sunPos: [10, 35, -30] },
+    { p: 0.55, sky: 0xd68a6c, fog: 0xde9878, fogFar: 175, sun: 0xffa766, sunI: 1.15, hemiI: 0.9,  ground: 0x635548, sunPos: [-20, 18, -35] },
+    { p: 0.80, sky: 0xb56565, fog: 0xbf736b, fogFar: 165, sun: 0xff8052, sunI: 0.85, hemiI: 0.8,  ground: 0x4f443c, sunPos: [-40, 12, -30] },
+    { p: 1.00, sky: 0x2c2238, fog: 0x382a42, fogFar: 155, sun: 0x99aaff, sunI: 0.45, hemiI: 0.6,  ground: 0x2e2a28, sunPos: [-20, 28, 10] },
   ],
 };
 

@@ -57,10 +57,22 @@ export function refreshBestBanner() {
 refreshBestBanner();
 applyLangDOM();
 
+const CRASH_TICKER = {
+  bike: "ধাক্কায় মোটরসাইকেল উল্টে গেল, আরোহী এখন পেছনে দৌড়ে",
+  rickshaw: "রিকশায় লোকাল বাসের ধাক্কা, হেল্পার বললেন 'সামনে খালি ছিল'",
+  cng: "সিএনজি অটোরিকশায় ঠোকাঠুকি, চালকের সাথে তুমুল তর্ক",
+  car: "প্রাইভেট কারে আচমকা ঘষা, হর্ন বাজিয়ে ছুটছে লোকাল বাস",
+  stall: "রাস্তার পাশের দোকানে বাসের ধাক্কা, চায়ের কাপ ও সিঙ্গারা আকাশে",
+};
+
 /* ====== Event reactions ====== */
 on("crash", e => {
-  $("dmgPop").textContent = `${NAMES[e.type]}! +${e.gained}` + (game.combo > 1 ? `  কম্বো x${comboMult()}` : "");
+  $("dmgPop").textContent = `${NAMES[e.type]}! +৳${bnNum(e.gained)}` + (game.combo > 1 ? `  কম্বো x${bnNum(comboMult())}` : "");
   pop($("dmgPop"));
+  const news = CRASH_TICKER[e.type];
+  if (news && $("tickerTrack")) {
+    $("tickerTrack").textContent = `${news}   ✦   ` + TICKER.join("   ✦   ");
+  }
 });
 on("chaseStart", () => msg("পাবলিক দৌড়াচ্ছে! পালান! 🏃", 1400));
 on("crowdGaveUp", () => msg("পাবলিক হাল ছেড়ে দিল 😅", 1400));
@@ -83,19 +95,20 @@ on("stageArrive", t => {
  * @param {number} boostFx 0..1 strength of the boost effect (for speed lines)
  */
 export function updateHud(dt, boostFx) {
-  $("fare").textContent = "৳" + Math.floor(game.fare);
-  $("damage").textContent = Math.floor(game.damage);
-  $("combo").textContent = game.combo > 1 ? `x${comboMult()}` : "";
-  $("pass").textContent = game.pass;
-  $("spd").textContent = Math.round(game.speed * CFG.hud.kmhPerSpeed);
+  $("fare").textContent = "৳" + bnNum(Math.floor(game.fare));
+  $("damage").textContent = "৳" + bnNum(Math.floor(game.damage * 10).toLocaleString("en-IN"));
+  $("combo").textContent = game.combo > 1 ? `x${bnNum(comboMult())}` : "";
+  $("pass").textContent = bnNum(game.pass);
+  $("spd").textContent = bnNum(Math.round(game.speed * CFG.hud.kmhPerSpeed));
   // The route is scaled so the whole trip reads as the real ~7 km.
-  $("dist").textContent = (Math.min(game.prog, TOTAL) / TOTAL * ROUTE.realKm).toFixed(1);
+  $("dist").textContent = bnNum((Math.min(game.prog, TOTAL) / TOTAL * ROUTE.realKm).toFixed(1));
   $("fuelbar").style.width = game.fuel + "%";
+  if ($("fuelPct")) $("fuelPct").textContent = bnNum(Math.round(game.fuel)) + "%";
   $("fuelbox").classList.toggle("low", game.fuel < CFG.hud.lowFuel);
-  const cng = game.running && game.fuel < 68 ? nearestCng() : null;
+  const cng = game.running && game.fuel < 85 ? nearestCng() : null;
   if ($("cngHint")) {
     const m = cng ? Math.round(cng.d / TOTAL * ROUTE.realKm * 1000 / 10) * 10 : 0;
-    $("cngHint").textContent = cng ? `${cng.side < 0 ? "↖" : "↗"}${bnNum(m)}মি` : "";
+    $("cngHint").textContent = cng ? `▲⛽ সিএনজি ${bnNum(m)} মি সামনে` : "";
   }
   $("hpbar").style.width = game.hp + "%";
   $("hpbox").classList.toggle("low", game.hp < CFG.bus.lowHp);
@@ -104,10 +117,12 @@ export function updateHud(dt, boostFx) {
   $("speedlines").style.opacity = (boostFx * CFG.camera.speedLinesOpacity).toFixed(3);
   $("pbus").style.left = (progress(game.prog) * 100).toFixed(2) + "%";
 
-  // Crowd: a bar that fills as they get closer, plus an orange glow at the bottom edge
-  // (the crowd is behind the bus, so the cue is where they come from).
+  // Top-centre red chasing crowd pill ("পাবলিক পিছে! ৬ জন!") + bottom orange glow.
   const chasing = game.running && crowd.active;
   $("crowdbox").hidden = !chasing;
+  if (chasing && $("crowdText")) {
+    $("crowdText").textContent = `পাবলিক পিছে! ${bnNum(crowd.size)} জন!`;
+  }
   const close = chasing ? clamp(1 - (crowd.gap - CFG.crowd.catchGap) / (CFG.crowd.cueGap - CFG.crowd.catchGap), 0, 1) : 0;
   $("crowdbar").style.width = (close * 100).toFixed(1) + "%";
   $("crowdcue").style.opacity = close.toFixed(3);
@@ -235,7 +250,6 @@ export function hideScreen() {
   hidePaper();
   $("share").hidden = true;
   if ($("copyBtn")) $("copyBtn").hidden = true;
-  if ($("ticker")) $("ticker").hidden = true;
   $("screen").style.display = "none";
   $("pausebtn").hidden = false;
   $("msg").textContent = "";

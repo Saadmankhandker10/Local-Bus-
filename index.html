@@ -19,30 +19,48 @@
 <div id="speedlines"></div>
 <div id="vignette"></div>
 <div id="crowdcue"></div>
-<div id="progress"><div id="ptrack"></div><div id="pbus">🚌</div></div>
+<div id="progress" hidden><div id="ptrack"></div><div id="pbus">🚌</div></div>
+
+<!-- Top-left big Bangla damage/score counter + compact bus stats -->
 <div id="hud">
-  <div class="box"><span data-i18n="lblDamage">ড্যামেজ</span><br><b id="damage">0</b> <span id="combo"></span></div>
-  <div class="box"><span data-i18n="lblFare">ভাড়া</span><br><b id="fare">৳0</b></div>
-  <div class="box"><span data-i18n="lblPass">যাত্রী</span><br><b id="pass">0</b></div>
-  <div class="box"><span data-i18n="lblSpd">গতি</span><br><b id="spd">0</b> <small>কিমি/ঘ</small></div>
-  <div class="box"><span data-i18n="lblDist">দূরত্ব</span><br><b id="dist">0.0</b> <small>কিমি</small></div>
-  <div class="box" id="fuelbox"><span data-i18n="lblFuel">⛽ তেল</span> <small id="cngHint"></small><div class="bar"><i id="fuelbar"></i></div></div>
-  <div class="box" id="hpbox"><span data-i18n="lblHp">🚌 বডি</span><div class="bar"><i id="hpbar"></i></div></div>
-  <div class="box" id="comfortbox"><span data-i18n="lblComfort">😊 স্বস্তি</span><div class="bar"><i id="comfortbar"></i></div></div>
-  <div class="box" id="crowdbox" hidden><span data-i18n="lblCrowd">🏃 পাবলিক</span><div class="bar"><i id="crowdbar"></i></div></div>
+  <div id="scoreHero">
+    <span class="hero-tag" data-i18n="lblDamage">রাস্তার ড্যামেজ</span>
+    <div id="bigScoreRow"><b id="damage">৳০</b> <span id="combo"></span></div>
+  </div>
+  <div id="hudPills">
+    <div class="box"><span data-i18n="lblFare">ভাড়া</span> <b id="fare">৳০</b></div>
+    <div class="box"><span data-i18n="lblPass">যাত্রী</span> <b id="pass">০</b></div>
+    <div class="box"><span data-i18n="lblSpd">গতি</span> <b id="spd">০</b></div>
+    <div class="box"><span data-i18n="lblDist">দূরত্ব</span> <b id="dist">০.০</b> <small>কিমি</small></div>
+    <div class="box" id="hpbox"><span data-i18n="lblHp">🚌 বডি</span><div class="bar"><i id="hpbar"></i></div></div>
+    <div class="box" id="comfortbox"><span data-i18n="lblComfort">😊 স্বস্তি</span><div class="bar"><i id="comfortbar"></i></div></div>
+  </div>
 </div>
+
+<!-- Top-centre red pill when the public is chasing behind the bus -->
+<div id="crowdbox" hidden>
+  <span id="crowdText">পাবলিক পিছে! ৬ জন!</span>
+  <div class="bar" hidden><i id="crowdbar"></i></div>
+</div>
+
+<!-- Top-right fuel card + circular street-radar minimap + upcoming mark pill -->
 <div id="nav" hidden>
-  <div id="mapWrap" title="৪ডি ম্যাপ বড় করে দেখতে ক্লিক করুন (Tab)">
-    <canvas id="minimap"></canvas>
-    <div id="map4dBadge">4D</div>
-    <div id="map4dClock">☀ সকাল ৬:৩০</div>
+  <div id="fuelbox">
+    <div id="fuelLabel"><span data-i18n="lblFuel">তেল</span> <b id="fuelPct">১০০%</b></div>
+    <div id="fuelTrack"><i id="fuelbar"></i></div>
   </div>
-  <div id="gps">
-    <div id="gpsTo"><svg id="gpsArrow" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1 L18 18 L10 13 L2 18 Z"/></svg><span id="gpsDest"></span></div>
-    <div id="gpsNext" hidden></div>
-    <button type="button" id="open4dMapBtn">🗺 ৪ডি ম্যাপ (Tab)</button>
+  <div id="mapWrap" title="ম্যাপ বড় করে দেখতে ক্লিক করুন (Tab)">
+    <canvas id="minimap"></canvas>
+  </div>
+  <div id="markPill">
+    <span id="cngHint"></span>
+    <div id="gps">
+      <div id="gpsTo"><svg id="gpsArrow" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1 L18 18 L10 13 L2 18 Z"/></svg><span id="gpsDest"></span></div>
+      <div id="gpsNext" hidden></div>
+    </div>
   </div>
 </div>
+
 <div id="msg"></div>
 <div id="dmgPop"></div>
 <div id="warn" hidden>⚠ সামনে বিপদ!</div>
@@ -63,7 +81,7 @@
       হলুদ <b>⛽ সিএনজি</b> দাগে থেমে তেল নিন। গোলাপি <b>👮 পুলিশ</b> দাগে থেমে জরিমানা দিলে পাবলিক চলে যায়।<br>
       নীল <b>বাস স্টপে</b> আস্তে থামলে যাত্রী ওঠে, ভাড়া বাড়ে। শাহবাগের মিছিল এড়াতে বাম লেন বা <b>কাঁটাবনের গলি</b> ধরুন!<br><br>
       <b>W/↑</b> চালান &nbsp; <b>S/↓</b> ব্রেক &nbsp; <b>A D / ← →</b> ঘুরান &nbsp; <b>Shift/Space</b> বুস্ট<br>
-      <b>H</b> হর্ন &nbsp; <b>G</b> ওস্তাদের হাঁক &nbsp; <b>M</b> সাউন্ড &nbsp; <b>P/Esc</b> বিরতি
+      <b>H</b> হর্ন &nbsp; <b>G</b> ওস্তাদের হাঁক &nbsp; <b>M</b> সাউন্ড &nbsp; <b>P/Esc</b> বিরতি &nbsp; <b>Tab</b> বড় ম্যাপ
     </div>
     <div class="fiction">এটি একটি কাল্পনিক, ব্যঙ্গাত্মক গেম। বাস্তবে নিরাপদে চালান।</div>
   </div>
@@ -87,7 +105,7 @@
   </div>
   <div class="btns">
     <button id="go" class="ticket-btn" data-i18n="goStart">🎫 যাত্রা শুরু</button>
-    <button id="title4dMapBtn" type="button">🗺 ৪ডি ঢাকা ম্যাপ</button>
+    <button id="title4dMapBtn" type="button">🗺 পুরো ঢাকা ম্যাপ</button>
     <button id="restart" hidden data-i18n="restartBtn">শুরু থেকে</button>
     <button id="share" hidden data-i18n="shareBtn">📰 ছবি সেভ / শেয়ার</button>
     <button id="copyBtn" hidden data-i18n="copyBtn">📋 স্কোর কপি</button>
@@ -100,7 +118,13 @@
     <button type="button" class="linkbtn" data-info="privacy">গোপনীয়তা</button>
   </div>
 </div>
-<div id="ticker"><div id="tickerTrack"></div></div>
+
+<!-- Bottom TV-style breaking news bar ("সর্বশেষ") -->
+<div id="ticker">
+  <div id="tickerBadge">• সর্বশেষ</div>
+  <div id="tickerWrap"><div id="tickerTrack"></div></div>
+</div>
+
 <div id="pause" hidden>
   <h1 data-i18n="pauseTitle">বিরতি</h1>
   <div class="btns">
@@ -147,7 +171,7 @@
 <div id="mapModal" class="modal" hidden>
   <div class="modal-card map4d-card">
     <div class="map4d-head">
-      <h2>🗺 ৪ডি ঢাকা সিটি রুট ম্যাপ (3D + Live Traffic & Time)</h2>
+      <h2>🗺 ঢাকা সিটি রুট ম্যাপ (মোহাম্মদপুর → ঢাকা বিশ্ববিদ্যালয়)</h2>
       <div id="bigMapClock" class="map4d-pill">☀ সকাল ৬:৩০</div>
     </div>
     <canvas id="bigmap"></canvas>

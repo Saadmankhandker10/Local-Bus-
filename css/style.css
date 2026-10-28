@@ -1,18 +1,53 @@
 html,body{margin:0;height:100%;overflow:hidden;background:var(--asphalt-dark,#1a1d1f);font-family:var(--font-bn);color:#fff}
 canvas{display:block}
 [hidden]{display:none!important}
-#hud{position:fixed;top:42px;left:10px;right:156px;display:flex;gap:7px;flex-wrap:wrap;pointer-events:none}
-.box{background:rgba(20,26,22,.82);border:1.5px solid rgba(255,194,26,.45);padding:5px 9px;border-radius:var(--radius-md,8px);font-size:13px;min-width:84px;box-shadow:0 2px 8px rgba(0,0,0,.4)}
-.box b{font-size:16px;color:var(--signal-yellow,#ffc21a);font-variant-numeric:tabular-nums}
-.bar{height:8px;background:#333;border-radius:4px;margin-top:4px;overflow:hidden;border:1px solid rgba(255,255,255,.15)}
+
+/* Top-left big Bangla damage/score hero counter + compact pills */
+#hud{position:fixed;top:12px;left:16px;display:flex;flex-direction:column;align-items:flex-start;gap:6px;pointer-events:none;z-index:16}
+#scoreHero{display:flex;flex-direction:column;align-items:flex-start}
+.hero-tag{background:rgba(20,38,24,.88);border:1.5px solid #ffd54f;color:#fff8e1;font-size:13px;font-weight:700;padding:2px 12px;border-radius:14px;box-shadow:0 2px 6px rgba(0,0,0,.45)}
+#bigScoreRow{margin-top:2px;display:flex;align-items:baseline;gap:8px}
+#damage{font-size:clamp(32px,5vw,46px);font-weight:900;color:#ffd54f;text-shadow:0 3px 0 #8d3b14,0 5px 12px rgba(0,0,0,.7);line-height:1.05;font-variant-numeric:tabular-nums}
+#combo{color:#ffeb3b;font-size:20px;font-weight:900;text-shadow:0 2px 4px #000}
+#hudPills{display:flex;gap:6px;flex-wrap:wrap;max-width:60vw}
+.box{background:rgba(20,24,22,.72);border:1px solid rgba(255,213,79,.35);padding:3px 9px;border-radius:8px;font-size:12.5px;display:flex;align-items:center;gap:5px;box-shadow:0 2px 6px rgba(0,0,0,.35)}
+.box b{font-size:14px;color:#ffd54f;font-variant-numeric:tabular-nums}
+.bar{width:46px;height:7px;background:#333;border-radius:4px;overflow:hidden;border:1px solid rgba(255,255,255,.15)}
 .bar i{display:block;height:100%;width:100%;transition:width .12s linear}
-#fuelbar{background:#2ea8ff}#hpbar{background:#26a69a}#hpbox.low{animation:lowfuel 1s ease-in-out infinite alternate}#comfortbar{background:#43a047}#comfortbox.low #comfortbar{background:#ff7043}#crowdbar{background:#ff8f00}
-#cngHint{color:var(--teal-led,#35e0c2);font-weight:700;font-size:11px}
-/* Low fuel: a slow 1 Hz glow, well under the 3 Hz flash limit. */
-#fuelbox.low{animation:lowfuel 1s ease-in-out infinite alternate}
-@keyframes lowfuel{to{background:rgba(184,50,42,.82)}}
-#msg{position:fixed;top:114px;width:100%;text-align:center;font-size:22px;font-weight:700;text-shadow:0 2px 6px #000;pointer-events:none}
-#screen{position:fixed;inset:0;bottom:30px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow-y:auto;background:rgba(15,20,17,.78);text-align:center;padding:18px;line-height:1.55}
+#hpbar{background:#26a69a}#hpbox.low{animation:lowfuel 1s ease-in-out infinite alternate}#comfortbar{background:#43a047}#comfortbox.low #comfortbar{background:#ff7043}
+
+/* Top-centre red chasing crowd pill */
+#crowdbox{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:linear-gradient(180deg,#d32f2f,#9a1b1b);border:2px solid #ffcdd2;color:#fff;padding:6px 22px;border-radius:22px;font-size:17px;font-weight:800;box-shadow:0 4px 14px rgba(0,0,0,.6);pointer-events:none;z-index:19}
+
+/* Top-right cream fuel card + circular street radar minimap + magenta upcoming-mark pill */
+#nav{position:fixed;top:12px;right:14px;width:152px;display:flex;flex-direction:column;align-items:flex-end;gap:6px;z-index:18}
+#fuelbox{width:118px;display:flex;flex-direction:column;gap:4px;pointer-events:none}
+#fuelLabel{background:#f5efe0;color:#222;padding:4px 12px;border-radius:8px;font-size:14px;font-weight:800;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+#fuelLabel b{color:#111;font-size:16px}
+#fuelTrack{height:8px;background:rgba(0,0,0,.55);border-radius:5px;overflow:hidden;border:1px solid rgba(255,255,255,.25)}
+#fuelbar{display:block;height:100%;width:100%;background:linear-gradient(90deg,#e65100,#ffb300,#ffee58);transition:width .12s linear}
+#fuelbox.low #fuelLabel{background:#ff5252;color:#fff;animation:lowfuel 1s ease-in-out infinite alternate}
+@keyframes lowfuel{to{background:rgba(184,50,42,.9)}}
+
+#mapWrap{position:relative;cursor:pointer}
+#minimap{display:block;box-sizing:border-box;width:142px;height:142px;border-radius:50%;
+  border:2.5px solid rgba(255,255,255,.85);box-shadow:0 4px 14px rgba(0,0,0,.55)}
+#markPill{background:rgba(28,22,28,.82);border:1.5px solid #ec407a;color:#fff;border-radius:16px;padding:4px 12px;font-size:12.5px;font-weight:700;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.45);pointer-events:none}
+#cngHint{color:#ff80ab;display:block}
+#gps{margin-top:2px;font-size:11.5px;line-height:1.25;opacity:.92}
+#gpsTo{display:flex;align-items:center;justify-content:center;gap:5px;font-weight:700}
+#gpsDest{white-space:nowrap}
+#gpsArrow{width:16px;height:16px;flex:none;fill:#ec407a;stroke:#fff;stroke-width:1.2}
+#gpsNext{color:#ffeb3b;margin-top:1px}
+
+/* Round dark floating action buttons under the minimap */
+#soundbtn,#pausebtn,#settingsbtn{position:fixed;right:16px;width:42px;height:42px;border-radius:50%;padding:0;font-size:17px;background:rgba(20,20,22,.78);color:#fff;border:1.5px solid rgba(255,255,255,.55);box-shadow:0 3px 10px rgba(0,0,0,.5);z-index:20}
+#soundbtn{top:266px}
+#settingsbtn{top:314px}
+#pausebtn{top:362px}
+
+#msg{position:fixed;top:108px;width:100%;text-align:center;font-size:22px;font-weight:700;text-shadow:0 2px 6px #000;pointer-events:none}
+#screen{position:fixed;inset:0;bottom:34px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow-y:auto;background:rgba(15,20,17,.78);text-align:center;padding:18px;line-height:1.55;z-index:25}
 .tinboard{background:linear-gradient(180deg,var(--bus-green,#1f6b3a),var(--bus-green-dark,#134625));border:4px double var(--signal-yellow,#ffc21a);border-radius:14px;padding:10px 22px;margin-bottom:10px;box-shadow:0 6px 20px rgba(0,0,0,.55)}
 .tinplate{font-size:12px;color:var(--cream-paper,#f6efdd);letter-spacing:.5px;opacity:.9}
 #screen h1{margin:2px 0 4px;font-size:clamp(24px,5vw,34px);color:var(--signal-yellow,#ffc21a);text-shadow:0 2px 4px rgba(0,0,0,.6)}
@@ -20,48 +55,38 @@ canvas{display:block}
 button{font-size:18px;padding:11px 24px;border:0;border-radius:10px;background:var(--signal-yellow,#ffc21a);color:#111;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 3px 10px rgba(0,0,0,.35)}
 button:active{transform:translateY(1px)}
 .ticket-btn{background:linear-gradient(180deg,#ffd54f,#ffb300);border:2px dashed #5d4037;padding:12px 30px;font-size:21px}
-#pause{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.65)}
+#pause{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.65);z-index:26}
 #pause h1{margin:0 0 16px;font-size:34px;color:var(--signal-yellow,#ffc21a)}
-#pausebtn,#soundbtn,#settingsbtn{position:fixed;top:8px;width:40px;height:40px;padding:0;font-size:18px;opacity:.88;z-index:20}
-#pausebtn{right:10px}
-#soundbtn{right:56px}
-#settingsbtn{right:102px;background:#e0e0e0}
-/* Boost speed lines: thin rays from the centre, faded out in the middle. JS only changes opacity. */
+
 #speedlines{position:fixed;inset:0;pointer-events:none;opacity:0;
   background:repeating-conic-gradient(from 0deg at 50% 45%,rgba(255,255,255,.6) 0deg 1deg,transparent 1deg 9deg);
   -webkit-mask-image:radial-gradient(circle at 50% 45%,transparent 35%,#000 80%);
   mask-image:radial-gradient(circle at 50% 45%,transparent 35%,#000 80%)}
-#combo{color:var(--signal-yellow,#ffc21a);font-weight:700}
-/* Red edges when a heavy hazard is ahead. JS sets the opacity (pulses at 2 Hz). */
 #vignette{position:fixed;inset:0;pointer-events:none;opacity:0;
   background:radial-gradient(ellipse at center,transparent 55%,rgba(255,0,0,.85) 100%)}
 #warn{position:fixed;top:150px;width:100%;text-align:center;font-size:26px;font-weight:800;color:#fff;
   text-shadow:0 0 8px #f00,0 2px 4px #000;pointer-events:none}
-#dmgPop{position:fixed;top:40%;width:100%;text-align:center;font-size:30px;font-weight:800;color:var(--signal-yellow,#ffc21a);
+#dmgPop{position:fixed;top:38%;width:100%;text-align:center;font-size:30px;font-weight:800;color:var(--signal-yellow,#ffc21a);
   text-shadow:0 2px 6px #000;pointer-events:none;opacity:0}
 #dmgPop.pop{animation:pop .9s ease-out}
-/* The crowd is behind the bus, so its cue glows from the bottom edge. JS sets the opacity. */
 #crowdcue{position:fixed;left:0;right:0;bottom:0;height:35%;pointer-events:none;opacity:0;
   background:linear-gradient(to top,rgba(255,120,0,.75),transparent)}
-#subtitle{position:fixed;left:50%;bottom:106px;transform:translateX(-50%);max-width:90%;
-  background:rgba(15,20,17,.85);border:1.5px solid var(--signal-yellow,#ffc21a);padding:7px 16px;border-radius:10px;font-size:19px;text-align:center;pointer-events:none}
+
+/* Frosted cream subtitle pill at the bottom above the TV news bar */
+#subtitle{position:fixed;left:50%;bottom:54px;transform:translateX(-50%);max-width:88%;
+  background:rgba(235,228,212,.86);backdrop-filter:blur(6px);color:#181818;border:1.5px solid rgba(255,255,255,.7);
+  padding:10px 24px;border-radius:12px;font-size:20px;font-weight:800;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.45);pointer-events:none;z-index:19}
 @keyframes pop{0%{opacity:0;transform:scale(.6)}15%{opacity:1;transform:scale(1.1)}70%{opacity:1;transform:translateY(-20px)}100%{opacity:0;transform:translateY(-40px)}}
-#touch{position:fixed;bottom:36px;left:0;right:0;display:none;justify-content:space-between;padding:0 14px;touch-action:none}
+
+#touch{position:fixed;bottom:42px;left:0;right:0;display:none;justify-content:space-between;padding:0 14px;touch-action:none;z-index:20}
 #touch div{display:flex;gap:10px}
 #touch button{width:68px;height:68px;font-size:25px;padding:0;opacity:.8;user-select:none}
 @media(pointer:coarse){#touch{display:flex}}
-/* Route progress along the top: one segment per stage, the bus icon slides along. */
-#progress{position:fixed;top:8px;left:10px;right:152px;height:26px;pointer-events:none}
-#ptrack{display:flex;height:100%;border-radius:13px;overflow:hidden;background:rgba(0,0,0,.6);border:1px solid rgba(255,194,26,.4)}
-#ptrack .seg{display:flex;align-items:center;justify-content:center;font-size:12px;white-space:nowrap;overflow:hidden;
-  border-right:2px solid rgba(255,214,0,.8)}
-#ptrack .seg:last-child{border-right:0}
-#pbus{position:absolute;top:-2px;font-size:22px;transform:translateX(-50%) scaleX(-1);transition:left .2s linear}
+
 #route{color:var(--cream-paper,#f6efdd);font-size:15px;font-weight:700}
-/* Stage card with a rickshaw-art style double border in bright colours. */
 #stagecard{position:fixed;top:23%;left:50%;transform:translateX(-50%);min-width:300px;max-width:90%;text-align:center;
   padding:14px 26px;border-radius:16px;background:var(--bus-green,#1f6b3a);border:5px double var(--signal-yellow,#ffc21a);
-  box-shadow:0 0 0 4px #e91e63,0 0 0 8px #00bcd4,0 8px 24px rgba(0,0,0,.5);pointer-events:none}
+  box-shadow:0 0 0 4px #e91e63,0 0 0 8px #00bcd4,0 8px 24px rgba(0,0,0,.5);pointer-events:none;z-index:19}
 #stagecard.pop{animation:cardin .5s ease-out}
 @keyframes cardin{from{opacity:0;transform:translateX(-50%) scale(.7)}to{opacity:1;transform:translateX(-50%) scale(1)}}
 #cardTitle{font-size:26px;font-weight:800;color:#ffeb3b}
@@ -69,11 +94,13 @@ button:active{transform:translateY(1px)}
 #restart{background:#90caf9}
 #copyBtn{background:#e0f2f1;color:#004d40}
 #installBtn{background:var(--teal-led,#35e0c2);color:#00251a}
+#title4dMapBtn{background:#1f5fae;color:#fff}
 .fiction{margin-top:8px;font-size:12px;opacity:.75}
 .btns{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 #share{background:#fff;color:#1a1a1a}
 .footer-links{margin-top:10px;font-size:13px;opacity:.85}
 .linkbtn{background:none;border:0;color:var(--teal-led,#35e0c2);font-size:13px;padding:2px 6px;text-decoration:underline;box-shadow:none;font-weight:600}
+
 /* Fake newspaper front page (end of every run). */
 #paper{position:relative;background:var(--cream-paper,#f6efdd);color:#1a1a1a;width:min(780px,94vw);padding:16px 20px;border-radius:4px;text-align:left;
   box-shadow:0 10px 30px rgba(0,0,0,.6);font-family:var(--font-serif);line-height:1.45}
@@ -90,46 +117,27 @@ button:active{transform:translateY(1px)}
 #pcap{font-size:11px;font-style:italic}
 #pstory{margin:0 0 8px;font-size:13.5px}
 #pstats{font-size:12.5px;font-weight:600;border-top:1px solid #1a1a1a;padding-top:6px}
-/* Helper's Ledger (হিসাবের খাতা) inside the newspaper card. */
 #ledger{margin-top:8px;background:#fff8e7;border:1.5px dashed #6d4c41;border-radius:6px;padding:7px 10px;font-size:12.5px}
 .lhead{font-weight:800;color:#4e342e;border-bottom:1px solid #bcaaa4;padding-bottom:3px;margin-bottom:4px}
 .lrow{display:flex;justify-content:space-between;padding:1.5px 0}
 .ltot{border-top:1px solid #6d4c41;margin-top:3px;padding-top:3px;font-size:13.5px;color:#1b5e20}
 #inappNote{margin-top:8px;background:#fff3cd;color:#664d03;padding:6px 10px;border-radius:4px;font-size:12px}
 #pnote{margin-top:8px;font-size:11px;text-align:center;opacity:.75}
-/* Bottom LED marquee news ticker. */
-#ticker{position:fixed;left:0;right:0;bottom:0;height:28px;background:#0d1410;border-top:1.5px solid var(--bus-green,#1f6b3a);overflow:hidden;display:flex;align-items:center;pointer-events:none;z-index:15}
-#tickerTrack{display: inline-block;white-space:nowrap;color:var(--teal-led,#35e0c2);font-size:13px;font-weight:600;padding-left:100%;animation:ticker 38s linear infinite}
+
+/* Bottom TV-style Breaking News Bar ("• সর্বশেষ") — always visible during play and menus */
+#ticker{position:fixed;left:0;right:0;bottom:0;height:34px;background:linear-gradient(90deg,#0a2259,#0d2e78);border-top:2px solid #f59e0b;display:flex;align-items:center;overflow:hidden;pointer-events:none;z-index:28}
+#tickerBadge{background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-weight:900;font-size:14px;height:100%;display:flex;align-items:center;padding:0 18px 0 12px;clip-path:polygon(0 0,100% 0,88% 100%,0 100%);flex:none;z-index:2;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+#tickerWrap{flex:1;overflow:hidden;display:flex;align-items:center}
+#tickerTrack{display:inline-block;white-space:nowrap;color:#fff;font-size:14.5px;font-weight:700;padding-left:40%;animation:ticker 34s linear infinite}
 @keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-100%)}}
-/* Modals for Settings and Info pages. */
+
+/* Modals for Settings, Info, and Full City Map */
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:30;padding:16px}
 .modal-card{background:#1c2520;border:2px solid var(--signal-yellow,#ffc21a);border-radius:14px;padding:18px 22px;width:min(460px,92vw);max-height:86vh;overflow-y:auto;text-align:left;line-height:1.5}
 .modal-card h2{margin:0 0 12px;color:var(--signal-yellow,#ffc21a);text-align:center}
 .srow{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.12);font-size:14px;gap:10px}
 .srow select{padding:5px 8px;border-radius:6px;background:#2b3730;color:#fff;border:1px solid #666;font-family:inherit}
 .sm-btn{font-size:14px;padding:6px 12px}
-/* Speech bubble above a character; JS moves it to follow the 3D position. */
-#bubble{position:fixed;transform:translate(-50%,-100%);max-width:260px;background:#fff;color:#1a1a1a;padding:8px 12px;
-  border-radius:14px;font-size:16px;font-weight:700;pointer-events:none;box-shadow:0 3px 10px rgba(0,0,0,.4)}
-#bubble:after{content:"";position:absolute;left:50%;bottom:-10px;border:10px solid transparent;border-top-color:#fff;border-bottom:0;margin-left:-10px}
-#touch .mid{align-self:flex-end}
-#touch .mid button{width:56px;height:56px;font-size:23px}
-/* Minimap and GPS box, top right. 4D tilted holographic style with live clock and expandable city map. */
-#nav{position:fixed;top:54px;right:10px;width:136px;z-index:18}
-#mapWrap{position:relative;cursor:pointer;perspective:320px}
-#minimap{display:block;box-sizing:border-box;width:136px;height:136px;border-radius:50%;
-  border:2.5px solid var(--teal-led,#35e0c2);box-shadow:0 6px 16px rgba(0,0,0,.65),0 0 12px rgba(53,224,194,.35);
-  transform:rotateX(22deg);transition:transform .2s ease}
-#mapWrap:hover #minimap{transform:rotateX(12deg) scale(1.04)}
-#map4dBadge{position:absolute;top:4px;left:8px;background:var(--teal-led,#35e0c2);color:#00251a;font-size:10px;font-weight:900;padding:1px 5px;border-radius:6px;pointer-events:none}
-#map4dClock{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);background:rgba(10,18,14,.88);border:1px solid var(--signal-yellow,#ffc21a);color:var(--signal-yellow,#ffc21a);font-size:10px;font-weight:700;padding:1px 7px;border-radius:8px;white-space:nowrap;pointer-events:none}
-#gps{margin-top:5px;background:rgba(15,22,18,.82);border:1px solid rgba(255,194,26,.4);border-radius:8px;padding:5px 7px;font-size:12.5px;line-height:1.35}
-#gpsTo{display:flex;align-items:center;gap:6px;font-weight:700;pointer-events:none}
-#gpsDest{white-space:pre-line}
-#gpsArrow{width:22px;height:22px;flex:none;fill:#ffd600;stroke:#000;stroke-width:1}
-#gpsNext{color:#ffeb3b;margin-top:2px;pointer-events:none}
-#open4dMapBtn{margin-top:5px;width:100%;padding:4px 6px;font-size:11.5px;border-radius:6px;background:rgba(53,224,194,.2);color:var(--teal-led,#35e0c2);border:1px solid var(--teal-led,#35e0c2);box-shadow:none}
-#title4dMapBtn{background:#1f5fae;color:#fff}
 .map4d-card{width:min(860px,95vw);max-width:95vw;padding:14px 18px}
 .map4d-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px}
 .map4d-head h2{margin:0;font-size:clamp(17px,3.2vw,22px)}
@@ -137,4 +145,10 @@ button:active{transform:translateY(1px)}
 #bigmap{width:100%;height:min(58vh,460px);background:#0c1612;border:2px solid var(--teal-led,#35e0c2);border-radius:10px;cursor:grab;touch-action:none}
 #bigmap:active{cursor:grabbing}
 .map4d-legend{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;font-size:12px;margin-top:8px;opacity:.92}
-@media(max-width:600px){#hud{right:118px}#nav{width:104px}#minimap{width:104px;height:104px}#gps{font-size:11px}}
+
+#bubble{position:fixed;transform:translate(-50%,-100%);max-width:260px;background:#fff;color:#1a1a1a;padding:8px 12px;
+  border-radius:14px;font-size:16px;font-weight:700;pointer-events:none;box-shadow:0 3px 10px rgba(0,0,0,.4)}
+#bubble:after{content:"";position:absolute;left:50%;bottom:-10px;border:10px solid transparent;border-top-color:#fff;border-bottom:0;margin-left:-10px}
+#touch .mid{align-self:flex-end}
+#touch .mid button{width:56px;height:56px;font-size:23px}
+@media(max-width:600px){#minimap{width:106px;height:106px}#nav{width:116px}#soundbtn{top:220px}#settingsbtn{top:266px}#pausebtn{top:312px}}
