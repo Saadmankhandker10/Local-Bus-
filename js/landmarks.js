@@ -442,6 +442,12 @@ const active = [];  // { m, p }
 let next = 0;       // index of the next placement to spawn
 
 /** Clear all landmarks and continue from this journey progress (start or checkpoint). */
+export function eachMetroCar(fn) {
+  for (const c of metroCars) {
+    if (c.visible) fn(c.position.x, c.position.y, c.position.z, c.rotation.y);
+  }
+}
+
 export function resetLandmarks(fromProg) {
   for (const a of active) scene.remove(a.m);
   active.length = 0;

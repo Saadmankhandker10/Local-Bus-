@@ -37,6 +37,7 @@ function onBusRoad(seg) {
 }
 
 /** Remove everything and restart all spawn counters from this odometer distance. */
+/**Remove everything and restart all spawn counters from this odometer distance. */
 export function resetTraffic(fromDist = 0) {
   for (const o of objs) scene.remove(o.m);
   for (const p of peds) scene.remove(p.m);
@@ -347,6 +348,12 @@ export function updateTraffic(dt) {
 }
 
 // Horn: light vehicles just ahead in the bus's lane move one lane aside, and pedestrians jump back to the pavement.
+export function eachTraffic(fn) {
+  for (const o of objs) {
+    if (!o.hit) fn(o.t.heavy ? "heavy" : o.t.name, o.m.position.x, o.m.position.y, o.m.position.z, o.m.rotation.y);
+  }
+}
+
 on("horn", () => {
   const bx = game.lat;
   for (const o of objs) {

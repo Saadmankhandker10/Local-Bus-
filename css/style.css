@@ -114,13 +114,27 @@ button:active{transform:translateY(1px)}
 #bubble:after{content:"";position:absolute;left:50%;bottom:-10px;border:10px solid transparent;border-top-color:#fff;border-bottom:0;margin-left:-10px}
 #touch .mid{align-self:flex-end}
 #touch .mid button{width:56px;height:56px;font-size:23px}
-/* Minimap and GPS box, top right. The map turns with the bus; JS draws it a few times a second. */
-#nav{position:fixed;top:56px;right:10px;width:124px;pointer-events:none}
-#minimap{display:block;box-sizing:border-box;width:124px;height:124px;border-radius:50%;
-  border:2px solid rgba(255,255,255,.75);box-shadow:0 2px 8px rgba(0,0,0,.5)}
-#gps{margin-top:6px;background:rgba(0,0,0,.68);border-radius:8px;padding:5px 7px;font-size:13px;line-height:1.35}
-#gpsTo{display:flex;align-items:center;gap:6px;font-weight:700}
+/* Minimap and GPS box, top right. 4D tilted holographic style with live clock and expandable city map. */
+#nav{position:fixed;top:54px;right:10px;width:136px;z-index:18}
+#mapWrap{position:relative;cursor:pointer;perspective:320px}
+#minimap{display:block;box-sizing:border-box;width:136px;height:136px;border-radius:50%;
+  border:2.5px solid var(--teal-led,#35e0c2);box-shadow:0 6px 16px rgba(0,0,0,.65),0 0 12px rgba(53,224,194,.35);
+  transform:rotateX(22deg);transition:transform .2s ease}
+#mapWrap:hover #minimap{transform:rotateX(12deg) scale(1.04)}
+#map4dBadge{position:absolute;top:4px;left:8px;background:var(--teal-led,#35e0c2);color:#00251a;font-size:10px;font-weight:900;padding:1px 5px;border-radius:6px;pointer-events:none}
+#map4dClock{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);background:rgba(10,18,14,.88);border:1px solid var(--signal-yellow,#ffc21a);color:var(--signal-yellow,#ffc21a);font-size:10px;font-weight:700;padding:1px 7px;border-radius:8px;white-space:nowrap;pointer-events:none}
+#gps{margin-top:5px;background:rgba(15,22,18,.82);border:1px solid rgba(255,194,26,.4);border-radius:8px;padding:5px 7px;font-size:12.5px;line-height:1.35}
+#gpsTo{display:flex;align-items:center;gap:6px;font-weight:700;pointer-events:none}
 #gpsDest{white-space:pre-line}
 #gpsArrow{width:22px;height:22px;flex:none;fill:#ffd600;stroke:#000;stroke-width:1}
-#gpsNext{color:#ffeb3b;margin-top:2px}
-@media(max-width:600px){#hud{right:118px}#nav{width:96px}#minimap{width:96px;height:96px}#gps{font-size:11px}}
+#gpsNext{color:#ffeb3b;margin-top:2px;pointer-events:none}
+#open4dMapBtn{margin-top:5px;width:100%;padding:4px 6px;font-size:11.5px;border-radius:6px;background:rgba(53,224,194,.2);color:var(--teal-led,#35e0c2);border:1px solid var(--teal-led,#35e0c2);box-shadow:none}
+#title4dMapBtn{background:#1f5fae;color:#fff}
+.map4d-card{width:min(860px,95vw);max-width:95vw;padding:14px 18px}
+.map4d-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.map4d-head h2{margin:0;font-size:clamp(17px,3.2vw,22px)}
+.map4d-pill{background:#0f1914;border:1.5px solid var(--teal-led,#35e0c2);color:var(--teal-led,#35e0c2);padding:3px 12px;border-radius:16px;font-size:13px;font-weight:700}
+#bigmap{width:100%;height:min(58vh,460px);background:#0c1612;border:2px solid var(--teal-led,#35e0c2);border-radius:10px;cursor:grab;touch-action:none}
+#bigmap:active{cursor:grabbing}
+.map4d-legend{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;font-size:12px;margin-top:8px;opacity:.92}
+@media(max-width:600px){#hud{right:118px}#nav{width:104px}#minimap{width:104px;height:104px}#gps{font-size:11px}}
