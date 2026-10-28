@@ -4,14 +4,14 @@ import { game, resetGame } from "./state.js";
 import { on, emit } from "./events.js";
 import { renderer, scene, initWorld, resetWorld, updateWorld } from "./world.js";
 import { initInput, pollInput, onTap, onAnyInput } from "./input.js";
-import { resetBus, updateBus, updateBusVisual, triggerHelperSlap, doUTurn } from "./bus.js";
+import { resetBus, updateBus, updateBusVisual, triggerHelperSlap } from "./bus.js";
 import { cam, updateCamera, resetCamera } from "./camera.js";
 import { resetTraffic, updateTraffic } from "./traffic.js";
 import { resetMarks, updateMarks } from "./marks.js";
 import { crowd, resetCrowd, updateCrowd, updateCrowdVisual } from "./crowd.js";
 import { line, lineFrom, say, updateSpeech, clearSpeech } from "./speech.js";
 import { stats, resetScore, saveBest, saveBestTime, totalScore, bestScore } from "./score.js";
-import { journey, resetJourney, updateJourney, currentStage, sceneryAt, progress, stageAt } from "./journey.js";
+import { journey, resetJourney, updateJourney, currentStage, sceneryAt, progress } from "./journey.js";
 import { resetLandmarks, updateLandmarks } from "./landmarks.js";
 import { resetNav, navStep, drawNav } from "./nav.js";
 import { applyTimeOfDay } from "./lighting.js";
@@ -182,26 +182,6 @@ on("crowdGaveUp", () => say("পাবলিক", line("crowdGaveUp")));
 // The helper calling the way ahead (turns, forks) from nav.js.
 on("helperSay", helperSays);
 
-// Fast-travel to any Metro Station or landmark clicked on the 4D Dhaka Map (#bigmap).
-on("teleport", ({ prog, name }) => {
-  const targetProg = clamp(prog - 35, 0, TOTAL - 80);
-  if (!game.running) start(false);
-  journey.stage = stageAt(targetProg);
-  game.prog = game.dist = targetProg;
-  game.speed = 12;
-  resetBus(targetProg);
-  resetTraffic(game.dist);
-  resetMarks(game.dist);
-  resetLandmarks(targetProg);
-  resetWorld();
-  resetCrowd();
-  resetNav();
-  resetCamera(true);
-  updateWorld();
-  updateLandmarks();
-  helperSays(`ওস্তাদ, ${name} চলে আসছি! ডানে-বামে যেদিকে খুশি টার্ন নেন!`);
-});
-
 // New stage: the helper shouts the stop name (the HUD shows the stage card).
 on("stageArrive", t => helperSays(lineFrom("helperStop", t.stage.id)));
 
@@ -306,7 +286,6 @@ onAnyInput(unlockAudio);
 onTap("horn", doHorn);
 onTap("shout", doShout);
 onTap("mute", doMute);
-onTap("uturn", () => { doUTurn(); helperSays("ওস্তাদ, ইউ-টার্ন নিলাম!"); });
 $("soundbtn").textContent = isMuted() ? "🔇" : "🔊";
 $("soundbtn").onclick = () => { unlockAudio(); doMute(); };
 onStartPressed(startMain, startFresh);

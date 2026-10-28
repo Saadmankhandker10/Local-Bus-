@@ -193,28 +193,13 @@ function approach(current, target, rate, dt) {
   return current + (target - current) * (1 - Math.exp(-rate * dt));
 }
 
-/** At an intersection, take Left (side -1), Right (side +1), or Straight (side 0) based on lane & steering. */
+/** At the end of a road piece, take the branch on the side the bus is driving. */
 export function chooseNext(list) {
-  const dir = Math.abs(input.steer) > 0.25 ? Math.sign(input.steer)
-    : Math.abs(game.lat) > 1.15 ? Math.sign(game.lat) : 0;
-  if (dir !== 0) {
-    for (const n of list) {
-      if (SEGS[n].side === dir) return n;
-    }
+  for (const n of list) {
+    const S = SEGS[n];
+    if (S.side && Math.sign(game.lat) === S.side && Math.abs(game.lat) > CFG.map.forkLat) return n;
   }
   return list[0];
-}
-
-let branchCooldown = 0;
-
-/** Make a quick arcade U-turn / loop back to the start of the current leg to re-explore another road. */
-export function doUTurn() {
-  if (!game.running || game.crashing || game.caught) return;
-  here.s = Math.max(8, here.s * 0.2);
-  game.yaw = 0;
-  game.lat = -game.lat * 0.5;
-  game.prog = progressOf(here.seg, here.s);
-  placeBus();
 }
 
 /**

@@ -419,39 +419,24 @@ const mSpot = { seg: 0, s: 0 };
 let lastPassCycle = -1;
 
 /* ====== Placements along the route ====== */
-const placements = [];   // { at, seg, s, prefab, side, text } sorted by distance
-export const METRO_STATIONS = []; // all 16 MRT-6 stations { name, at, seg, s } for the 4D map & fast-travel
-
+const placements = [];   // { at, prefab, side, text } sorted by distance
 for (const [i, st] of ROUTE.stages.entries()) {
   const start = STAGE_START[i];
   if (i > 0) placements.push({ at: start, prefab: "stageGate", side: 0, text: `স্বাগতম — ${st.name}` });
   for (const lm of st.landmarks) {
-    const segIdx = lm.segId ? SEGS.findIndex(s => s.id === lm.segId) : -1;
-    const S = segIdx >= 0 ? SEGS[segIdx] : null;
-    const refLen = S ? S.len : st.length;
     const sides = ACROSS.has(lm.prefab) ? [0] : lm.side ? [lm.side] : [-1, 1];
     const spots = lm.at !== undefined ? [lm.at]
-      : Array.from({ length: Math.floor((lm.to - lm.from) * refLen / lm.every) + 1 }, (_, k) => lm.from + k * lm.every / refLen);
+      : Array.from({ length: Math.floor((lm.to - lm.from) * st.length / lm.every) + 1 }, (_, k) => lm.from + k * lm.every / st.length);
     for (const f of spots) for (const side of sides) {
       // Repeated things get a little jitter so they don't look like a fence.
       const jitter = lm.every ? rnd(-.3, .3) * lm.every : 0;
-      if (S) {
-        const sPos = Math.max(8, Math.min(S.len - 8, f * S.len + jitter));
-        placements.push({ at: S.p0 + (sPos / S.len) * (S.p1 - S.p0), seg: segIdx, s: sPos, prefab: lm.prefab, side, text: lm.text });
-      } else {
-        placements.push({ at: start + f * st.length + jitter, prefab: lm.prefab, side, text: lm.text });
-      }
+      placements.push({ at: start + f * st.length + jitter, prefab: lm.prefab, side, text: lm.text });
     }
   }
 }
 placements.sort((a, b) => a.at - b.at);
-// Each landmark without a specific branch segId sits on the main road at its journey progress.
-for (const p of placements) {
-  if (p.seg === undefined) fromProgress(p.at, p);
-  if (p.prefab === "metroStation") {
-    METRO_STATIONS.push({ name: p.text, at: p.at, seg: p.seg, s: p.s });
-  }
-}
+// Each landmark sits on the main road at its journey progress.
+for (const p of placements) fromProgress(p.at, p);
 
 const active = [];  // { m, p }
 let next = 0;       // index of the next placement to spawn
@@ -508,12 +493,11 @@ export function updateLandmarks() {
     }
   }
 
-  // Timetable overhead metro train running along the full 16-station MRT-6 viaduct.
+  // Timetable overhead metro train along the Shahbagh -> Dhaka University viaduct.
   if (METRO_END > METRO_START && game.prog > METRO_START - J.spawnAhead && game.prog < METRO_END + J.spawnAhead) {
-    const block = 520; // spacing between Metro trains along the line
-    const baseBlock = Math.floor(game.prog / block) * block;
-    const cycle = Math.floor((game.time * M.speed) / block);
-    const headProg = baseBlock + block - ((game.time * M.speed) % block); // oncoming overhead train in current block
+    const span = METRO_END - METRO_START + 120;
+    const cycle = Math.floor((game.time * M.speed) / span);
+    const headProg = METRO_END + 40 - ((game.time * M.speed) % span); // runs oncoming overhead so player sees it clearly
     for (let i = 0; i < metroCars.length; i++) {
       const carProg = headProg + i * (M.carLength + M.carGap);
       const onViaduct = carProg >= METRO_START && carProg <= METRO_END && Math.abs(carProg - game.prog) < J.spawnAhead;

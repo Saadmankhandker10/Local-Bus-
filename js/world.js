@@ -202,42 +202,45 @@ function buildRoads() {
     }
 
     // Yellow-and-black striped centre median island with low-poly trees and bushes
-    // along every main boulevard (matching the classic Dhaka street median).
+    // (placed on main road stretches that don't have centre flyover/metro pillars).
     if (S.main) {
-      const rg = [0.03, 0.97];
-      band(i, -.42, .42, .16, MATS.median, null, rg);
-      for (const s of [-1, 1]) {
-        const mx0 = s > 0 ? .28 : -.42, mx1 = s > 0 ? .42 : -.28;
-        band(i, mx0, mx1, .17, MATS.kerbYellow, [2, 4, 0], rg);
-        band(i, mx0, mx1, .17, MATS.kerbBlack, [2, 4, 2], rg);
-      }
-      // Plant median trees every 18 units and small green bushes in between.
-      for (let d = rg[0] * S.len + 8; d < rg[1] * S.len - 8; d += 9) {
-        if (S.pillarFrom !== undefined && d >= S.pillarFrom - 6 && d <= S.pillarTo + 6) continue;
-        sample(i, d, pt);
-        if (Math.round(d / 9) % 2 === 0) {
-          const trunk = box(.24, 2.2, .24, 0x3e2723, pt.x, pt.y + 1.2, pt.z);
-          const crown = new THREE.Mesh(treeCrownGeo, treeLeafMat);
-          crown.position.set(pt.x, pt.y + 2.85, pt.z);
-          crown.scale.set(1.25, 1.15, 1.25);
-          medianGroup.add(trunk, crown);
-        } else {
-          const bush = new THREE.Mesh(treeCrownGeo, bushMat);
-          bush.position.set(pt.x, pt.y + .36, pt.z);
-          bush.scale.set(.32, .22, .35);
-          medianGroup.add(bush);
+      const pFrom = S.pillarFrom !== undefined ? S.pillarFrom / S.len : 1;
+      const pTo = S.pillarTo !== undefined ? S.pillarTo / S.len : 0;
+      const ranges = S.pillarFrom === undefined ? [[0.02, 0.98]]
+        : [[0.02, Math.max(0.02, pFrom - 0.03)], [Math.min(0.98, pTo + 0.03), 0.98]].filter(r => r[1] - r[0] > 0.06);
+      for (const rg of ranges) {
+        band(i, -.42, .42, .16, MATS.median, null, rg);
+        for (const s of [-1, 1]) {
+          const mx0 = s > 0 ? .28 : -.42, mx1 = s > 0 ? .42 : -.28;
+          band(i, mx0, mx1, .17, MATS.kerbYellow, [2, 4, 0], rg);
+          band(i, mx0, mx1, .17, MATS.kerbBlack, [2, 4, 2], rg);
+        }
+        // Plant median trees every 18 units and small green bushes in between.
+        for (let d = rg[0] * S.len + 8; d < rg[1] * S.len - 8; d += 9) {
+          sample(i, d, pt);
+          if (Math.round(d / 9) % 2 === 0) {
+            const trunk = box(.24, 2.2, .24, 0x3e2723, pt.x, pt.y + 1.2, pt.z);
+            const crown = new THREE.Mesh(treeCrownGeo, treeLeafMat);
+            crown.position.set(pt.x, pt.y + 2.85, pt.z);
+            crown.scale.set(1.25, 1.15, 1.25);
+            medianGroup.add(trunk, crown);
+          } else {
+            const bush = new THREE.Mesh(treeCrownGeo, bushMat);
+            bush.position.set(pt.x, pt.y + .36, pt.z);
+            bush.scale.set(.32, .22, .35);
+            medianGroup.add(bush);
+          }
         }
       }
     }
 
-    // Overhead metro rail twin-beam viaduct and green side parapets high above the boulevard.
+    // Overhead metro rail viaduct deck and side parapets (Shahbagh & Dhaka University).
     if (S.metro) {
       const mw = M.deckWidth / 2;
-      band(i, -mw, -.65, M.deckY, MATS.wall, null, S.metro);
-      band(i, .65, mw, M.deckY, MATS.wall, null, S.metro);
+      band(i, -mw, mw, M.deckY, MATS.wall, null, S.metro);
       for (const s of [-1, 1]) {
-        wall(i, s * mw, M.deckY - .15, .95, MATS.wall, S.metro);
-        wall(i, s * (mw + .04), M.deckY + .2, .28, MATS.metroGreen, S.metro);
+        wall(i, s * mw, M.deckY - .2, 1.15, MATS.wall, S.metro);
+        wall(i, s * (mw + .04), M.deckY + .25, .3, MATS.metroGreen, S.metro);
       }
     }
     for (const j of S.junctions || []) {
@@ -359,14 +362,12 @@ const placements = SEGS.map(() => []);
 const active = new Set();
 
 function blocked(seg, s, side) {
-  const S = SEGS[seg], t = s / S.len;
+  const S = SEGS[seg];
   if (S.kind === "flyover") return true;
-  if (S.kind === "street" && side !== S.side && (t < .16 || t > .84)) return true;
-  if (S.main && S.alts?.length) {
-    for (const altIdx of S.alts) {
-      const A = SEGS[altIdx];
-      if (A.kind === "street" && A.side === side && (t < .14 || t > .86)) return true;
-    }
+  if (S.kind === "street" && side !== S.side) return true;
+  if (S.main && S.alt !== undefined) {
+    const A = SEGS[S.alt], t = s / S.len;
+    if (A.kind === "street" && A.side === side && t > .08 && t < .92) return true;
   }
   for (const j of S.junctions || []) {
     if ((j.type === "X" || j.side === side) && Math.abs(j.at * S.len - s) < W.stubWidth / 2 + 6) return true;
