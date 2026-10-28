@@ -13,7 +13,7 @@ import { ROUTE, TOTAL, STAGE_START } from "./route.js";
 import { journey, progress } from "./journey.js";
 import { eachMark } from "./marks.js";
 import { eachTraffic } from "./traffic.js";
-import { eachMetroCar } from "./landmarks.js";
+import { eachMetroCar, METRO_STATIONS } from "./landmarks.js";
 import { crowd } from "./crowd.js";
 import { lineFrom } from "./speech.js";
 import { bnNum, ROADS, UI } from "./i18n.js";
@@ -81,23 +81,35 @@ const LAKE_PTS = [];
   }
 })();
 
-// Key Dhaka landmarks pinned on the 4D map with 3D labels.
-const MAP_PINS = [
+// All 16 MRT Line-6 Metro Stations + key Dhaka landmarks pinned on the 4D map (clickable for fast-travel!).
+const LANDMARK_PINS = [
   { progFrac: 0.01, side: -1, icon: "🚏", name: "মোহাম্মদপুর বাসস্ট্যান্ড" },
-  { progFrac: 0.22, side: 0,  icon: "⛩", name: "আসাদগেট" },
+  { progFrac: 0.20, side: -1, icon: "⛩", name: "আসাদগেট" },
   { progFrac: 0.36, side: 1,  icon: "🌊", name: "ধানমন্ডি লেক" },
-  { progFrac: 0.56, side: 0,  icon: "🌉", name: "সায়েন্সল্যাব মোড়" },
-  { progFrac: 0.69, side: 0,  icon: "✊", name: "শাহবাগ মিছিল" },
-  { progFrac: 0.74, side: 0,  icon: "🚇", name: "শাহবাগ মেট্রো" },
-  { progFrac: 0.85, side: -1, icon: "🏛", name: "কার্জন হল" },
-  { progFrac: 0.89, side: 1,  icon: "🕊", name: "শহীদ মিনার" },
-  { progFrac: 0.94, side: 1,  icon: "🎓", name: "টিএসসি / ঢাবি" },
+  { progFrac: 0.56, side: -1, icon: "🌉", name: "সায়েন্সল্যাব মোড়" },
+  { progFrac: 0.80, side: -1, icon: "🏛", name: "কার্জন হল" },
+  { progFrac: 0.83, side: 1,  icon: "🕊", name: "শহীদ মিনার" },
+  { progFrac: 0.87, side: 1,  icon: "🎓", name: "টিএসসি" },
 ].map(pin => {
-  fromProgress(pin.progFrac * TOTAL, spot);
+  const prog = pin.progFrac * TOTAL;
+  fromProgress(prog, spot);
   sample(spot.seg, spot.s, p);
   const rx = Math.cos(p.yaw), rz = -Math.sin(p.yaw);
-  return { ...pin, x: p.x + rx * pin.side * 18, z: p.z + rz * pin.side * 18 };
+  return { ...pin, prog, isMetro: false, x: p.x + rx * pin.side * 22, z: p.z + rz * pin.side * 22 };
 });
+
+const METRO_PINS = METRO_STATIONS.map((st, idx) => {
+  sample(st.seg, st.s, p);
+  const rx = Math.cos(p.yaw), rz = -Math.sin(p.yaw);
+  const sideOff = idx % 2 === 0 ? 18 : -18;
+  return {
+    prog: st.at, isMetro: true, num: idx + 1,
+    icon: "🚇", name: `${st.name} মেট্রো`, shortName: st.name,
+    x: p.x + rx * sideOff, z: p.z + rz * sideOff,
+  };
+});
+
+const MAP_PINS = [...LANDMARK_PINS, ...METRO_PINS];
 
 const STYLE = {
   street: { color: "#5c646b" },
@@ -123,26 +135,30 @@ function timeOfDayInfo(progFrac) {
 
 /* ====== What comes next on the way ====== */
 
-const next = { kind: "", d: 0, dir: "", road: "", key: 0 };
+const next = { kind: "", d: 0, dir: "", road: "", leftRoad: "", rightRoad: "", key: 0 };
 
 function findNext(limit) {
-  next.kind = "";
+  next.kind = ""; next.leftRoad = ""; next.rightRoad = "";
   let seg = here.seg, base = -here.s;
   for (let hop = 0; hop < 3 && base < limit; hop++) {
     const S = SEGS[seg];
+    const end = base + S.len;
+    if (S.next.length > 1 && end <= limit) {
+      const leftSeg = S.next.map(i => SEGS[i]).find(s => s.side < 0);
+      const rightSeg = S.next.map(i => SEGS[i]).find(s => s.side > 0);
+      const pickSeg = rightSeg || leftSeg || SEGS[S.next[1]];
+      next.kind = "fork"; next.d = end; next.dir = pickSeg.side > 0 ? "r" : "l";
+      next.road = ROADS[pickSeg.id] || "";
+      next.leftRoad = leftSeg ? (ROADS[leftSeg.id] || "বাম রোড") : "";
+      next.rightRoad = rightSeg ? (ROADS[rightSeg.id] || "ডান রোড") : "";
+      next.key = -(seg + 1);
+      return next;
+    }
     for (const t of S.turns) {
       const d = base + t.s;
       if (t.deg < N.turnMinDeg || d < 0 || d > limit) continue;
       next.kind = "turn"; next.d = d; next.dir = t.deg >= N.uTurnDeg ? "u" : t.dir;
       next.key = seg * 100000 + Math.round(t.s) + 1;
-      return next;
-    }
-    const end = base + S.len;
-    if (S.next.length > 1 && end <= limit) {
-      const alt = SEGS[S.next[1]];
-      next.kind = "fork"; next.d = end; next.dir = alt.side > 0 ? "r" : "l";
-      next.road = ROADS[alt.id] || "";
-      next.key = -(seg + 1);
       return next;
     }
     if (!S.next.length) break;
@@ -343,6 +359,20 @@ function drawMap(tod) {
     markIcon(ctx, kind, sx, sy, px);
   });
 
+  // Metro Station icons on the corner radar minimap.
+  ctx.font = `700 ${Math.round(px * 2.1)}px "Noto Sans Bengali", sans-serif`;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (const st of METRO_PINS) {
+    const sx = a * st.x - b * st.z + e, sy = b * st.x + a * st.z + f;
+    if ((sx - R) ** 2 + (sy - R) ** 2 > (R - px * 2) ** 2) continue;
+    ctx.fillStyle = "#1f6b3a";
+    ctx.strokeStyle = "#ffc21a";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(sx, sy, px * 1.9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#fff";
+    ctx.fillText("🚇", sx, sy);
+  }
+
   // Next stop flag at the rim of the minimap.
   fromProgress(destProgress(), spot);
   sample(spot.seg, spot.s, p);
@@ -504,21 +534,25 @@ function drawBig4DMap(tod) {
     bctx.beginPath(); bctx.arc(sx, sy, 5.5 * dpr, 0, Math.PI * 2); bctx.fill(); bctx.stroke();
   });
 
-  // Landmark 3D pins and Bangla labels.
-  bctx.font = `700 ${Math.round(12 * dpr)}px "Noto Sans Bengali", sans-serif`;
+  // Landmark & 16 Metro Station 3D pins and Bangla labels (clickable for instant fast-travel!).
+  pinHitBoxes.length = 0;
+  bctx.font = `700 ${Math.round(11 * dpr)}px "Noto Sans Bengali", sans-serif`;
   bctx.textAlign = "center";
   for (const pin of MAP_PINS) {
     const sx = projX(pin.x, pin.z), sy = projY(pin.x, 12, pin.z), syGround = projY(pin.x, 0, pin.z);
-    bctx.strokeStyle = "rgba(255,194,26,0.6)";
+    if (sx < -60 || sx > W + 60 || sy < -30 || sy > H + 30) continue;
+    bctx.strokeStyle = pin.isMetro ? "rgba(53,224,194,0.75)" : "rgba(255,194,26,0.6)";
     bctx.lineWidth = 1.5;
     bctx.beginPath(); bctx.moveTo(sx, syGround); bctx.lineTo(sx, sy); bctx.stroke();
-    bctx.fillStyle = "rgba(15, 22, 18, 0.88)";
-    const tw = bctx.measureText(`${pin.icon} ${pin.name}`).width + 12 * dpr;
-    bctx.fillRect(sx - tw / 2, sy - 12 * dpr, tw, 20 * dpr);
-    bctx.strokeStyle = "#ffc21a";
-    bctx.strokeRect(sx - tw / 2, sy - 12 * dpr, tw, 20 * dpr);
+    const label = pin.isMetro ? `🚇 ${bnNum(pin.num)}. ${pin.shortName}` : `${pin.icon} ${pin.name}`;
+    const tw = bctx.measureText(label).width + 12 * dpr, th = 19 * dpr;
+    bctx.fillStyle = pin.isMetro ? "rgba(18, 68, 42, 0.92)" : "rgba(15, 22, 18, 0.88)";
+    bctx.fillRect(sx - tw / 2, sy - 11 * dpr, tw, th);
+    bctx.strokeStyle = pin.isMetro ? "#35e0c2" : "#ffc21a";
+    bctx.strokeRect(sx - tw / 2, sy - 11 * dpr, tw, th);
     bctx.fillStyle = "#fff";
-    bctx.fillText(`${pin.icon} ${pin.name}`, sx, sy + 2 * dpr);
+    bctx.fillText(label, sx, sy + 2 * dpr);
+    pinHitBoxes.push({ pin, x0: (sx - tw / 2) / dpr, x1: (sx + tw / 2) / dpr, y0: (sy - 11 * dpr) / dpr, y1: (sy - 11 * dpr + th) / dpr });
   }
 
   // Player Bus pulsing 3D beacon.
@@ -531,6 +565,9 @@ function drawBig4DMap(tod) {
   bctx.fillText("🚌", bxScreen, byScreen);
 }
 
+const pinHitBoxes = [];
+let downX = 0, downY = 0;
+
 function init4DMapModal() {
   const toggleModal = show => {
     const m = $("mapModal");
@@ -542,8 +579,8 @@ function init4DMapModal() {
   if ($("open4dMapBtn")) $("open4dMapBtn").onclick = () => toggleModal(true);
   if ($("title4dMapBtn")) $("title4dMapBtn").onclick = () => toggleModal(true);
   if ($("close4dMap")) $("close4dMap").onclick = () => toggleModal(false);
-  if ($("mapZoomIn")) $("mapZoomIn").onclick = () => { bigZoom = clamp(bigZoom * 1.3, 0.45, 4.5); drawBig4DMap(timeOfDayInfo(progress(game.prog))); };
-  if ($("mapZoomOut")) $("mapZoomOut").onclick = () => { bigZoom = clamp(bigZoom / 1.3, 0.45, 4.5); drawBig4DMap(timeOfDayInfo(progress(game.prog))); };
+  if ($("mapZoomIn")) $("mapZoomIn").onclick = () => { bigZoom = clamp(bigZoom * 1.3, 0.35, 4.5); drawBig4DMap(timeOfDayInfo(progress(game.prog))); };
+  if ($("mapZoomOut")) $("mapZoomOut").onclick = () => { bigZoom = clamp(bigZoom / 1.3, 0.35, 4.5); drawBig4DMap(timeOfDayInfo(progress(game.prog))); };
   if ($("mapResetView")) $("mapResetView").onclick = () => { bigPanX = 0; bigPanZ = 0; bigZoom = 1.0; drawBig4DMap(timeOfDayInfo(progress(game.prog))); };
 
   addEventListener("keydown", e => {
@@ -554,7 +591,12 @@ function init4DMapModal() {
   });
 
   if (bm) {
-    bm.addEventListener("pointerdown", e => { dragging = true; dragX = e.clientX; dragY = e.clientY; bm.setPointerCapture?.(e.pointerId); });
+    bm.addEventListener("pointerdown", e => {
+      dragging = true;
+      dragX = downX = e.clientX;
+      dragY = downY = e.clientY;
+      bm.setPointerCapture?.(e.pointerId);
+    });
     bm.addEventListener("pointermove", e => {
       if (!dragging) return;
       const scale = (Math.min(bm.clientWidth, bm.clientHeight) / 1450) * bigZoom;
@@ -563,10 +605,26 @@ function init4DMapModal() {
       dragX = e.clientX; dragY = e.clientY;
       drawBig4DMap(timeOfDayInfo(progress(game.prog)));
     });
-    for (const ev of ["pointerup", "pointercancel"]) bm.addEventListener(ev, () => { dragging = false; });
+    bm.addEventListener("pointerup", e => {
+      const moved = Math.hypot(e.clientX - downX, e.clientY - downY);
+      dragging = false;
+      if (moved < 6) {
+        const rect = bm.getBoundingClientRect();
+        const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+        for (let i = pinHitBoxes.length - 1; i >= 0; i--) {
+          const b = pinHitBoxes[i];
+          if (cx >= b.x0 && cx <= b.x1 && cy >= b.y0 && cy <= b.y1) {
+            toggleModal(false);
+            emit("teleport", { prog: b.pin.prog, name: b.pin.name });
+            break;
+          }
+        }
+      }
+    });
+    bm.addEventListener("pointercancel", () => { dragging = false; });
     bm.addEventListener("wheel", e => {
       e.preventDefault();
-      bigZoom = clamp(bigZoom * (e.deltaY < 0 ? 1.15 : 0.87), 0.45, 4.5);
+      bigZoom = clamp(bigZoom * (e.deltaY < 0 ? 1.15 : 0.87), 0.35, 4.5);
       drawBig4DMap(timeOfDayInfo(progress(game.prog)));
     }, { passive: false });
   }
@@ -594,7 +652,10 @@ function updateGps() {
   const m = findNext(N.showAhead);
   let text = "";
   if (m.kind === "turn") text = `${GLYPH[m.dir]} ${m.dir === "u" ? UI.uTurn : m.dir === "l" ? UI.left : UI.right} · ${fmtDist(m.d)}`;
-  else if (m.kind === "fork") text = `${m.dir === "r" ? "↗" : "↖"} ${UI[m.dir === "r" ? "right" : "left"]} ${m.road} · ${fmtDist(m.d)}`;
+  else if (m.kind === "fork") {
+    if (m.leftRoad && m.rightRoad) text = `↰ বামে ${m.leftRoad} | ⬆ সোজা | ↱ ডানে ${m.rightRoad} · ${fmtDist(m.d)}`;
+    else text = `${m.dir === "r" ? "↗" : "↖"} ${UI[m.dir === "r" ? "right" : "left"]} ${m.road} · ${fmtDist(m.d)}`;
+  }
   if (text !== shownNext) {
     shownNext = text;
     $("gpsNext").textContent = text;

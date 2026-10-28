@@ -57,11 +57,24 @@ export const UI = {
   m: "মি", left: "বামে", right: "ডানে", uTurn: "ইউ-টার্ন",
 };
 
-/** Names of the side streets and flyovers (keyed by the alt id in map.js), for the GPS and the helper. */
+/** Names of the side streets, avenues, and flyovers (keyed by the segment id in map.js), for the GPS and the helper. */
 export const ROADS = {
-  flyover: "ফ্লাইওভার",
+  "mohammadpur-road": "মোহাম্মদপুর রোড",
+  flyover: "মিরপুর ফ্লাইওভার",
+  "asadgate-road": "আসাদগেট রোড",
+  "mirpur-goli": "মিরপুর গলি",
+  "dhanmondi-lake-road": "ধানমন্ডি লেক রোড",
+  "manik-mia-ave": "মানিক মিয়া এভিনিউ",
   "kalabagan-lane": "কলাবাগানের গলি",
+  "tejgaon-flyover": "বিজয় সরণি ফ্লাইওভার",
+  "sciencelab-road": "সায়েন্সল্যাব রোড",
+  "hatirjheel-road": "হাতিরঝিল রোড",
   "katabon-lane": "কাঁটাবনের গলি",
+  "ramna-road": "রমনা পার্ক রোড",
+  "nilkhet-road": "নীলক্ষেত রোড",
+  "ramna-south": "সোহরাওয়ার্দী রোড",
+  "paltan-road": "পল্টন রোড",
+  "motijheel-flyover": "হানিফ ফ্লাইওভার",
 };
 
 /** Bilingual HUD and button labels keyed by data-i18n attribute. */

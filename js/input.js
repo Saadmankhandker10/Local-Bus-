@@ -24,7 +24,7 @@ const KEY_MAP = {
 };
 const PAUSE_KEYS = ["KeyP", "Escape"];
 // One-shot actions: they fire once per press (not while held).
-const TAP_KEYS = { KeyH: "horn", KeyG: "shout", KeyM: "mute" };
+const TAP_KEYS = { KeyH: "horn", KeyG: "shout", KeyM: "mute", KeyU: "uturn" };
 const TAP_TOUCH = [["thorn", "horn"], ["tshout", "shout"]];
 
 const TOUCH_MAP = [["tl", "left"], ["tr", "right"], ["tb", "down"], ["tg", "up"], ["tboost", "boost"]];

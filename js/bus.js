@@ -193,13 +193,28 @@ function approach(current, target, rate, dt) {
   return current + (target - current) * (1 - Math.exp(-rate * dt));
 }
 
-/** At the end of a road piece, take the branch on the side the bus is driving. */
+/** At an intersection, take Left (side -1), Right (side +1), or Straight (side 0) based on lane & steering. */
 export function chooseNext(list) {
-  for (const n of list) {
-    const S = SEGS[n];
-    if (S.side && Math.sign(game.lat) === S.side && Math.abs(game.lat) > CFG.map.forkLat) return n;
+  const dir = Math.abs(input.steer) > 0.25 ? Math.sign(input.steer)
+    : Math.abs(game.lat) > 1.15 ? Math.sign(game.lat) : 0;
+  if (dir !== 0) {
+    for (const n of list) {
+      if (SEGS[n].side === dir) return n;
+    }
   }
   return list[0];
+}
+
+let branchCooldown = 0;
+
+/** Make a quick arcade U-turn / loop back to the start of the current leg to re-explore another road. */
+export function doUTurn() {
+  if (!game.running || game.crashing || game.caught) return;
+  here.s = Math.max(8, here.s * 0.2);
+  game.yaw = 0;
+  game.lat = -game.lat * 0.5;
+  game.prog = progressOf(here.seg, here.s);
+  placeBus();
 }
 
 /**
@@ -242,10 +257,37 @@ export function updateBus(dt) {
   game.yaw = clamp(game.yaw, -B.maxRelYaw, B.maxRelYaw);
 
   const S = SEGS[here.seg];
+  branchCooldown = Math.max(0, branchCooldown - dt);
   game.vx = speed * Math.sin(game.yaw);
   let x = game.lat + game.vx * dt;
+
+  // Mid-segment X / T junctions: if the player steers hard toward the side road at a junction,
+  // switch smoothly between the main road and the parallel avenue on that side.
+  if (branchCooldown <= 0 && Math.abs(ctl.steer) > 0.45 && Math.abs(x) > S.half - 2.2) {
+    const turnSide = Math.sign(ctl.steer);
+    const f = here.s / S.len;
+    const atJunction = (S.junctions || []).some(j => (j.type === "X" || j.side === turnSide) && Math.abs(j.at - f) < 0.09);
+    if (atJunction && Math.sign(x) === turnSide) {
+      let targetSeg = -1;
+      if (S.main && S.alts?.length) {
+        targetSeg = S.alts.find(a => SEGS[a].side === turnSide) ?? -1;
+      } else if (!S.main) {
+        targetSeg = SEGS.findIndex(m => m.main && m.from === S.from);
+      }
+      if (targetSeg >= 0) {
+        branchCooldown = 2.0;
+        here.prev = here.seg;
+        here.seg = targetSeg;
+        here.s = clamp(f * SEGS[targetSeg].len, 12, SEGS[targetSeg].len - 12);
+        x = -turnSide * (SEGS[targetSeg].half - 2.2);
+        game.yaw *= 0.35;
+      }
+    }
+  }
+
+  const curS = SEGS[here.seg];
   // Road edge: past the edge the kerb pushes the nose back and scrapes off some speed.
-  const edge = S.half - B.edgeInset, hard = S.half - B.edgeHardInset;
+  const edge = curS.half - B.edgeInset, hard = curS.half - B.edgeHardInset;
   const over = Math.abs(x) - edge;
   if (over > 0) {
     game.yaw -= Math.sign(x) * B.edgeYawPush * over * dt;

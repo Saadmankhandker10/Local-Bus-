@@ -362,12 +362,14 @@ const placements = SEGS.map(() => []);
 const active = new Set();
 
 function blocked(seg, s, side) {
-  const S = SEGS[seg];
+  const S = SEGS[seg], t = s / S.len;
   if (S.kind === "flyover") return true;
-  if (S.kind === "street" && side !== S.side) return true;
-  if (S.main && S.alt !== undefined) {
-    const A = SEGS[S.alt], t = s / S.len;
-    if (A.kind === "street" && A.side === side && t > .08 && t < .92) return true;
+  if (S.kind === "street" && side !== S.side && (t < .16 || t > .84)) return true;
+  if (S.main && S.alts?.length) {
+    for (const altIdx of S.alts) {
+      const A = SEGS[altIdx];
+      if (A.kind === "street" && A.side === side && (t < .14 || t > .86)) return true;
+    }
   }
   for (const j of S.junctions || []) {
     if ((j.type === "X" || j.side === side) && Math.abs(j.at * S.len - s) < W.stubWidth / 2 + 6) return true;
