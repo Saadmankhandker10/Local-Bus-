@@ -63,10 +63,15 @@ export const ROUTE = {
       landmarks: [
         { prefab: "shopRow", every: 28, from: 0, to: 0.6 },
         { prefab: "marketSign", at: 0.12, text: "মার্কেট এলাকা — সাবধানে চলুন" },
+        { prefab: "footbridge", at: 0.28, text: "সায়েন্সল্যাব ফুটওভার ব্রিজ" },
+        { prefab: "footbridge", at: 0.68, text: "ফুটওভার ব্রিজ — পথচারী পারাপার" },
+        { prefab: "studentDemo", at: 0.72, clear: 24 },
         { prefab: "museum", at: 0.78, side: 1, clear: 40 },
         { prefab: "library", at: 0.8, side: -1, clear: 40 },
+        { prefab: "metroStation", at: 0.86, text: "শাহবাগ" },
         { prefab: "crossing", at: 0.9, text: "শাহবাগ", clear: 25 },
-        { prefab: "flowerStalls", every: 14, from: 0.84, to: 0.97 },
+        { prefab: "junctionFlyover", at: 0.95 },
+        { prefab: "flowerStalls", every: 14, from: 0.82, to: 0.97 },
       ],
     },
     {
@@ -81,6 +86,8 @@ export const ROUTE = {
       landmarks: [
         { prefab: "banyan", every: 45, from: 0, to: 1 },
         { prefab: "curzonHall", at: 0.3, side: -1, clear: 50 },
+        { prefab: "shaheedMinar", at: 0.42, side: 1, clear: 55 },
+        { prefab: "metroStation", at: 0.50, text: "ঢাকা বিশ্ববিদ্যালয়" },
         { prefab: "tsc", at: 0.58, side: 1, clear: 60 },
         { prefab: "monument", at: 0.62, side: -1 },
         { prefab: "finishBanner", at: 0.985, text: "গন্তব্য: ঢাকা বিশ্ববিদ্যালয়" },

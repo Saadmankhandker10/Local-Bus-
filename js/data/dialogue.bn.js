@@ -114,8 +114,41 @@ export const DIALOGUE = {
     left: [
       "ওস্তাদ, বামে {road}! শর্টকাট, কিন্তু রিকশা অনেক।",
       "বামে চাপলে {road}, সোজা গেলে মেইন রোড, ওস্তাদ!",
+      "ওস্তাদ, সামনে জ্যাম আর মিছিল! বামে {road} ধরেন!",
     ],
   },
+
+  // When the bus reaches the student demonstration barricade at Shahbagh.
+  demoBlock: [
+    "ওস্তাদ, এদিক দিয়া যাওয়া যাবে না, বামে চাপেন!",
+    "সামনে ছাত্রদের মিছিল ওস্তাদ! বাম লেন বা কাঁটাবনের গলি ধরেন!",
+    "মিছিলের সামনে আটকা পড়ছি ওস্তাদ, আস্তে বামে কাটেন!",
+  ],
+
+  // Passengers grumbling when comfort / patience drops (hard braking, crashes, or traffic jam).
+  passengerGrumble: [
+    "ভাই, আজকে কি আদৌ পৌঁছাব?",
+    "এই বাসে উঠাই ভুল হইছে!",
+    "ওস্তাদ, একটু আস্তে ব্রেক ধরেন, মাথা ঘুরাইতেছে!",
+    "শাহবাগের জ্যামে তো জীবন শেষ!",
+    "ড্রাইভার ভাই, বাস চালাইতেছেন না রোলার কোস্টার?",
+    "আরে ভাই, সিট থেইকা পইড়া গেলাম তো!",
+  ],
+
+  // When a cartoon brick, helmet, sandal, or tea cup thrown by the chasing crowd hits the bus.
+  projectileHit: [
+    "মাথা নিচু করেন, পাবলিক ইট-স্যান্ডেল ছুঁড়তেছে!",
+    "ওস্তাদ জোরে টানেন, বাসের জানালা ভাঙলো বলে!",
+    "ভাইরে ভাই, চায়ের কাপ আর স্যান্ডেল আইসা লাগছে!",
+    "হায় হায়, বাসের কাঁচ তো ঝাঁঝরা হইয়া গেল ওস্তাদ!",
+  ],
+
+  // When a pedestrian is crossing right ahead of the bus.
+  pedScared: [
+    "ওস্তাদ, মানুষ পার হইতেছে, হর্ন দেন!",
+    "সামনে পথচারী ওস্তাদ, একটু দেইখা চালান!",
+    "হর্ন চাপেন ওস্তাদ, মানুষ রাস্তা পার হইতেছে!",
+  ],
 
   // The helper calling a turn of the main road: l = left, r = right, u = U-turn.
   navTurn: {

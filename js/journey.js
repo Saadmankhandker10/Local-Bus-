@@ -99,15 +99,17 @@ export function updateJourney() {
   if (i === journey.stage) return;
   journey.stage = i;
 
-  // Checkpoint: people get off and on, and we tally this stage.
+  // Checkpoint: people get off and on, and we tally this stage (including the comfort tip).
   const off = Math.round(game.pass * J.passengersOffShare);
   const on = Math.min(CFG.fare.maxPassengers - (game.pass - off), Math.round(rnd(J.passengersOnMin, J.passengersOnMax)));
+  const tip = Math.round(CFG.comfort.maxStageTip * (game.comfort / CFG.comfort.max));
   game.pass = game.pass - off + on;
-  game.fare += on * CFG.fare.perPassenger;
+  game.fare += on * CFG.fare.perPassenger + tip;
+  game.hp = Math.min(CFG.bus.maxHp, game.hp + CFG.bus.stageHpRepair);
   const tally = {
     index: i,
     stage: ROUTE.stages[i],
-    off, on,
+    off, on, tip,
     damage: Math.floor(game.damage - journey.stageStartDamage),
     fare: Math.floor(game.fare - journey.stageStartFare),
   };

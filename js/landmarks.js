@@ -7,9 +7,11 @@ import { rnd, pick } from "./utils.js";
 import { scene, box, plate } from "./world.js";
 import { makeVehicle } from "./vehicles.js";
 import { game } from "./state.js";
-import { ahead, place, fromProgress } from "./map.js";
+import { SEGS, ahead, place, fromProgress } from "./map.js";
+import { metroPass } from "./audio.js";
+import { BANNERS } from "./data/banners.bn.js";
 
-const R = CFG.world.roadHalfWidth, J = CFG.journey;
+const R = CFG.world.roadHalfWidth, J = CFG.journey, M = CFG.metro;
 
 /* ====== Shared shapes ====== */
 const leafMat = new THREE.MeshLambertMaterial({ color: 0x4f8f3a });
@@ -63,6 +65,18 @@ const PREFABS = {
     }
     const p = sign("মোহাম্মদপুর বাসস্ট্যান্ড", 10, 1.3, "#0d47a1", "#fff"); p.position.set(x - side * 6.1, 6.6, 0);
     p.rotation.y = -side * FACE; g.add(p);
+    // Morning crows perched on the shed roof; they lift off when the bus starts moving.
+    const crows = [];
+    for (let i = 0; i < 6; i++) {
+      const c = new THREE.Group();
+      c.position.set(x - side * 5 + rnd(-2, 2), 5.75, -10 + i * 4);
+      c.add(box(.22, .14, .34, 0x1a1a1a, 0, 0, 0));
+      c.add(box(.56, .04, .18, 0x263238, 0, .04, 0)); // wings
+      c.userData = { baseY: 5.75, vx: -side * rnd(2.5, 4.5), vy: rnd(2.2, 3.8), vz: rnd(-2, 2), ph: i };
+      g.add(c);
+      crows.push(c);
+    }
+    g.userData.crows = crows;
     return g;
   },
 
@@ -160,9 +174,132 @@ const PREFABS = {
   },
 
   flowerStalls: ({ side }) => {
-    const g = new THREE.Group(), x = side * (R + 3);
-    g.add(box(1.4, .8, 3, 0x8d6e63, x, .4, 0));
-    for (let i = 0; i < 6; i++) g.add(box(.35, .35, .35, pick([0xff1744, 0xffeb3b, 0xff80ab, 0xffffff, 0xff9100]), x + rnd(-.4, .4), .95, rnd(-1.2, 1.2)));
+    // Shahbagh roadside flower shops: canopy, flower buckets, and marigold garlands.
+    const g = new THREE.Group(), x = side * (R + 3.2);
+    g.add(box(1.8, .85, 3.4, 0x8d6e63, x, .42, 0));                                      // counter
+    g.add(box(2.2, .12, 3.8, pick([0x1f6b3a, 0xb8322a, 0x1f5fae]), x, 2.5, 0));          // awning
+    for (const dz of [-1.6, 1.6]) g.add(box(.1, 2.5, .1, POLE, x + side * .7, 1.25, dz));
+    for (let i = 0; i < 8; i++) {
+      const c = pick([0xff1744, 0xffc21a, 0xff80ab, 0xffffff, 0xff9100]);
+      g.add(box(.38, .42, .38, c, x + rnd(-.5, .5), 1.05, rnd(-1.4, 1.4)));              // flower bunches
+    }
+    // Hanging marigold garlands along the front edge of the awning.
+    for (let z = -1.3; z <= 1.3; z += .65) g.add(box(.12, .75, .12, 0xffc21a, x - side * .9, 2.05, z));
+    return g;
+  },
+
+  footbridge: ({ text }) => {
+    // Pedestrian footbridge spanning across the road with stairs on both pavements.
+    const g = new THREE.Group(), h = 6.1, span = 2 * R + 5;
+    g.add(box(span, .35, 2.2, STONE, 0, h, 0));                                          // walkway deck
+    for (const dz of [-1, 1]) g.add(box(span, .85, .1, 0x1f6b3a, 0, h + .55, dz));       // green railings
+    for (const s of [-1, 1]) {
+      const sx = s * (R + 2.4);
+      g.add(box(1.2, h, 1.2, STONE, sx, h / 2, 0));                                      // support tower
+      // Stepped stair ramp descending along the pavement.
+      for (let k = 0; k < 5; k++) {
+        g.add(box(1.4, (k + 1) * (h / 5), 1.4, STONE, sx + s * 1.3, (k + 1) * (h / 10), (k - 2) * 1.35));
+      }
+    }
+    if (text) {
+      const p = sign(text, 8.5, 1.1, "#1f5fae", "#fff");
+      p.position.set(0, h + 1.25, 1.15);
+      g.add(p);
+    }
+    return g;
+  },
+
+  metroStation: ({ text }) => {
+    // Elevated Dhaka Metro Rail station (Shahbagh & DU) sitting on the viaduct.
+    const g = new THREE.Group(), y = M.deckY, w = M.deckWidth + 5.2, len = 34;
+    g.add(box(w, .7, len, STONE, 0, y + .2, 0));                                         // concourse & platform slab
+    // Curved green station canopy roof and side screens.
+    for (const s of [-1, 1]) {
+      g.add(box(1.8, 3.2, len - 2, 0xcfd8dc, s * (w / 2 - .9), y + 1.9, 0));             // outer platform wall
+      for (let z = -14; z <= 14; z += 7) {
+        g.add(box(.35, 4.2, .35, DARK, s * (w / 2 - .3), y + 2.4, z));                   // canopy ribs
+      }
+      // Entry stairs descending outside the road to the pavement.
+      const sx = s * (R + 4.2);
+      g.add(box(2.4, .5, 8, STONE, sx, y - 1.5, 0));
+      for (let k = 0; k < 5; k++) {
+        const sh = (k + 1) * ((y - 1.5) / 5);
+        g.add(box(1.8, sh, 2.2, STONE, sx, sh / 2, -9 + k * 2.1));
+      }
+      const sideSign = sign(`${text} মেট্রো স্টেশন`, 6.5, 1.1, "#1f6b3a", "#ffc21a");
+      sideSign.position.set(s * (w / 2 + .1), y + 2.4, 0);
+      sideSign.rotation.y = s * Math.PI / 2;
+      g.add(sideSign);
+    }
+    g.add(box(w + 1.2, .45, len + 1, 0x1f6b3a, 0, y + 4.4, 0));                          // green station roof
+    const frontSign = sign(`🚇 ${text} মেট্রো স্টেশন`, 8, 1.2, "#1f6b3a", "#fff");
+    frontSign.position.set(0, y + 4.65, len / 2 + .6);
+    g.add(frontSign);
+    return g;
+  },
+
+  junctionFlyover: () => {
+    // Cross-road flyover overpass deck spanning perpendicular across the Shahbagh junction.
+    const g = new THREE.Group(), y = 5.6, span = 2 * R + 56;
+    g.add(box(span, .65, 8.5, 0xbdb5a6, 0, y, 0));                                       // cross deck
+    for (const dz of [-4.1, 4.1]) g.add(box(span, .9, .3, 0xd8cfc0, 0, y + .75, dz));    // parapets
+    for (const sx of [-R - 22, -R - 8, R + 8, R + 22]) {
+      g.add(box(1.6, y, 1.6, 0x9e9e9e, sx, y / 2, 0));                                   // side piers
+    }
+    return g;
+  },
+
+  studentDemo: () => {
+    // Shahbagh student demonstration: bamboo barricades, light-hearted campus banners, and chanting students.
+    // Occupies the middle and right lanes (x = -2.2 .. +6.2), leaving the far-left lane open with cones.
+    const g = new THREE.Group(), minX = CFG.jam.barricadeMinX, maxX = R - .6, cx = (minX + maxX) / 2, w = maxX - minX;
+    const students = [];
+    // Front and rear bamboo / painted barricade rails.
+    for (const z of [-6, 6]) {
+      g.add(box(w, .18, .18, 0xffc21a, cx, 1.05, z));
+      g.add(box(w, .16, .16, 0xb8322a, cx, .6, z));
+      for (let x = minX + .4; x <= maxX - .4; x += 2.6) {
+        g.add(box(.16, 1.35, .16, 0x6d4c41, x, .68, z));
+      }
+    }
+    // Main cloth banner stretched across the front of the gathering, facing the oncoming bus (+z).
+    for (const dx of [-w / 2 + .6, w / 2 - .6]) g.add(box(.14, 3.6, .14, POLE, cx + dx, 1.8, 5.6));
+    const mainBanner = sign(BANNERS[0], 6.8, 1.15, "#b8322a", "#fff8e1");
+    mainBanner.position.set(cx, 2.75, 5.7);
+    g.add(mainBanner);
+
+    // Diversion arrow sign on the left edge guiding drivers into the narrow open left lane.
+    const bypassSign = sign("◄ বাম লেন খোলা", 3.2, .85, "#ffc21a", "#1a1d1f");
+    bypassSign.position.set(minX - .2, 1.8, 6.2);
+    g.add(bypassSign);
+    for (let z = -6.5; z <= 6.5; z += 2.6) {
+      g.add(box(.45, .65, .45, 0xff6d00, minX - .35, .33, z)); // orange traffic cones along the open lane
+    }
+
+    // Group of students holding colourful placards with campus slogans.
+    const shirts = [0x1e88e5, 0xe53935, 0x43a047, 0xfdd835, 0x8e24aa, 0x00897b, 0xff7043];
+    for (let i = 0; i < 15; i++) {
+      const st = new THREE.Group();
+      const sx = minX + .8 + (i % 5) * ((w - 1.6) / 4) + rnd(-.3, .3);
+      const sz = -4.2 + Math.floor(i / 5) * 3.8 + rnd(-.4, .4);
+      st.position.set(sx, 0, sz);
+      st.add(box(.48, .9, .32, shirts[i % shirts.length], 0, .95, 0)); // shirt / kurta
+      st.add(box(.42, .55, .28, 0x37474f, 0, .28, 0));                 // trousers
+      st.add(mesh(crownGeo, creamMat, 0, 1.62, 0, .24, .24, .24));     // head
+      if (i % 2 === 0) {
+        const slogan = BANNERS[(i + 1) % BANNERS.length];
+        const bg = pick(["#fff8e1", "#ffc21a", "#e8f5e9", "#e3f2fd"]);
+        const fg = bg === "#ffc21a" ? "#1a1d1f" : "#b71c1c";
+        st.add(box(.08, 1.8, .08, 0x6d4c41, .24, 1.95, 0));            // placard stick
+        const placard = sign(slogan, 3.1, .75, bg, fg);
+        placard.position.set(.24, 2.75, .06);
+        st.add(placard);
+      }
+      st.userData.phase = i * .7;
+      g.add(st);
+      students.push(st);
+    }
+    g.userData.students = students;
     return g;
   },
 
@@ -187,6 +324,41 @@ const PREFABS = {
     g.add(box(13, .6, 41, CREAM, x, 10.2, 0));                     // white cornice
     g.add(mesh(domeGeo, creamMat, x, 10.5, 0, 4, 4, 4));
     for (const z of [-18, 18]) g.add(mesh(domeGeo, brickMat, x - side * 4, 10.5, z, 1.6, 2, 1.6));
+    return g;
+  },
+
+  shaheedMinar: ({ side }) => {
+    // Respectful stylised Shaheed Minar on a wide raised plaza, set well back from the road.
+    const g = new THREE.Group(), x = side * (R + 15);
+    g.add(box(14, .45, 26, STONE, x, .22, 0));                       // outer stepped plaza
+    g.add(box(10, .45, 20, 0xeeeeee, x + side * .8, .65, 0));        // white marble dais
+    // Crimson sun disc behind the columns, facing the road.
+    const sunMat = new THREE.MeshLambertMaterial({ color: 0xc62828 });
+    const sunDisc = mesh(discGeo, sunMat, x + side * 2.2, 4.4, 0, 3.4, .22, 3.4);
+    sunDisc.rotation.z = Math.PI / 2;
+    g.add(sunDisc);
+    // Central tall frame with its iconic bowed upper half, flanked by two smaller frames on each side.
+    const frame = (zOff, h, w, bow = false) => {
+      for (const dz of [-w / 2, w / 2]) g.add(box(.28, h, .28, 0xffffff, x, .9 + h / 2, zOff + dz));
+      g.add(box(.28, .28, w + .28, 0xffffff, x, .9 + h, zOff));
+      if (bow) {
+        const top = new THREE.Group();
+        top.position.set(x, .9 + h, zOff);
+        top.rotation.z = -side * 0.38; // gentle respectful bow towards the plaza
+        for (const dz of [-w / 2, w / 2]) top.add(box(.26, 2.2, .26, 0xffffff, 0, 1.1, dz));
+        top.add(box(.26, .26, w + .26, 0xffffff, 0, 2.2, 0));
+        g.add(top);
+      }
+    };
+    frame(0, 5.2, 3.2, true);
+    for (const s of [-1, 1]) {
+      frame(s * 3.8, 4.2, 2.1, false);
+      frame(s * 6.8, 3.2, 1.7, false);
+    }
+    const p = sign("শহীদ মিনার", 5.5, 1.05, "#ffffff", "#b71c1c");
+    p.position.set(x - side * 5.2, 2.2, 0);
+    p.rotation.y = -side * FACE;
+    g.add(p);
     return g;
   },
 
@@ -218,7 +390,33 @@ const PREFABS = {
 };
 
 // These stretch across the road, so they get one placement and no side.
-const ACROSS = new Set(["stageGate", "wires", "gateArch", "marketSign", "crossing", "finishBanner"]);
+const ACROSS = new Set([
+  "stageGate", "wires", "gateArch", "marketSign",
+  "footbridge", "metroStation", "crossing", "junctionFlyover", "studentDemo", "finishBanner",
+]);
+
+/* ====== Overhead Metro Train (4 carriages that bend along the viaduct spline) ====== */
+const metroSegs = SEGS.filter(S => S.metro);
+const METRO_START = metroSegs.length ? metroSegs[0].p0 + metroSegs[0].metro[0] * metroSegs[0].len : 0;
+const METRO_END = metroSegs.length ? metroSegs[metroSegs.length - 1].p0 + metroSegs[metroSegs.length - 1].metro[1] * metroSegs[metroSegs.length - 1].len : 0;
+
+function makeMetroCar(isLead) {
+  const g = new THREE.Group(), L = M.carLength;
+  g.add(box(2.5, 2.5, L, 0xf2f4f7, 0, 1.35, 0));                           // silver-white carriage body
+  g.add(box(2.54, .32, L + .02, 0x1f6b3a, 0, 1.05, 0));                    // green stripe
+  g.add(box(2.55, .14, L + .02, 0xb8322a, 0, .85, 0));                     // red stripe
+  g.add(box(2.56, .68, L * .86, DARK, 0, 1.72, 0));                        // side windows
+  if (isLead) {
+    g.add(box(2.1, .72, .08, DARK, 0, 1.72, -L / 2 - .02));                // front windscreen
+    for (const s of [-1, 1]) g.add(box(.32, .2, .08, 0xfff9c4, s * .8, .9, -L / 2 - .03)); // headlights
+  }
+  g.visible = false;
+  scene.add(g);
+  return g;
+}
+const metroCars = Array.from({ length: M.cars }, (_, i) => makeMetroCar(i === 0));
+const mSpot = { seg: 0, s: 0 };
+let lastPassCycle = -1;
 
 /* ====== Placements along the route ====== */
 const placements = [];   // { at, prefab, side, text } sorted by distance
@@ -247,11 +445,13 @@ let next = 0;       // index of the next placement to spawn
 export function resetLandmarks(fromProg) {
   for (const a of active) scene.remove(a.m);
   active.length = 0;
+  for (const c of metroCars) c.visible = false;
+  lastPassCycle = -1;
   next = placements.findIndex(p => p.at >= fromProg - J.despawnBehind);
   if (next < 0) next = placements.length;
 }
 
-/** Build landmarks coming into view and remove the ones left behind. */
+/** Build landmarks coming into view, remove old ones, and move the overhead metro train. */
 export function updateLandmarks() {
   while (next < placements.length && placements[next].at <= game.prog + J.spawnAhead) {
     const p = placements[next++];
@@ -263,6 +463,49 @@ export function updateLandmarks() {
   }
   for (let i = active.length - 1; i >= 0; i--) {
     const a = ahead(active[i].p.seg, active[i].p.s);
-    if (!(a > -J.despawnBehind)) { scene.remove(active[i].m); active.splice(i, 1); }
+    if (!(a > -J.despawnBehind)) { scene.remove(active[i].m); active.splice(i, 1); continue; }
+    // Animate chanting students and placards in the Shahbagh demonstration.
+    const students = active[i].m.userData.students;
+    if (students) {
+      for (const st of students) {
+        const w = Math.sin(game.time * 5.2 + st.userData.phase);
+        st.position.y = Math.max(0, w) * .16;
+        st.rotation.z = w * .06;
+      }
+    }
+    // Morning crows lift off from the Mohammadpur Bus Stand roof when the bus starts moving.
+    const crows = active[i].m.userData.crows;
+    if (crows && game.running && game.dist > 2 && game.dist < 140) {
+      const flightT = Math.min(4, game.dist / 16);
+      for (const c of crows) {
+        const u = c.userData;
+        c.position.y = u.baseY + flightT * u.vy;
+        c.position.x += u.vx * 0.016;
+        c.position.z += u.vz * 0.016;
+        c.rotation.z = Math.sin(game.time * 18 + u.ph) * .28;
+      }
+    }
+  }
+
+  // Timetable overhead metro train along the Shahbagh -> Dhaka University viaduct.
+  if (METRO_END > METRO_START && game.prog > METRO_START - J.spawnAhead && game.prog < METRO_END + J.spawnAhead) {
+    const span = METRO_END - METRO_START + 120;
+    const cycle = Math.floor((game.time * M.speed) / span);
+    const headProg = METRO_END + 40 - ((game.time * M.speed) % span); // runs oncoming overhead so player sees it clearly
+    for (let i = 0; i < metroCars.length; i++) {
+      const carProg = headProg + i * (M.carLength + M.carGap);
+      const onViaduct = carProg >= METRO_START && carProg <= METRO_END && Math.abs(carProg - game.prog) < J.spawnAhead;
+      metroCars[i].visible = onViaduct;
+      if (onViaduct) {
+        fromProgress(carProg, mSpot);
+        place(metroCars[i], mSpot.seg, mSpot.s, -1.4, M.deckY + .15, Math.PI);
+      }
+    }
+    if (cycle !== lastPassCycle && Math.abs(headProg - game.prog) < M.soundDist) {
+      lastPassCycle = cycle;
+      metroPass();
+    }
+  } else {
+    for (const c of metroCars) c.visible = false;
   }
 }

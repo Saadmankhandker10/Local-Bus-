@@ -1,0 +1,24 @@
+/* Design tokens for "Local Bus — Dhaka Route".
+   Inspired by painted Dhaka local buses, brass ticket plates, LED destination boards, and newsprint. */
+:root {
+  --bus-green: #1f6b3a;
+  --bus-green-dark: #134625;
+  --signal-yellow: #ffc21a;
+  --brick-red: #b8322a;
+  --cream-paper: #f6efdd;
+  --asphalt-dark: #1a1d1f;
+  --bus-stop-blue: #1f5fae;
+  --teal-led: #35e0c2;
+  --gold-border: #ffd600;
+  --ink-dark: #181a1b;
+
+  --font-bn: system-ui, "Noto Sans Bengali", "Nirmala UI", "Segoe UI", sans-serif;
+  --font-serif: "Noto Sans Bengali", "Nirmala UI", Georgia, serif;
+  --font-mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --shadow-card: 0 6px 20px rgba(0, 0, 0, 0.55);
+}
+

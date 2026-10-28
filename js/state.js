@@ -19,6 +19,8 @@ export const game = {
   invulnT: 0, // seconds left in which heavy things can't end the run
   warn: false,// a heavy hazard is close ahead in our path
   fuel: CFG.fuel.max,
+  hp: CFG.bus.maxHp,     // bus body & window health (0..100)
+  comfort: CFG.comfort.max, // passenger comfort / patience (0..100)
   fare: 0,
   damage: 0,  // Damage score from crashes
   combo: 0,   // crashes in a row
@@ -44,6 +46,8 @@ export function resetGame() {
   game.invulnT = 0;
   game.warn = false;
   game.fuel = CFG.fuel.max;
+  game.hp = CFG.bus.maxHp;
+  game.comfort = CFG.comfort.max;
   game.fare = 0;
   game.pass = 0;
   game.dist = 0;

@@ -7,6 +7,19 @@ import { bnNum, bnDate, clock, UI } from "./i18n.js";
 const FONT = "'Noto Sans Bengali', 'Nirmala UI', sans-serif";
 let current = null; // the last page shown, so "save image" can redraw it
 
+const STAMPS = {
+  complete: { text: "ট্রিপ সফল ✓", color: "#1f6b3a" },
+  caught:   { text: "পাবলিক ঘেরাও!", color: "#b8322a" },
+  fuel:     { text: "তেল শেষ!", color: "#b8322a" },
+  hp:       { text: "কাঁচ চুরমার!", color: "#b8322a" },
+  default:  { text: "কেস পেন্ডিং!", color: "#b8322a" },
+};
+
+function isInAppBrowser() {
+  const ua = navigator.userAgent || "";
+  return /FBAN|FBAV|Instagram|Messenger|Line\/|MicroMessenger/i.test(ua);
+}
+
 /** Put the run's numbers into a template like "{stage}-এ {crashes}টি ধাক্কা". */
 function fill(text, run) {
   return text
@@ -65,8 +78,44 @@ export function showPaper(run, photo) {
   $("pcap").textContent = PAPER.photoCaption;
   $("pstory").textContent = text.story;
   $("pstats").innerHTML = statLines(run).map(l => `<div>${l}</div>`).join("");
+  const stamp = STAMPS[run.cause] || STAMPS.default;
+  const stEl = $("pstamp");
+  if (stEl) {
+    stEl.textContent = stamp.text;
+    stEl.style.color = stamp.color;
+    stEl.style.borderColor = stamp.color;
+  }
+  const ledEl = $("ledger");
+  if (ledEl) {
+    ledEl.innerHTML =
+      `<div class="lhead">📒 হেল্পারের হিসাবের খাতা</div>` +
+      `<div class="lrow"><span>যাত্রী ভাড়া ও বকশিশ</span><b>+৳${bnNum(run.fare)}</b></div>` +
+      `<div class="lrow"><span>রাস্তার ড্যামেজ বোনাস (x${bnNum(run.combo)})</span><b>+${bnNum(run.damage)}</b></div>` +
+      `<div class="lrow"><span>সার্জেন্টের জরিমানা</span><b>−৳${bnNum(run.fines)}</b></div>` +
+      `<div class="lrow ltot"><span>সর্বমোট স্কোর</span><b>${bnNum(run.score)}</b></div>`;
+  }
+  const inappEl = $("inappNote");
+  if (inappEl) inappEl.hidden = !isInAppBrowser();
   $("pnote").textContent = PAPER.disclaimer;
   $("paper").hidden = false;
+}
+
+/** Copy a short Bangla summary of the run to the clipboard for easy sharing. */
+export async function copyRunSummary() {
+  if (!current) return false;
+  const { run, headline } = current;
+  const summary =
+    `🚌 লোকাল বাস — ঢাকা রুট\n` +
+    `📰 "${headline}"\n` +
+    `🏆 স্কোর: ${bnNum(run.score)} (ড্যামেজ ${bnNum(run.damage)}, ভাড়া ৳${bnNum(run.fare)}, সেরা কম্বো x${bnNum(run.combo)})\n` +
+    `📍 পথ: ${bnNum(run.km)}/${bnNum(run.totalKm)} কিমি (${run.stage})\n` +
+    `${location.href}`;
+  try {
+    await navigator.clipboard.writeText(summary);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function hidePaper() {
@@ -123,6 +172,17 @@ export async function savePaperImage() {
   g.fillRect(M, y, W - 2 * M, 2); y += 18;
   g.font = `600 30px ${FONT}`;
   for (const l of statLines(run)) y = wrap(g, l, M, y, W - 2 * M, 42);
+
+  // Diagonal rubber stamp on the exported newspaper PNG.
+  const stamp = STAMPS[run.cause] || STAMPS.default;
+  g.save();
+  g.translate(W - 220, 320);
+  g.rotate(-0.18);
+  g.strokeStyle = stamp.color; g.lineWidth = 6;
+  g.strokeRect(-150, -42, 300, 84);
+  g.fillStyle = stamp.color; g.font = `800 36px ${FONT}`; g.textAlign = "center"; g.textBaseline = "middle";
+  g.fillText(stamp.text, 0, 0);
+  g.restore();
 
   g.font = `22px ${FONT}`; g.fillStyle = "#555"; g.textAlign = "center";
   y += 30;

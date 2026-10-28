@@ -159,6 +159,17 @@ export function eachMark(fn) {
   for (const o of marks) fn(o.kind, o.m.position.x, o.m.position.z);
 }
 
+/** Distance ahead (in world units) and side (-1 left, +1 right) of the nearest upcoming CNG mark, or null. */
+export function nearestCng() {
+  let best = null;
+  for (const k of marks) {
+    if (k.kind !== "cng" || !k.onRoad) continue;
+    const d = -k.z;
+    if (d > -4 && (!best || d < best.d)) best = { d: Math.max(0, d), side: Math.sign(k.x) };
+  }
+  return best;
+}
+
 /** Show a hint now and then (not every frame). */
 function hint(text) {
   if (game.time < hintT) return;
@@ -180,6 +191,7 @@ export function updateMarks(dt) {
     const atStop = s.onRoad && Math.abs(bx - s.x) < S.reachX && Math.abs(s.z) < S.reachZ;
     if (atStop && s.people.length) {
       if (game.speed < S.boardMaxSpeed) {
+        game.onMark = "stop";
         // Passengers board one by one while the bus waits at the stop.
         boardT -= dt;
         if (boardT <= 0) {
@@ -188,6 +200,7 @@ export function updateMarks(dt) {
           game.pass = Math.min(CFG.fare.maxPassengers, game.pass + 1);
           game.fare += CFG.fare.perPassenger;
           msg(`যাত্রী উঠছে! +৳${CFG.fare.perPassenger}`, 500);
+          emit("board");
         }
       } else hint("আস্তে! বাস থামান, যাত্রী উঠবে");
     }

@@ -100,30 +100,34 @@ function batch(mat) {
 const pt = { x: 0, y: 0, z: 0, yaw: 0, k: 0 };
 /**
  * Add a flat band along a segment, from lateral x0 to x1, raised y above the road.
- * dash = [on, period] makes it a dashed line.
+ * dash = [on, period] makes it a dashed line; range = [f0, f1] limits it to part of the segment.
  */
-function band(seg, x0, x1, y, mat, dash) {
+function band(seg, x0, x1, y, mat, dash, range) {
   const b = batch(mat), S = SEGS[seg];
-  for (let i = 0; i < S.n; i++) {
+  const i0 = range ? Math.floor(range[0] * (S.n - 1)) : 0;
+  const i1 = range ? Math.ceil(range[1] * (S.n - 1)) : S.n - 1;
+  for (let i = i0; i <= i1; i++) {
     sample(seg, i * S.step, pt);
     const rx = Math.cos(pt.yaw), rz = -Math.sin(pt.yaw);
     const base = b.pos.length / 3;
     b.pos.push(pt.x + rx * x0, pt.y + y, pt.z + rz * x0, pt.x + rx * x1, pt.y + y, pt.z + rz * x1);
     // For dashes, paint the piece from the previous point only if its middle is in a painted stretch.
     const ok = !dash || ((i - .5) * S.step) % dash[1] < dash[0];
-    if (i > 0 && ok) b.idx.push(base - 2, base, base - 1, base - 1, base, base + 1);
+    if (i > i0 && ok) b.idx.push(base - 2, base, base - 1, base - 1, base, base + 1);
   }
 }
 
-/** Add a low wall along a segment at lateral x (flyover parapets). */
-function wall(seg, x, h, mat) {
+/** Add a low wall along a segment at lateral x, starting at height y0 and rising by h. */
+function wall(seg, x, y0, h, mat, range) {
   const b = batch(mat), S = SEGS[seg];
-  for (let i = 0; i < S.n; i++) {
+  const i0 = range ? Math.floor(range[0] * (S.n - 1)) : 0;
+  const i1 = range ? Math.ceil(range[1] * (S.n - 1)) : S.n - 1;
+  for (let i = i0; i <= i1; i++) {
     sample(seg, i * S.step, pt);
     const rx = Math.cos(pt.yaw), rz = -Math.sin(pt.yaw);
     const base = b.pos.length / 3;
-    b.pos.push(pt.x + rx * x, pt.y, pt.z + rz * x, pt.x + rx * x, pt.y + h, pt.z + rz * x);
-    if (i > 0) b.idx.push(base - 2, base, base - 1, base - 1, base, base + 1);
+    b.pos.push(pt.x + rx * x, pt.y + y0, pt.z + rz * x, pt.x + rx * x, pt.y + y0 + h, pt.z + rz * x);
+    if (i > i0) b.idx.push(base - 2, base, base - 1, base - 1, base, base + 1);
   }
 }
 
@@ -150,10 +154,12 @@ const MATS = {
   pave: new THREE.MeshLambertMaterial({ color: 0x9e9e9e, side: THREE.DoubleSide }),
   line: new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide }),
   wall: new THREE.MeshLambertMaterial({ color: 0xbdb5a6, side: THREE.DoubleSide }),
+  metroGreen: new THREE.MeshLambertMaterial({ color: 0x1f6b3a, side: THREE.DoubleSide }),
 };
 
-/** Build every road ribbon and the junction side roads. */
+/** Build every road ribbon, the junction side roads, and the overhead metro viaduct. */
 function buildRoads() {
+  const M = CFG.metro;
   for (let i = 0; i < SEGS.length; i++) {
     const S = SEGS[i], h = S.half;
     // Side streets and flyovers sit a hair higher so they never flicker where they overlap the main road.
@@ -162,12 +168,21 @@ function buildRoads() {
     band(i, h - .35, h - .15, lift + .01, MATS.line);
     band(i, -h + .15, -h + .35, lift + .01, MATS.line);
     if (S.kind === "flyover") {
-      for (const s of [-1, 1]) wall(i, s * h, 1, MATS.wall);
+      for (const s of [-1, 1]) wall(i, s * h, 0, 1, MATS.wall);
     } else {
       band(i, h, h + 2, lift + .12, MATS.pave);
       band(i, -h - 2, -h, lift + .12, MATS.pave);
     }
     if (S.kind !== "street") for (const s of [-1, 1]) band(i, s * h / 2 - .09, s * h / 2 + .09, lift + .015, MATS.line, W.dash);
+    // Overhead metro rail viaduct deck and side parapets (Shahbagh & Dhaka University).
+    if (S.metro) {
+      const mw = M.deckWidth / 2;
+      band(i, -mw, mw, M.deckY, MATS.wall, null, S.metro);
+      for (const s of [-1, 1]) {
+        wall(i, s * mw, M.deckY - .2, 1.15, MATS.wall, S.metro);
+        wall(i, s * (mw + .04), M.deckY + .25, .3, MATS.metroGreen, S.metro);
+      }
+    }
     for (const j of S.junctions || []) {
       for (const side of j.type === "X" ? [-1, 1] : [j.side]) stub(i, j.at * S.len, side);
     }

@@ -1,0 +1,19 @@
+{
+  "name": "লোকাল বাস — ঢাকা রুট (Local Bus: Dhaka Route)",
+  "short_name": "লোকাল বাস",
+  "description": "3D satirical Dhaka local bus arcade driving game from Mohammadpur to Dhaka University.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#1a1d1f",
+  "theme_color": "#1f6b3a",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
+

@@ -39,11 +39,14 @@ export const MAP = {
     { id: "shahbag-approach", stage: 2, path: [["s", 420], ["l", 6, 600], ["s", 320]],
       // The way round the jam at the big junction.
       alt: { id: "katabon-lane", kind: "street", side: -1, width: 9, bulge: 24, chord: 0.3 },
+      metro: [0.45, 1.0],
       junctions: [{ at: 0.99, type: "X" }] },
 
     // ---- Stage 4: Dhaka University (heading south) ----
-    { id: "du-north", stage: 3, path: [["s", 70], ["r", 90, 40], ["s", 320], ["l", 15, 300], ["s", 260]] },
-    { id: "du-campus", stage: 3, path: [["s", 320], ["r", 20, 260], ["s", 420], ["l", 20, 260], ["s", 320]] },
+    { id: "du-north", stage: 3, path: [["s", 70], ["r", 90, 40], ["s", 320], ["l", 15, 300], ["s", 260]],
+      metro: [0.0, 1.0] },
+    { id: "du-campus", stage: 3, path: [["s", 320], ["r", 20, 260], ["s", 420], ["l", 20, 260], ["s", 320]],
+      metro: [0.0, 0.72] },
   ],
 };
 
@@ -177,6 +180,12 @@ const MAIN = [];
         // Pillars stand in the middle of the main road where the flyover is right above it.
         seg.pillarFrom = seg.len * .3; seg.pillarTo = seg.len * .7;
       }
+    }
+    if (leg.metro) {
+      // The overhead metro rail line also stands on middle-of-the-road pillars.
+      seg.metro = leg.metro;
+      seg.pillarFrom = seg.len * leg.metro[0] + 14;
+      seg.pillarTo = seg.len * leg.metro[1] - 14;
     }
   }
   // Connect: each leg leads to the next leg's main road and its alt (if any).

@@ -7,6 +7,8 @@ const MUTE_KEY = "localbus.muted";
 
 let ctx = null;     // the AudioContext, created on the first tap
 let master = null;  // one volume knob for every sound
+let engOsc = null, engFilter = null, engGain = null; // continuous engine hum
+let crowdGain = null;                                 // continuous crowd chase murmur
 let muted = localStorage.getItem(MUTE_KEY) === "1";
 
 /** Create / resume the audio engine. Safe to call many times. */
@@ -18,6 +20,34 @@ export function unlockAudio() {
     master = ctx.createGain();
     master.gain.value = muted ? 0 : A.volume;
     master.connect(ctx.destination);
+
+    // Continuous low-pass filtered sawtooth oscillator for the diesel bus engine hum.
+    engOsc = ctx.createOscillator();
+    engOsc.type = "sawtooth";
+    engOsc.frequency.value = 46;
+    engFilter = ctx.createBiquadFilter();
+    engFilter.type = "lowpass";
+    engFilter.frequency.value = 160;
+    engGain = ctx.createGain();
+    engGain.gain.value = 0;
+    engOsc.connect(engFilter);
+    engFilter.connect(engGain);
+    engGain.connect(master);
+    engOsc.start();
+
+    // Looping filtered noise for the chasing crowd murmur behind the bus.
+    const len = 2.0;
+    const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * len), ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (0.6 + 0.4 * Math.sin(i / 800));
+    const src = ctx.createBufferSource();
+    src.buffer = buf; src.loop = true;
+    const cf = ctx.createBiquadFilter();
+    cf.type = "bandpass"; cf.frequency.value = 520; cf.Q.value = 1.4;
+    crowdGain = ctx.createGain();
+    crowdGain.gain.value = 0;
+    src.connect(cf); cf.connect(crowdGain); crowdGain.connect(master);
+    src.start();
   }
   if (ctx.state === "suspended") ctx.resume();
 }
@@ -69,4 +99,99 @@ export function slap() {
   const g = ctx.createGain(); g.gain.value = A.slapGain;
   src.connect(f); f.connect(g); g.connect(master);
   src.start(t);
+}
+
+/** Overhead metro train rumble + electric chime/horn when a train passes above the bus. */
+export function metroPass() {
+  if (!ctx || muted) return;
+  const t = ctx.currentTime, len = 1.4;
+  // Soft filtered noise for the viaduct track rumble.
+  const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * len), ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) {
+    const env = Math.sin((i / d.length) * Math.PI);
+    d[i] = (Math.random() * 2 - 1) * env;
+  }
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const f = ctx.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = 135; f.Q.value = 1.8;
+  const g = ctx.createGain(); g.gain.value = 0.28;
+  src.connect(f); f.connect(g); g.connect(master);
+  src.start(t);
+  // Clean electric train horn chord above the rumble.
+  tone([587.3, 880], t + 0.18, 0.28, "triangle", 0.12);
+}
+
+/** Cartoon window-crack / projectile thud when a thrown item hits the bus. */
+export function glassHit() {
+  if (!ctx || muted) return;
+  const t = ctx.currentTime, len = 0.16;
+  const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * len), ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length) ** 2;
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const f = ctx.createBiquadFilter(); f.type = "highpass"; f.frequency.value = 1800;
+  const g = ctx.createGain(); g.gain.value = 0.45;
+  src.connect(f); f.connect(g); g.connect(master);
+  src.start(t);
+  tone([1320, 1760], t, 0.08, "square", 0.12);
+}
+
+/** Update continuous engine hum pitch/filter and chasing crowd murmur every frame. */
+export function updateAudio(speed, boosting, crowdClose, active) {
+  if (!ctx || !engOsc) return;
+  const t = ctx.currentTime;
+  const targetGain = active && !muted ? (0.045 + Math.min(0.055, speed * 0.0012) + (boosting ? 0.03 : 0)) : 0;
+  const targetFreq = 42 + speed * 1.65 + (boosting ? 22 : 0);
+  engOsc.frequency.setTargetAtTime(targetFreq, t, 0.05);
+  engFilter.frequency.setTargetAtTime(140 + speed * 5.5 + (boosting ? 180 : 0), t, 0.05);
+  engGain.gain.setTargetAtTime(targetGain, t, 0.06);
+  if (crowdGain) {
+    crowdGain.gain.setTargetAtTime(active && !muted ? crowdClose * 0.12 : 0, t, 0.08);
+  }
+}
+
+/** Punchy thud and rattle on a light or heavy crash. */
+export function crashSound(heavy = false) {
+  if (!ctx || muted) return;
+  const t = ctx.currentTime, len = heavy ? 0.42 : 0.22;
+  const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * len), ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length) ** 1.8;
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const f = ctx.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = heavy ? 280 : 480;
+  const g = ctx.createGain(); g.gain.value = heavy ? 0.75 : 0.5;
+  src.connect(f); f.connect(g); g.connect(master);
+  src.start(t);
+  tone([heavy ? 65 : 95], t, len * 0.8, "triangle", heavy ? 0.35 : 0.22);
+}
+
+/** Cheerful ascending two-note chime when chaining a crash combo. */
+export function comboSound(mult = 1) {
+  if (!ctx || muted) return;
+  const t = ctx.currentTime, base = 440 + Math.min(6, mult) * 55;
+  tone([base], t, 0.09, "triangle", 0.16);
+  tone([base * 1.25], t + 0.08, 0.14, "triangle", 0.18);
+}
+
+/** Classic Dhaka bus conductor bell ("টুং-টুং") when passengers board. */
+export function boardDing() {
+  if (!ctx || muted) return;
+  const t = ctx.currentTime;
+  tone([1174.7, 2349.3], t, 0.11, "sine", 0.15);
+}
+
+/** Warm rising tone when refueling at a CNG station mark. */
+export function refuelSound() {
+  if (!ctx || muted) return;
+  const t = ctx.currentTime;
+  tone([330, 440], t, 0.14, "sine", 0.14);
+  tone([440, 554.4], t + 0.12, 0.18, "sine", 0.16);
+}
+
+/** Short two-pip alert when a heavy hazard enters the warning zone ahead. */
+export function warnBeep() {
+  if (!ctx || muted) return;
+  const t = ctx.currentTime;
+  tone([784], t, 0.07, "square", 0.1);
+  tone([784], t + 0.1, 0.07, "square", 0.1);
 }

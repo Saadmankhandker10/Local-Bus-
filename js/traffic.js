@@ -6,7 +6,7 @@
 // from the bus along the road (negative = ahead), so the old collision rules still work.
 import { CFG } from "./config.js";
 import { rnd, pick, clamp } from "./utils.js";
-import { scene } from "./world.js";
+import { scene, person } from "./world.js";
 import { game } from "./state.js";
 import { emit, on } from "./events.js";
 import { sweptHit, sideGap } from "./physics.js";
@@ -14,12 +14,16 @@ import { makeVehicle, makeStall, makePillar, beaconMat } from "./vehicles.js";
 import { currentStage } from "./journey.js";
 import { SEGS, here, ahead, walk, place, lanesOf } from "./map.js";
 
-const T = CFG.traffic, B = CFG.bus, I = CFG.impact, W = CFG.warning;
+const T = CFG.traffic, B = CFG.bus, I = CFG.impact, W = CFG.warning, J = CFG.jam, PED = CFG.pedestrians;
 const LIGHT = T.types.filter(t => !t.heavy);
+const jamSeg = SEGS.findIndex(s => s.id === J.segId);
+let jamHornT = 0, demoWarnT = 0, pedWarnT = 0;
 
 const objs = [];      // everything currently on the road
+const peds = [];      // crossing pedestrians (never crashable; they dodge or jump back onto the pavement)
 let spawnTimer = 0;   // seconds until the next vehicle tries to spawn
 let nextStall = 0;    // odometer distance where the next stall appears
+let nextPed = 0;      // odometer distance where the next crossing pedestrian appears
 const pillarsDone = new Set(); // pillars already placed this run ("seg:index")
 const spot = { seg: 0, s: 0 }; // reused spawn position
 
@@ -35,9 +39,13 @@ function onBusRoad(seg) {
 /** Remove everything and restart all spawn counters from this odometer distance. */
 export function resetTraffic(fromDist = 0) {
   for (const o of objs) scene.remove(o.m);
+  for (const p of peds) scene.remove(p.m);
   objs.length = 0;
+  peds.length = 0;
   spawnTimer = T.firstSpawnDelay;
   nextStall = fromDist + rnd(CFG.stall.gapMin, CFG.stall.gapMax);
+  nextPed = fromDist + rnd(PED.gapMin, PED.gapMax);
+  jamHornT = demoWarnT = pedWarnT = 0;
   pillarsDone.clear();
 }
 
@@ -105,6 +113,24 @@ function spawn(dt) {
     if (S.kind !== "flyover" && !spawnBlocked(spot.seg, spot.s, x)) add(CFG.stall, makeStall(), spot.seg, spot.s, x, true);
   }
 
+  // Crossing pedestrians on ordinary roads (they walk from one pavement to the other and dodge the bus).
+  if (game.dist >= nextPed) {
+    nextPed = game.dist + rnd(PED.gapMin, PED.gapMax);
+    walk(here.seg, here.s, T.spawnAhead * .75, pickBranch, spot);
+    const S = SEGS[spot.seg];
+    if (S.kind !== "flyover") {
+      const side = pick([-1, 1]), startX = side * (S.half + .9);
+      const m = person(pick([0xe53935, 0x1e88e5, 0x43a047, 0xfb8c00, 0x8e24aa, 0x00897b, 0xfdd835]));
+      scene.add(m);
+      peds.push({
+        m, seg: spot.seg, s: spot.s,
+        x: startX, targetX: -startX,
+        scared: false, ph: rnd(0, 6),
+      });
+      place(m, spot.seg, spot.s, startX);
+    }
+  }
+
   // Flyover pillars: fixed spots down the middle of the road below a flyover.
   const P = CFG.pillar;
   for (const seg of [here.seg, ...SEGS[here.seg].next]) {
@@ -139,6 +165,17 @@ function drive(o, dt) {
   }
   if (t.laneChange && Math.random() < t.laneChange * dt) {
     o.targetX = clamp(o.targetX + pick([-1, 1]) * T.laneWidth, lmin, lmax); // CNGs love cutting lanes
+  }
+  // Shahbagh student demonstration jam: traffic slows to a crawl and merges into the open left lane.
+  if (o.seg === jamSeg) {
+    const S = SEGS[jamSeg], f = o.s / S.len, barS = S.len * J.barricadeAt;
+    if (f >= J.from && f <= J.to) {
+      targetV = Math.min(targetV, J.maxTrafficSpeed);
+      if (o.s < barS + J.barricadeHalfLen && o.targetX > J.barricadeMinX - t.w / 2 - .3) {
+        o.targetX = lmin;
+        if (o.s > barS - J.barricadeHalfLen - 4 && o.x > J.barricadeMinX - .4) targetV = 0;
+      }
+    }
   }
   o.targetX = clamp(o.targetX, lmin, lmax); // a narrower road ahead squeezes everyone in
   o.v += (targetV - o.v) * ease(T.speedResponse, dt);
@@ -204,6 +241,31 @@ function advance(o, dt) {
 export function updateTraffic(dt) {
   spawn(dt);
   game.invulnT = Math.max(0, game.invulnT - dt);
+
+  // Shahbagh student demonstration barricade: solid, non-crashable moving roadblock + traffic jam horns.
+  if (here.seg === jamSeg && !game.crashing && !game.caught) {
+    const S = SEGS[jamSeg], f = here.s / S.len, barS = S.len * J.barricadeAt;
+    if (f >= J.from && f <= J.to && game.time > jamHornT) {
+      jamHornT = game.time + J.hornInterval * rnd(.7, 1.3);
+      emit("jamHorn");
+    }
+    const halfSpan = J.barricadeHalfLen + B.hitHalfLength;
+    if (Math.abs(here.s - barS) < halfSpan && game.lat + B.hitHalfWidth > J.barricadeMinX) {
+      if (here.s < barS - J.barricadeHalfLen + 1.5 && game.lat + B.hitHalfWidth > J.barricadeMinX + .35) {
+        game.speed = 0;
+        game.boostT = 0;
+        here.s = Math.min(here.s, barS - halfSpan + .2);
+        game.lat -= 2.2 * dt; // gently guide the nose towards the open left lane
+      } else {
+        game.lat = Math.min(game.lat, J.barricadeMinX - B.hitHalfWidth);
+      }
+      if (game.time > demoWarnT) {
+        demoWarnT = game.time + 3.5;
+        emit("demoBlocked");
+      }
+    }
+  }
+
   let warn = false;
   const bx = game.lat;
 
@@ -246,12 +308,45 @@ export function updateTraffic(dt) {
     place(o.m, o.seg, o.s, o.x, o.y, o.rot);
   }
 
+  // Update crossing pedestrians: walk across, hesitate/jump back when the bus approaches, never crashable.
+  for (let i = peds.length - 1; i >= 0; i--) {
+    const p = peds[i], S = SEGS[p.seg], a = ahead(p.seg, p.s);
+    if (Number.isNaN(a) || a < -T.despawnBehind || a > -T.despawnAhead) {
+      scene.remove(p.m); peds.splice(i, 1);
+      continue;
+    }
+    if (!p.scared && onBusRoad(p.seg) && a > 0 && a < PED.scareDist && Math.abs(p.x - bx) < PED.scareWidth && game.speed > 4) {
+      p.scared = true;
+      // Scramble to whichever pavement side is safer away from the bus.
+      const safeSide = (p.x >= bx ? 1 : -1);
+      p.targetX = safeSide * (S.half + 1.2);
+    }
+    if (onBusRoad(p.seg) && a > -2 && a < 6 && Math.abs(p.x - bx) < B.hitHalfWidth + .75) {
+      // Last-moment leap aside so a pedestrian is never hit, while the driver taps the brakes.
+      const safeSide = (p.x >= bx ? 1 : -1);
+      p.x = bx + safeSide * (B.hitHalfWidth + 1.35);
+      p.targetX = safeSide * (S.half + 1.2);
+      p.scared = true;
+      game.speed *= 0.9;
+      if (game.time > pedWarnT) {
+        pedWarnT = game.time + 3.2;
+        emit("pedScared");
+      }
+    }
+    const spd = p.scared ? PED.dodgeSpeed : PED.walkSpeed;
+    const dx = p.targetX - p.x;
+    if (Math.abs(dx) > .08) p.x += Math.sign(dx) * Math.min(Math.abs(dx), spd * dt);
+    const bob = Math.abs(dx) > .1 ? Math.abs(Math.sin(game.time * (p.scared ? 14 : 7) + p.ph)) * .16 : 0;
+    const faceYaw = dx >= 0 ? Math.PI / 2 : -Math.PI / 2;
+    place(p.m, p.seg, p.s, p.x, bob, faceYaw);
+  }
+
   game.warn = warn;
   // Gentle pulse (2 Hz) instead of hard flashing.
   beaconMat.opacity = .55 + .45 * Math.sin(game.time * Math.PI * 2 * W.pulseHz);
 }
 
-// Horn: light vehicles just ahead in the bus's lane move one lane aside.
+// Horn: light vehicles just ahead in the bus's lane move one lane aside, and pedestrians jump back to the pavement.
 on("horn", () => {
   const bx = game.lat;
   for (const o of objs) {
@@ -260,6 +355,15 @@ on("horn", () => {
     if (a > 0 && a < CFG.horn.reach && Math.abs(o.x - bx) < B.hitHalfWidth + o.t.w / 2 + .5) {
       const lanes = lanesOf(o.seg, T.lanes);
       o.targetX = clamp(o.x >= bx ? o.x + T.laneWidth : o.x - T.laneWidth, lanes[0], lanes[lanes.length - 1]);
+    }
+  }
+  for (const p of peds) {
+    if (!onBusRoad(p.seg)) continue;
+    const a = ahead(p.seg, p.s);
+    if (a > 0 && a < CFG.horn.reach + 10) {
+      p.scared = true;
+      const safeSide = (p.x >= bx ? 1 : -1);
+      p.targetX = safeSide * (SEGS[p.seg].half + 1.2);
     }
   }
 });

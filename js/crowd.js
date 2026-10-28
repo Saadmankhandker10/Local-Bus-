@@ -33,6 +33,46 @@ for (let i = 0; i < K.maxSize; i++) {
 }
 const dummy = new THREE.Object3D(); // reused to build each matrix
 const rp = { x: 0, y: 0, z: 0, yaw: 0, k: 0 };
+let throwT = 0; // seconds until the next cartoon item is thrown by the crowd
+
+// Object pooling: we build a small fixed set of 3D projectiles and glass shards once at startup
+// and reuse them by toggling `.visible`, avoiding slow memory cleanup (garbage collection) mid-game.
+const ITEM_DEFS = [
+  { name: "ইট", geo: new THREE.BoxGeometry(.36, .18, .22), mat: new THREE.MeshLambertMaterial({ color: 0xb8322a }) },
+  { name: "হেলমেট", geo: new THREE.SphereGeometry(.24, 8, 6, 0, Math.PI * 2, 0, Math.PI * .65), mat: new THREE.MeshLambertMaterial({ color: 0xffc21a }) },
+  { name: "স্যান্ডেল", geo: new THREE.BoxGeometry(.22, .08, .42), mat: new THREE.MeshLambertMaterial({ color: 0x5d4037 }) },
+  { name: "বোতল", geo: new THREE.CylinderGeometry(.1, .1, .38, 7), mat: new THREE.MeshLambertMaterial({ color: 0x29b6f6 }) },
+  { name: "চায়ের কাপ", geo: new THREE.CylinderGeometry(.12, .09, .24, 7), mat: new THREE.MeshLambertMaterial({ color: 0xffe0b2 }) },
+];
+
+const projPool = Array.from({ length: K.projectilePool }, (_, i) => {
+  const def = ITEM_DEFS[i % ITEM_DEFS.length];
+  const m = new THREE.Mesh(def.geo, def.mat);
+  m.visible = false;
+  scene.add(m);
+  return { m, itemName: def.name, active: false, u: 0, sx: 0, sz: 0, tx: 0, tz: 0 };
+});
+
+const shardGeo = new THREE.BoxGeometry(.14, .14, .04);
+const shardMat = new THREE.MeshBasicMaterial({ color: 0xdff6ff });
+const shardPool = Array.from({ length: K.shardPool }, () => {
+  const m = new THREE.Mesh(shardGeo, shardMat);
+  m.visible = false;
+  scene.add(m);
+  return { m, active: false, t: 0, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0 };
+});
+
+function spawnShards(lat, back) {
+  let spawned = 0;
+  for (const s of shardPool) {
+    if (s.active) continue;
+    s.active = true; s.t = 0.55;
+    s.x = lat + rnd(-.9, .9); s.y = 2.1 + rnd(-.3, .4); s.z = back + rnd(-.5, .5);
+    s.vx = rnd(-3.5, 3.5); s.vy = rnd(2.2, 5.2); s.vz = rnd(-2.5, 2.5);
+    s.m.visible = true;
+    if (++spawned >= 6) break;
+  }
+}
 
 /**
  * Put `dummy` at a spot given relative to the bus: lat = right of the road centre,
@@ -50,13 +90,17 @@ function toWorld(lat, back, up) {
 export function resetCrowd() {
   crowd.active = false;
   crowd.crashes = 0;
+  throwT = 0;
   bodies.count = heads.count = 0;
+  for (const p of projPool) { p.active = false; p.m.visible = false; }
+  for (const s of shardPool) { s.active = false; s.m.visible = false; }
 }
 
 function hide(reason) {
   crowd.active = false;
   crowd.crashes = 0;
   bodies.count = heads.count = 0;
+  for (const p of projPool) { p.active = false; p.m.visible = false; }
   emit(reason);
 }
 
@@ -79,11 +123,61 @@ on("crash", () => {
 
 on("fineClosed", () => { if (crowd.active) hide("crowdCleared"); });
 
-/** Move the chase for one step: close the gap, catch the bus, or give up. */
+/** Move the chase for one step: close the gap, throw cartoon items, catch the bus, or give up. */
 export function updateCrowd(dt) {
+  // Update active thrown projectiles and glass shards even if the crowd just caught the bus.
+  for (const p of projPool) {
+    if (!p.active) continue;
+    p.u += dt / K.throwFlightTime;
+    if (p.u >= 1) {
+      p.active = false;
+      p.m.visible = false;
+      if (!game.caught && !game.crashing && Math.abs(game.lat - p.tx) <= CFG.bus.hitHalfWidth + .35) {
+        spawnShards(p.tx, 2.2);
+        emit("projectileHit", { item: p.itemName });
+      }
+      continue;
+    }
+    const x = p.sx + (p.tx - p.sx) * p.u;
+    const z = p.sz + (p.tz - p.sz) * p.u;
+    const y = 1.15 + 4 * p.u * (1 - p.u) * K.throwArcHeight;
+    toWorld(x, z, y);
+    p.m.position.copy(dummy.position);
+    p.m.rotation.set(game.time * 9, dummy.rotation.y, game.time * 6);
+  }
+
+  for (const s of shardPool) {
+    if (!s.active) continue;
+    s.t -= dt;
+    if (s.t <= 0) { s.active = false; s.m.visible = false; continue; }
+    s.vy -= 14 * dt;
+    s.x += s.vx * dt; s.y = Math.max(.1, s.y + s.vy * dt); s.z += s.vz * dt;
+    toWorld(s.x, s.z, s.y);
+    s.m.position.copy(dummy.position);
+    s.m.rotation.x += 10 * dt; s.m.rotation.y += 8 * dt;
+  }
+
   if (!crowd.active || game.caught) return;
   crowd.gap += (game.speed - crowd.speed) * dt;
   if (crowd.gap <= K.catchGap) { crowd.gap = K.catchGap; emit("caught"); return; }
+
+  // Angry public retaliation: throw a cartoon brick / helmet / sandal / tea cup on a ballistic arc.
+  if (!game.crashing && crowd.gap <= K.throwMaxGap && crowd.gap >= K.throwMinGap) {
+    throwT -= dt;
+    if (throwT <= 0) {
+      throwT = K.throwInterval * rnd(.8, 1.25);
+      const p = projPool.find(it => !it.active);
+      if (p) {
+        const idx = Math.floor(rnd(0, Math.max(1, crowd.size)));
+        p.active = true; p.u = 0;
+        p.sx = px[idx]; p.sz = Math.min(crowd.gap + 2.5, pz[idx]);
+        p.tx = game.lat + rnd(-K.throwLeadJitter, K.throwLeadJitter);
+        p.tz = 2.0; // aims at the rear/side windows of the bus
+        p.m.visible = true;
+      }
+    }
+  }
+
   // Far enough away for long enough: they stop running.
   crowd.escapeT = crowd.gap > K.escapeGap ? crowd.escapeT + dt : 0;
   if (crowd.escapeT >= K.escapeTime) hide("crowdGaveUp");
@@ -102,7 +196,7 @@ export function updateCrowdVisual(dt) {
       const r = K.ringRadius * (1 + .15 * (i % 3));
       tx = game.lat + Math.cos(a) * r * .7;
       tz = Math.sin(a) * r * 1.4;
-      bob = 0;
+      bob = Math.abs(Math.sin(game.time * 4.5 * Math.PI + ph[i])) * .22;
       px[i] += (tx - px[i]) * k; pz[i] += (tz - pz[i]) * k;
     } else {
       px[i] += (game.lat * .5 + ox[i] - px[i]) * k;

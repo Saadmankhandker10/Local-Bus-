@@ -38,9 +38,14 @@ export const CFG = {
     wheelRadius: 0.55,
     brakeLightGlow: 2.5,    // tail light brightness while braking
 
-    // --- Collision ---
+    // --- Collision & Bus HP (Body / Windows) ---
     hitHalfWidth: 1.25,  // collision box half width
     hitHalfLength: 3.4,  // collision box half length
+    maxHp: 100,          // bus body & window health (0..100)
+    crashHpLoss: 6,      // HP lost on a light crash
+    projectileHpLoss: 14,// HP lost when a thrown brick/sandal/cup hits the bus
+    stageHpRepair: 20,   // HP patched up by the helper at each stage checkpoint
+    lowHp: 35,           // below this the HP bar pulses gently
   },
 
   fuel: {
@@ -115,8 +120,18 @@ export const CFG = {
     runBobHz: 3,         // running bounce speed
     runBob: 0.25,        // running bounce height
     ringRadius: 4.2,     // when they catch the bus, they stand around it in a ring this wide
-    caughtSeconds: 1.6,  // the "surrounded" moment before the game-over screen
+    caughtSeconds: 1.8,  // the "surrounded" moment before the game-over screen
     ringSpeed: 6,        // how fast they walk into the ring
+
+    // Thrown cartoon projectiles (brick, helmet, sandal, bottle, tea cup) from the chasing crowd.
+    throwMaxGap: 34,     // crowd throws items when closer than this distance behind the bus
+    throwMinGap: 5,
+    throwInterval: 1.35, // seconds between throws while in range
+    throwFlightTime: 0.75,// seconds a thrown item takes to reach the bus
+    throwArcHeight: 2.8, // peak height of the ballistic arc above the road
+    throwLeadJitter: 0.9,// sideways aim scatter (steering sideways dodges the throw!)
+    projectilePool: 10,  // pre-allocated projectile meshes (reused, zero GC)
+    shardPool: 16,       // pre-allocated cartoon glass shard particles on window hit
   },
 
   journey: {
@@ -235,15 +250,64 @@ export const CFG = {
     colors: [0xe53935, 0x1e88e5, 0x43a047, 0xffb300],
   },
 
-  // Flyover sections: a row of pillars down the middle of the road with the deck overhead.
+  // Crossing & roadside pedestrians (never crashable; they dodge or jump back onto the pavement).
+  pedestrians: {
+    gapMin: 55,
+    gapMax: 110,
+    walkSpeed: 2.6,       // normal walking speed across the road
+    dodgeSpeed: 8.8,      // quick scramble speed when the bus approaches or honks
+    scareDist: 28,        // distance ahead where an oncoming bus makes them hesitate / dodge
+    scareWidth: 3.2,      // sideways margin from the bus centre that triggers a dodge
+  },
+
+  // Flyover & metro sections: a row of pillars down the middle of the road with the deck overhead.
   pillar: {
     name: "pillar", w: 1.4, l: 1.4, heavy: true,
     startDist: 450,       // first flyover after this distance
     gapMin: 600, gapMax: 1000,
     countMin: 4, countMax: 7,
-    spacing: 16,          // distance between two pillars
-    deckY: 7.6,           // height of the flyover deck
+    spacing: 22,          // distance between two pillars
+    deckY: 7.6,           // height of the flyover / metro deck
     deckWidth: 9,
+  },
+
+  // Overhead metro rail (Shahbagh & Dhaka University): runs on a timetable along metro segments.
+  metro: {
+    deckY: 7.6,           // viaduct height above the road
+    deckWidth: 7.2,       // width of the twin-track viaduct
+    speed: 28,            // train speed in world units per second
+    interval: 16,         // a train starts a pass every this many seconds
+    cars: 4,              // carriages per train
+    carLength: 9.5,       // length of each carriage
+    carGap: 0.6,          // coupling gap between carriages
+    soundDist: 65,        // play the metro horn and rumble when passing within this distance
+  },
+
+  // Shahbagh student demonstration barricade and traffic jam on the main approach road.
+  jam: {
+    segId: "shahbag-approach", // main road segment where the demonstration stands
+    from: 0.14,                // traffic jam slowdown starts here (fraction of segment)
+    to: 0.44,                  // traffic jam ends here
+    barricadeAt: 0.324,        // fraction of segment where the student barricade stands
+    barricadeMinX: -2.2,       // barricade covers x from -2.2 to the right kerb, leaving the far-left lane open
+    barricadeHalfLen: 7.5,     // half-length of the barricade zone along the road
+    maxTrafficSpeed: 3.5,      // vehicles inside the jam zone crawl at most this fast
+    hornInterval: 2.4,         // seconds between ambient traffic horns in the jam
+  },
+
+  // Passenger comfort / patience meter (0..100). Scales the helper's stage tip at checkpoints.
+  comfort: {
+    max: 100,
+    crashDrop: 10,             // comfort lost on each light crash
+    hardBrakeThreshold: -18,   // deceleration (accel) below which passengers feel a hard brake
+    hardBrakeDrain: 9,         // comfort lost per second during hard braking
+    jamSpeedMax: 6,            // below this speed (when not on a stop/mark) passengers lose patience
+    jamDrain: 4.5,             // comfort lost per second while crawling in a jam
+    recoverMinSpeed: 12,       // above this speed with smooth driving, comfort slowly recovers
+    recoverRate: 2.8,          // comfort gained per second during smooth driving
+    lowThreshold: 35,          // below this the comfort bar glows and passengers grumble
+    grumbleCooldown: 7,        // minimum seconds between passenger grumble lines
+    maxStageTip: 50,           // maximum helper tip (৳) awarded at a stage checkpoint when comfort is 100%
   },
 
   stops: {
@@ -345,6 +409,7 @@ export const CFG = {
     boostPullBack: 1.2,   // camera drops back a little while boosting
     boostFxSmoothing: 4,  // how fast the boost effect fades in and out
     speedLinesOpacity: 0.5, // set to 0 to hide the boost speed lines
+    introSeconds: 1.8,    // skippable morning pan at Mohammadpur Bus Stand on a fresh run
     far: 300,
   },
 

@@ -59,11 +59,28 @@ export function initInput(pauseHandler) {
   // If the window loses focus, keyup never arrives, so let go of everything.
   addEventListener("blur", () => { for (const k in held) held[k] = false; });
 
+  const touchActionByEl = new Map();
   for (const [id, action] of TOUCH_MAP) {
     const el = $(id);
-    el.addEventListener("pointerdown", e => { held[action] = true; e.preventDefault(); });
+    touchActionByEl.set(el, action);
+    el.addEventListener("pointerdown", e => {
+      if (el.releasePointerCapture) { try { el.releasePointerCapture(e.pointerId); } catch {} }
+      held[action] = true;
+      e.preventDefault();
+    });
+    el.addEventListener("pointerenter", e => { if (e.buttons > 0) held[action] = true; });
     for (const ev of ["pointerup", "pointerleave", "pointercancel"]) el.addEventListener(ev, () => held[action] = false);
   }
+  // Support sliding a thumb between adjacent touch buttons on mobile screens.
+  addEventListener("pointermove", e => {
+    if (e.pointerType !== "touch") return;
+    const target = document.elementFromPoint(e.clientX, e.clientY);
+    const activeAction = touchActionByEl.get(target);
+    if (activeAction === "left" || activeAction === "right") {
+      held.left = activeAction === "left";
+      held.right = activeAction === "right";
+    }
+  });
   for (const [id, action] of TAP_TOUCH) {
     $(id).addEventListener("pointerdown", e => { e.preventDefault(); tapHandlers[action]?.(); });
   }

@@ -1,93 +1,124 @@
-html,body{margin:0;height:100%;overflow:hidden;background:#222;font-family:system-ui,"Noto Sans Bengali","Segoe UI",sans-serif;color:#fff}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--asphalt-dark,#1a1d1f);font-family:var(--font-bn);color:#fff}
 canvas{display:block}
 [hidden]{display:none!important}
-#hud{position:fixed;top:42px;left:10px;right:146px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
-.box{background:rgba(0,0,0,.55);padding:6px 10px;border-radius:8px;font-size:14px;min-width:90px}
-.bar{height:8px;background:#444;border-radius:4px;margin-top:5px;overflow:hidden}
-.bar i{display:block;height:100%;width:100%}
-#fuelbar{background:#2ea8ff}#crowdbar{background:#ff8f00}
+#hud{position:fixed;top:42px;left:10px;right:156px;display:flex;gap:7px;flex-wrap:wrap;pointer-events:none}
+.box{background:rgba(20,26,22,.82);border:1.5px solid rgba(255,194,26,.45);padding:5px 9px;border-radius:var(--radius-md,8px);font-size:13px;min-width:84px;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.box b{font-size:16px;color:var(--signal-yellow,#ffc21a);font-variant-numeric:tabular-nums}
+.bar{height:8px;background:#333;border-radius:4px;margin-top:4px;overflow:hidden;border:1px solid rgba(255,255,255,.15)}
+.bar i{display:block;height:100%;width:100%;transition:width .12s linear}
+#fuelbar{background:#2ea8ff}#hpbar{background:#26a69a}#hpbox.low{animation:lowfuel 1s ease-in-out infinite alternate}#comfortbar{background:#43a047}#comfortbox.low #comfortbar{background:#ff7043}#crowdbar{background:#ff8f00}
+#cngHint{color:var(--teal-led,#35e0c2);font-weight:700;font-size:11px}
 /* Low fuel: a slow 1 Hz glow, well under the 3 Hz flash limit. */
 #fuelbox.low{animation:lowfuel 1s ease-in-out infinite alternate}
-@keyframes lowfuel{to{background:rgba(200,40,0,.75)}}
-#msg{position:fixed;top:110px;width:100%;text-align:center;font-size:22px;font-weight:700;text-shadow:0 2px 6px #000;pointer-events:none}
-#screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow-y:auto;background:rgba(0,0,0,.72);text-align:center;padding:20px;line-height:1.6}
-#screen h1{margin:0 0 8px;font-size:34px;color:#ffd600}
-button{font-size:20px;padding:12px 28px;border:0;border-radius:10px;background:#ffcc00;font-weight:700;cursor:pointer}
-#pause{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.6)}
-#pause h1{margin:0 0 16px;font-size:34px;color:#ffd600}
-#pausebtn{position:fixed;top:10px;right:10px;width:44px;height:44px;padding:0;font-size:16px;opacity:.85}
+@keyframes lowfuel{to{background:rgba(184,50,42,.82)}}
+#msg{position:fixed;top:114px;width:100%;text-align:center;font-size:22px;font-weight:700;text-shadow:0 2px 6px #000;pointer-events:none}
+#screen{position:fixed;inset:0;bottom:30px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow-y:auto;background:rgba(15,20,17,.78);text-align:center;padding:18px;line-height:1.55}
+.tinboard{background:linear-gradient(180deg,var(--bus-green,#1f6b3a),var(--bus-green-dark,#134625));border:4px double var(--signal-yellow,#ffc21a);border-radius:14px;padding:10px 22px;margin-bottom:10px;box-shadow:0 6px 20px rgba(0,0,0,.55)}
+.tinplate{font-size:12px;color:var(--cream-paper,#f6efdd);letter-spacing:.5px;opacity:.9}
+#screen h1{margin:2px 0 4px;font-size:clamp(24px,5vw,34px);color:var(--signal-yellow,#ffc21a);text-shadow:0 2px 4px rgba(0,0,0,.6)}
+#bestBanner{background:rgba(255,194,26,.15);border:1px solid var(--signal-yellow,#ffc21a);color:var(--signal-yellow,#ffc21a);padding:4px 14px;border-radius:20px;font-size:14px;font-weight:700;margin-bottom:8px}
+button{font-size:18px;padding:11px 24px;border:0;border-radius:10px;background:var(--signal-yellow,#ffc21a);color:#111;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 3px 10px rgba(0,0,0,.35)}
+button:active{transform:translateY(1px)}
+.ticket-btn{background:linear-gradient(180deg,#ffd54f,#ffb300);border:2px dashed #5d4037;padding:12px 30px;font-size:21px}
+#pause{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.65)}
+#pause h1{margin:0 0 16px;font-size:34px;color:var(--signal-yellow,#ffc21a)}
+#pausebtn,#soundbtn,#settingsbtn{position:fixed;top:8px;width:40px;height:40px;padding:0;font-size:18px;opacity:.88;z-index:20}
+#pausebtn{right:10px}
+#soundbtn{right:56px}
+#settingsbtn{right:102px;background:#e0e0e0}
 /* Boost speed lines: thin rays from the centre, faded out in the middle. JS only changes opacity. */
 #speedlines{position:fixed;inset:0;pointer-events:none;opacity:0;
   background:repeating-conic-gradient(from 0deg at 50% 45%,rgba(255,255,255,.6) 0deg 1deg,transparent 1deg 9deg);
   -webkit-mask-image:radial-gradient(circle at 50% 45%,transparent 35%,#000 80%);
   mask-image:radial-gradient(circle at 50% 45%,transparent 35%,#000 80%)}
-#combo{color:#ffd600;font-weight:700}
+#combo{color:var(--signal-yellow,#ffc21a);font-weight:700}
 /* Red edges when a heavy hazard is ahead. JS sets the opacity (pulses at 2 Hz). */
 #vignette{position:fixed;inset:0;pointer-events:none;opacity:0;
   background:radial-gradient(ellipse at center,transparent 55%,rgba(255,0,0,.85) 100%)}
 #warn{position:fixed;top:150px;width:100%;text-align:center;font-size:26px;font-weight:800;color:#fff;
   text-shadow:0 0 8px #f00,0 2px 4px #000;pointer-events:none}
-#dmgPop{position:fixed;top:40%;width:100%;text-align:center;font-size:30px;font-weight:800;color:#ffd600;
+#dmgPop{position:fixed;top:40%;width:100%;text-align:center;font-size:30px;font-weight:800;color:var(--signal-yellow,#ffc21a);
   text-shadow:0 2px 6px #000;pointer-events:none;opacity:0}
 #dmgPop.pop{animation:pop .9s ease-out}
 /* The crowd is behind the bus, so its cue glows from the bottom edge. JS sets the opacity. */
 #crowdcue{position:fixed;left:0;right:0;bottom:0;height:35%;pointer-events:none;opacity:0;
   background:linear-gradient(to top,rgba(255,120,0,.75),transparent)}
-#subtitle{position:fixed;left:50%;bottom:110px;transform:translateX(-50%);max-width:90%;
-  background:rgba(0,0,0,.7);padding:8px 16px;border-radius:10px;font-size:20px;text-align:center;pointer-events:none}
+#subtitle{position:fixed;left:50%;bottom:106px;transform:translateX(-50%);max-width:90%;
+  background:rgba(15,20,17,.85);border:1.5px solid var(--signal-yellow,#ffc21a);padding:7px 16px;border-radius:10px;font-size:19px;text-align:center;pointer-events:none}
 @keyframes pop{0%{opacity:0;transform:scale(.6)}15%{opacity:1;transform:scale(1.1)}70%{opacity:1;transform:translateY(-20px)}100%{opacity:0;transform:translateY(-40px)}}
-#touch{position:fixed;bottom:14px;left:0;right:0;display:none;justify-content:space-between;padding:0 14px}
+#touch{position:fixed;bottom:36px;left:0;right:0;display:none;justify-content:space-between;padding:0 14px;touch-action:none}
 #touch div{display:flex;gap:10px}
-#touch button{width:70px;height:70px;font-size:26px;padding:0;opacity:.75}
+#touch button{width:68px;height:68px;font-size:25px;padding:0;opacity:.8;user-select:none}
 @media(pointer:coarse){#touch{display:flex}}
 /* Route progress along the top: one segment per stage, the bus icon slides along. */
-#progress{position:fixed;top:8px;left:10px;right:112px;height:26px;pointer-events:none}
-#ptrack{display:flex;height:100%;border-radius:13px;overflow:hidden;background:rgba(0,0,0,.55)}
+#progress{position:fixed;top:8px;left:10px;right:152px;height:26px;pointer-events:none}
+#ptrack{display:flex;height:100%;border-radius:13px;overflow:hidden;background:rgba(0,0,0,.6);border:1px solid rgba(255,194,26,.4)}
 #ptrack .seg{display:flex;align-items:center;justify-content:center;font-size:12px;white-space:nowrap;overflow:hidden;
   border-right:2px solid rgba(255,214,0,.8)}
 #ptrack .seg:last-child{border-right:0}
 #pbus{position:absolute;top:-2px;font-size:22px;transform:translateX(-50%) scaleX(-1);transition:left .2s linear}
-#route{color:#ffd600;margin-bottom:10px;font-size:16px}
+#route{color:var(--cream-paper,#f6efdd);font-size:15px;font-weight:700}
 /* Stage card with a rickshaw-art style double border in bright colours. */
 #stagecard{position:fixed;top:23%;left:50%;transform:translateX(-50%);min-width:300px;max-width:90%;text-align:center;
-  padding:14px 26px;border-radius:16px;background:#1b5e20;border:5px double #ffd600;
+  padding:14px 26px;border-radius:16px;background:var(--bus-green,#1f6b3a);border:5px double var(--signal-yellow,#ffc21a);
   box-shadow:0 0 0 4px #e91e63,0 0 0 8px #00bcd4,0 8px 24px rgba(0,0,0,.5);pointer-events:none}
 #stagecard.pop{animation:cardin .5s ease-out}
 @keyframes cardin{from{opacity:0;transform:translateX(-50%) scale(.7)}to{opacity:1;transform:translateX(-50%) scale(1)}}
-#cardTitle{font-size:28px;font-weight:800;color:#ffeb3b}
+#cardTitle{font-size:26px;font-weight:800;color:#ffeb3b}
 #cardBody{font-size:15px;margin-top:6px}
 #restart{background:#90caf9}
-.fiction{margin-top:10px;font-size:13px;opacity:.7}
-.btns{margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+#copyBtn{background:#e0f2f1;color:#004d40}
+#installBtn{background:var(--teal-led,#35e0c2);color:#00251a}
+.fiction{margin-top:8px;font-size:12px;opacity:.75}
+.btns{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 #share{background:#fff;color:#1a1a1a}
-#soundbtn{position:fixed;top:10px;right:60px;width:44px;height:44px;padding:0;font-size:20px;opacity:.85}
+.footer-links{margin-top:10px;font-size:13px;opacity:.85}
+.linkbtn{background:none;border:0;color:var(--teal-led,#35e0c2);font-size:13px;padding:2px 6px;text-decoration:underline;box-shadow:none;font-weight:600}
 /* Fake newspaper front page (end of every run). */
-#paper{background:#f3ead7;color:#1a1a1a;width:min(760px,94vw);padding:18px 22px;border-radius:4px;text-align:left;
-  box-shadow:0 10px 30px rgba(0,0,0,.6);font-family:"Noto Sans Bengali","Nirmala UI",serif;line-height:1.45}
-#pname{font-size:clamp(30px,7vw,52px);font-weight:800;text-align:center;letter-spacing:1px}
-#ptag{text-align:center;font-size:14px;border-bottom:3px solid #1a1a1a;padding-bottom:6px}
-.pline{display:flex;justify-content:space-between;font-size:13px;border-bottom:1px solid #1a1a1a;padding:4px 0;margin-bottom:8px}
-#pkicker{color:#b71c1c;font-weight:700;font-size:15px}
-#phead{margin:2px 0 10px;font-size:clamp(20px,4.4vw,32px);line-height:1.25}
-.pbody{display:grid;grid-template-columns:1.1fr 1fr;gap:14px}
-@media(max-width:560px){.pbody{grid-template-columns:1fr}}
+#paper{position:relative;background:var(--cream-paper,#f6efdd);color:#1a1a1a;width:min(780px,94vw);padding:16px 20px;border-radius:4px;text-align:left;
+  box-shadow:0 10px 30px rgba(0,0,0,.6);font-family:var(--font-serif);line-height:1.45}
+#pstamp{position:absolute;top:14px;right:18px;transform:rotate(-10deg);border:3px solid #b8322a;color:#b8322a;padding:3px 10px;font-weight:800;font-size:15px;border-radius:4px;opacity:.9;pointer-events:none}
+#pname{font-size:clamp(28px,6.5vw,48px);font-weight:800;text-align:center;letter-spacing:1px}
+#ptag{text-align:center;font-size:13px;border-bottom:3px solid #1a1a1a;padding-bottom:5px}
+.pline{display:flex;justify-content:space-between;font-size:12px;border-bottom:1px solid #1a1a1a;padding:4px 0;margin-bottom:8px}
+#pkicker{color:var(--brick-red,#b8322a);font-weight:700;font-size:14px}
+#phead{margin:2px 0 8px;font-size:clamp(19px,4.2vw,30px);line-height:1.25}
+.pbody{display:grid;grid-template-columns:1.05fr 1fr;gap:14px}
+@media(max-width:580px){.pbody{grid-template-columns:1fr}}
 .pbody figure{margin:0}
-#pphoto{width:100%;display:block;border:1px solid #1a1a1a;filter:sepia(.35) contrast(1.05)}
+#pphoto{width:100%;display:block;border:1px solid #1a1a1a;filter:sepia(.3) contrast(1.05)}
 #pcap{font-size:11px;font-style:italic}
-#pstory{margin:0 0 8px;font-size:14px}
-#pstats{font-size:13px;font-weight:600;border-top:1px solid #1a1a1a;padding-top:6px}
-#pnote{margin-top:10px;font-size:11px;text-align:center;opacity:.75}
+#pstory{margin:0 0 8px;font-size:13.5px}
+#pstats{font-size:12.5px;font-weight:600;border-top:1px solid #1a1a1a;padding-top:6px}
+/* Helper's Ledger (হিসাবের খাতা) inside the newspaper card. */
+#ledger{margin-top:8px;background:#fff8e7;border:1.5px dashed #6d4c41;border-radius:6px;padding:7px 10px;font-size:12.5px}
+.lhead{font-weight:800;color:#4e342e;border-bottom:1px solid #bcaaa4;padding-bottom:3px;margin-bottom:4px}
+.lrow{display:flex;justify-content:space-between;padding:1.5px 0}
+.ltot{border-top:1px solid #6d4c41;margin-top:3px;padding-top:3px;font-size:13.5px;color:#1b5e20}
+#inappNote{margin-top:8px;background:#fff3cd;color:#664d03;padding:6px 10px;border-radius:4px;font-size:12px}
+#pnote{margin-top:8px;font-size:11px;text-align:center;opacity:.75}
+/* Bottom LED marquee news ticker. */
+#ticker{position:fixed;left:0;right:0;bottom:0;height:28px;background:#0d1410;border-top:1.5px solid var(--bus-green,#1f6b3a);overflow:hidden;display:flex;align-items:center;pointer-events:none;z-index:15}
+#tickerTrack{display: inline-block;white-space:nowrap;color:var(--teal-led,#35e0c2);font-size:13px;font-weight:600;padding-left:100%;animation:ticker 38s linear infinite}
+@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-100%)}}
+/* Modals for Settings and Info pages. */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:30;padding:16px}
+.modal-card{background:#1c2520;border:2px solid var(--signal-yellow,#ffc21a);border-radius:14px;padding:18px 22px;width:min(460px,92vw);max-height:86vh;overflow-y:auto;text-align:left;line-height:1.5}
+.modal-card h2{margin:0 0 12px;color:var(--signal-yellow,#ffc21a);text-align:center}
+.srow{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.12);font-size:14px;gap:10px}
+.srow select{padding:5px 8px;border-radius:6px;background:#2b3730;color:#fff;border:1px solid #666;font-family:inherit}
+.sm-btn{font-size:14px;padding:6px 12px}
 /* Speech bubble above a character; JS moves it to follow the 3D position. */
 #bubble{position:fixed;transform:translate(-50%,-100%);max-width:260px;background:#fff;color:#1a1a1a;padding:8px 12px;
   border-radius:14px;font-size:16px;font-weight:700;pointer-events:none;box-shadow:0 3px 10px rgba(0,0,0,.4)}
 #bubble:after{content:"";position:absolute;left:50%;bottom:-10px;border:10px solid transparent;border-top-color:#fff;border-bottom:0;margin-left:-10px}
 #touch .mid{align-self:flex-end}
-#touch .mid button{width:58px;height:58px;font-size:24px}
+#touch .mid button{width:56px;height:56px;font-size:23px}
 /* Minimap and GPS box, top right. The map turns with the bus; JS draws it a few times a second. */
-#nav{position:fixed;top:60px;right:10px;width:124px;pointer-events:none}
+#nav{position:fixed;top:56px;right:10px;width:124px;pointer-events:none}
 #minimap{display:block;box-sizing:border-box;width:124px;height:124px;border-radius:50%;
   border:2px solid rgba(255,255,255,.75);box-shadow:0 2px 8px rgba(0,0,0,.5)}
-#gps{margin-top:6px;background:rgba(0,0,0,.6);border-radius:8px;padding:5px 7px;font-size:13px;line-height:1.35}
+#gps{margin-top:6px;background:rgba(0,0,0,.68);border-radius:8px;padding:5px 7px;font-size:13px;line-height:1.35}
 #gpsTo{display:flex;align-items:center;gap:6px;font-weight:700}
 #gpsDest{white-space:pre-line}
 #gpsArrow{width:22px;height:22px;flex:none;fill:#ffd600;stroke:#000;stroke-width:1}

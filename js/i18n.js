@@ -1,4 +1,13 @@
-// UI words in one place. English comes in a later milestone; for now only Bangla.
+// UI words and bilingual (Bangla / English) labels in one place.
+const LANG_KEY = "localbus.lang";
+let lang = localStorage.getItem(LANG_KEY) === "en" ? "en" : "bn";
+
+export function getLang() { return lang; }
+export function setLang(next) {
+  lang = next === "en" ? "en" : "bn";
+  localStorage.setItem(LANG_KEY, lang);
+  applyLangDOM();
+}
 
 export const NAMES = {
   rickshaw: "রিকশা",
@@ -11,8 +20,9 @@ export const NAMES = {
   pillar: "পিলার",
 };
 
-/** Turn 0-9 into Bangla digits (০-৯). */
+/** Turn 0-9 into Bangla digits (০-৯) when in Bangla mode. */
 export function bnNum(n) {
+  if (lang === "en") return String(n);
   return String(n).replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[d]);
 }
 
@@ -28,6 +38,7 @@ const DAYS = ["রবিবার", "সোমবার", "মঙ্গলবা
 
 /** Today's date in Bangla, e.g. "মঙ্গলবার, ২৭ অক্টোবর ২০২৬". */
 export function bnDate(d = new Date()) {
+  if (lang === "en") return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   return `${DAYS[d.getDay()]}, ${bnNum(d.getDate())} ${MONTHS[d.getMonth()]} ${bnNum(d.getFullYear())}`;
 }
 
@@ -52,3 +63,29 @@ export const ROADS = {
   "kalabagan-lane": "কলাবাগানের গলি",
   "katabon-lane": "কাঁটাবনের গলি",
 };
+
+/** Bilingual HUD and button labels keyed by data-i18n attribute. */
+const DOM_STRINGS = {
+  bn: {
+    lblDamage: "ড্যামেজ", lblFare: "ভাড়া", lblPass: "যাত্রী", lblSpd: "গতি", lblDist: "দূরত্ব",
+    lblFuel: "⛽ তেল", lblHp: "🚌 বডি", lblComfort: "😊 স্বস্তি", lblCrowd: "🏃 পাবলিক",
+    title: "লোকাল বাস — ঢাকা রুট",
+    goStart: "🎫 যাত্রা শুরু", restartBtn: "শুরু থেকে", shareBtn: "📰 ছবি সেভ / শেয়ার", copyBtn: "📋 স্কোর কপি",
+    pauseTitle: "বিরতি", resumeBtn: "চালিয়ে যান", settingsTitle: "⚙ সেটিংস",
+  },
+  en: {
+    lblDamage: "Damage", lblFare: "Fare", lblPass: "Pass.", lblSpd: "Speed", lblDist: "Dist.",
+    lblFuel: "⛽ Fuel", lblHp: "🚌 Body", lblComfort: "😊 Comfort", lblCrowd: "🏃 Crowd",
+    title: "Local Bus — Dhaka Route",
+    goStart: "🎫 Start Journey", restartBtn: "From Start", shareBtn: "📰 Save / Share PNG", copyBtn: "📋 Copy Score",
+    pauseTitle: "Paused", resumeBtn: "Resume", settingsTitle: "⚙ Settings",
+  },
+};
+
+export function applyLangDOM() {
+  const dict = DOM_STRINGS[lang] || DOM_STRINGS.bn;
+  for (const el of document.querySelectorAll("[data-i18n]")) {
+    const k = el.getAttribute("data-i18n");
+    if (dict[k]) el.textContent = dict[k];
+  }
+}

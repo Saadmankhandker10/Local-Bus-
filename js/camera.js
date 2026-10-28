@@ -7,6 +7,7 @@ import { rnd } from "./utils.js";
 import { game } from "./state.js";
 import { SEGS, here, sample } from "./map.js";
 import { followGround } from "./world.js";
+import { input } from "./input.js";
 
 const C = CFG.camera;
 
@@ -20,15 +21,17 @@ let camLat = 0;     // smoothed sideways position on the road
 let camYaw = null;  // smoothed direction the camera looks (null = snap on first frame)
 let fov = C.fov;    // smoothed field of view
 let boostFx = 0;    // 0..1, how strong the boost effect is right now
+let introT = 0;     // seconds left in the skippable morning bus-stand camera sweep
 const p = { x: 0, y: 0, z: 0, yaw: 0, k: 0 }, q = { x: 0, y: 0, z: 0, yaw: 0, k: 0 };
 
 /** Same smoothing as in bus.js: frame-rate independent ease towards a target. */
 const ease = (rate, dt) => 1 - Math.exp(-rate * dt);
 
 /** Snap the camera behind the bus (new run, checkpoint). */
-export function resetCamera() {
+export function resetCamera(withIntro = false) {
   camYaw = null;
   camLat = game.lat * C.followX;
+  introT = withIntro ? C.introSeconds : 0;
 }
 
 /** Place the camera for this frame. @returns {number} boost effect strength 0..1 */
@@ -61,6 +64,17 @@ export function updateCamera(dt) {
     const push = side - Math.sign(side) * limit;
     cx -= rx * push; cz -= rz * push;
   }
+
+  // Skippable 1.8 s morning camera sweep from the Mohammadpur Bus Stand side to behind the bus.
+  if (introT > 0) {
+    if (input.throttle > 0 || input.brake > 0 || Math.abs(input.steer) > .1 || input.boost) introT = 0;
+    else introT = Math.max(0, introT - dt);
+    const u = introT / C.introSeconds;
+    const sweep = u * u * (3 - 2 * u); // smoothstep 1 -> 0
+    cx += (-rx * 8.5 + fx * 6) * sweep;
+    cz += (-rz * 8.5 + fz * 6) * sweep;
+  }
+
   cam.position.set(cx + rnd(-1, 1) * shake, p.y + C.height + rnd(-1, 1) * shake, cz);
   cam.lookAt(ax + fx * C.lookAhead, p.y + C.lookY, az + fz * C.lookAhead);
   followGround(cam.position.x, cam.position.z);

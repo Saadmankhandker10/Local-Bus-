@@ -89,11 +89,41 @@ export function makeStall() {
   return g;
 }
 
-/** One flyover pillar with its piece of the deck above. */
+/** Painted folk / rickshaw-art mural textures for flyover and metro pillars (made once, shared). */
+const PILLAR_ART_GEO = new THREE.BoxGeometry(CFG.pillar.w + .04, 3.2, CFG.pillar.l + .04);
+const PILLAR_ART_MATS = [
+  ["#1f6b3a", "#ffc21a", "#b8322a"],
+  ["#1f5fae", "#ffc21a", "#f6efdd"],
+  ["#b8322a", "#35e0c2", "#ffc21a"],
+].map(([bg, c1, c2]) => {
+  const c = document.createElement("canvas");
+  c.width = 192; c.height = 320;
+  const g = c.getContext("2d");
+  g.fillStyle = bg; g.fillRect(0, 0, 192, 320);
+  // Top and bottom scalloped borders
+  g.fillStyle = c1; g.fillRect(0, 0, 192, 22); g.fillRect(0, 298, 192, 22);
+  g.strokeStyle = c2; g.lineWidth = 8; g.strokeRect(14, 32, 164, 256);
+  // Folk arch and central diamond / lotus motif
+  g.fillStyle = c2;
+  g.beginPath(); g.arc(96, 115, 52, Math.PI, 0); g.fill();
+  g.fillStyle = c1;
+  g.beginPath();
+  g.moveTo(96, 90); g.lineTo(148, 165); g.lineTo(96, 240); g.lineTo(44, 165);
+  g.closePath(); g.fill();
+  g.fillStyle = "#f6efdd";
+  g.beginPath(); g.arc(96, 165, 22, 0, Math.PI * 2); g.fill();
+  return new THREE.MeshLambertMaterial({ map: new THREE.CanvasTexture(c) });
+});
+
+/** One flyover / metro pillar with rickshaw-art mural paint and its cap beam above. */
 export function makePillar() {
   const P = CFG.pillar;
   const g = new THREE.Group();
-  g.add(box(P.w, P.deckY, P.l, 0xb0a99f, 0, P.deckY / 2, 0));               // pillar
+  g.add(box(P.w, P.deckY, P.l, 0xb0a99f, 0, P.deckY / 2, 0));               // concrete shaft
+  g.add(box(P.w + .06, .4, P.l + .06, 0xffc21a, 0, .2, 0));                  // yellow hazard base
+  const art = new THREE.Mesh(PILLAR_ART_GEO, pick(PILLAR_ART_MATS));
+  art.position.y = 2.05;
+  g.add(art);                                                                // painted folk mural collar
   g.add(box(P.deckWidth * .8, .6, P.l * 1.6, 0xa1998f, 0, P.deckY - .3, 0)); // cap beam
 
   const b = new THREE.Mesh(beaconGeo, beaconMat);

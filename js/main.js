@@ -4,7 +4,7 @@ import { game, resetGame } from "./state.js";
 import { on, emit } from "./events.js";
 import { renderer, scene, initWorld, resetWorld, updateWorld } from "./world.js";
 import { initInput, pollInput, onTap, onAnyInput } from "./input.js";
-import { resetBus, updateBus, updateBusVisual } from "./bus.js";
+import { resetBus, updateBus, updateBusVisual, triggerHelperSlap } from "./bus.js";
 import { cam, updateCamera, resetCamera } from "./camera.js";
 import { resetTraffic, updateTraffic } from "./traffic.js";
 import { resetMarks, updateMarks } from "./marks.js";
@@ -15,17 +15,22 @@ import { journey, resetJourney, updateJourney, currentStage, sceneryAt, progress
 import { resetLandmarks, updateLandmarks } from "./landmarks.js";
 import { resetNav, navStep, drawNav } from "./nav.js";
 import { applyTimeOfDay } from "./lighting.js";
-import { unlockAudio, toggleMute, isMuted, horn, slap } from "./audio.js";
+import {
+  unlockAudio, toggleMute, isMuted, horn, slap, glassHit,
+  updateAudio, crashSound, comboSound, boardDing, refuelSound, warnBeep,
+} from "./audio.js";
 import { ROUTE, TOTAL } from "./route.js";
 import { SHOUTS } from "./data/shouts.bn.js";
 import { HEAVY_HIT } from "./i18n.js";
-import { pick, $ } from "./utils.js";
+import { pick, clamp, $ } from "./utils.js";
 import { updateHud, onStartPressed, onPauseButton, hideScreen, showPause, showRunEnd, crashList } from "./hud.js";
 
 let endReason = "";   // title of the ending, e.g. "ট্রাকে ধাক্কা!"
 let endCause = "";    // what ended it: truck / bus / pillar / caught / fuel / complete
 let caughtT = 0;      // seconds left in the "surrounded" moment
 let shoutT = 0;       // time of the next crowd shout
+let grumbleT = 0;     // earliest time a passenger may grumble again
+let prevWarn = false; // tracks when the heavy-hazard warning first turns on
 let lastEnd = "";     // "fail" or "complete": decides what the main button does
 let hornT = 0, shoutBtnT = 0; // earliest time the next horn / shout may play
 
@@ -45,7 +50,7 @@ function start(fromCheckpoint) {
   resetNav();
   clearSpeech();
   resetBus(game.prog);
-  resetCamera();
+  resetCamera(!(fromCheckpoint && !!journey.cp));
   updateWorld();
   updateLandmarks();
   game.running = true;
@@ -61,6 +66,7 @@ const startFresh = () => start(false);
 function helperSays(text) {
   say("হেল্পার", text, CFG.shout.seconds, true);
   slap();
+  triggerHelperSlap();
 }
 
 /** Draw one fresh frame and keep it as a JPEG for the newspaper photo. */
@@ -115,21 +121,43 @@ function doShout() {
   shoutBtnT = game.time + CFG.shout.cooldown;
   const s = pick(SHOUTS);
   say(s.who, s.text, CFG.shout.seconds, true);
-  if (s.who === "হেল্পার") slap();
+  if (s.who === "হেল্পার") { slap(); triggerHelperSlap(); }
 }
 
 function doMute() {
   $("soundbtn").textContent = toggleMute() ? "🔇" : "🔊";
 }
 
-// A light crash shakes the camera and buzzes the phone.
+// A light crash shakes the camera, buzzes the phone, and drops passenger comfort & bus HP.
 on("crash", () => {
+  crashSound(false);
+  if (game.combo > 1) comboSound(game.combo);
   game.shake = CFG.hit.shake;
+  game.hp = Math.max(0, game.hp - CFG.bus.crashHpLoss);
+  game.comfort = Math.max(0, game.comfort - CFG.comfort.crashDrop);
   if (navigator.vibrate) navigator.vibrate(CFG.hit.vibrateMs);
 });
 
+// Thrown cartoon projectile from the chasing crowd hits the bus windows.
+on("projectileHit", () => {
+  if (!game.running || game.crashing || game.caught) return;
+  glassHit();
+  game.shake = Math.max(game.shake, 0.45);
+  game.hp = Math.max(0, game.hp - CFG.bus.projectileHpLoss);
+  game.comfort = Math.max(0, game.comfort - 6);
+  say("যাত্রী", lineFrom("projectileHit"));
+});
+
+// Shahbagh student demonstration barricade, crossing pedestrians, boarding, refueling, and jam horns.
+on("demoBlocked", () => helperSays(lineFrom("demoBlock")));
+on("pedScared", () => helperSays(lineFrom("pedScared")));
+on("board", () => boardDing());
+on("refuel", () => refuelSound());
+on("jamHorn", () => horn());
+
 // A heavy crash: big shake, then a short slow-motion moment before the game-over screen.
 on("heavyHit", e => {
+  crashSound(true);
   const C = CFG.crash;
   game.crashing = true;
   game.crashT = C.realSeconds * C.slowMo; // counted in (slowed) simulation time
@@ -180,6 +208,22 @@ function step(dt) {
   // Passengers on board keep paying while the bus moves.
   game.fare += game.pass * game.speed * CFG.fare.travelRate * dt;
   game.dist += d;
+
+  // Passenger comfort / patience: drops on hard braking or crawling in a jam, recovers on smooth driving.
+  const C = CFG.comfort;
+  if (!game.crashing && !game.caught) {
+    const hardBrake = game.accel < C.hardBrakeThreshold;
+    const inJam = game.speed < C.jamSpeedMax && !game.onMark && game.pass > 0;
+    if (hardBrake) game.comfort = Math.max(0, game.comfort - C.hardBrakeDrain * dt);
+    else if (inJam) game.comfort = Math.max(0, game.comfort - C.jamDrain * dt);
+    else if (game.speed >= C.recoverMinSpeed) game.comfort = Math.min(C.max, game.comfort + C.recoverRate * dt);
+
+    if ((hardBrake || (inJam && game.comfort < C.lowThreshold)) && game.pass > 0 && game.time > grumbleT) {
+      grumbleT = game.time + C.grumbleCooldown;
+      say("যাত্রী", lineFrom("passengerGrumble"));
+    }
+  }
+
   updateWorld();
   updateLandmarks();
   updateJourney();
@@ -204,12 +248,21 @@ function step(dt) {
     caughtT -= dt;
     if (caughtT <= 0) end("পাবলিক ঘিরে ফেলেছে!", "caught");
   }
+  else if (game.hp <= 0) {
+    end("কাঁচ ভেঙে চুরমার!", "hp");
+  }
   // Out of fuel in the open: if a crowd is chasing, they will reach the bus; otherwise it is over.
   else if (game.fuel <= 0 && game.speed < .5 && game.onMark !== "cng" && !crowd.active) end("তেল শেষ!", "fuel");
 }
 
 /** Draw one frame. dt is the real time since the last frame (0 while paused). */
 function render(dt) {
+  if (game.warn && !prevWarn && game.running) warnBeep();
+  prevWarn = game.warn;
+  const close = (game.running && crowd.active)
+    ? clamp(1 - (crowd.gap - CFG.crowd.catchGap) / (CFG.crowd.cueGap - CFG.crowd.catchGap), 0, 1) : 0;
+  updateAudio(game.speed, game.boostT > 0, close, game.running && !game.paused && !game.crashing && !game.caught);
+
   applyTimeOfDay(progress(game.prog));
   updateBusVisual(dt);
   updateCrowdVisual(dt);
@@ -240,16 +293,28 @@ onPauseButton(() => setPaused(!game.paused));
 // Switching to another tab pauses the run, so nobody crashes while away.
 document.addEventListener("visibilitychange", () => { if (document.hidden) setPaused(true); });
 
+// Mark the engine as booted for the index.html boot guard and register the PWA service worker.
+window.__localBusBooted = true;
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  navigator.serviceWorker.register("./sw.js").catch(() => {});
+}
+
 // Fixed timestep: the game always simulates in equal 1/60 s steps, no matter how fast
 // the screen draws, so the bus drives the same on a slow phone and a fast PC.
 const STEP = 1 / CFG.loop.hz;
 let acc = 0;
 let last = performance.now();
+let slowFrameAcc = 0;
 (function loop(now) {
   requestAnimationFrame(loop);
   // Cap the frame time so a long freeze can't trigger hundreds of catch-up steps.
   const frameDt = Math.min(CFG.loop.maxFrameDt, Math.max(0, now - last) / 1000);
   last = now;
+  // Auto-quality watchdog: if a phone struggles below ~28 FPS for 3 s, step down pixel ratio to 1.
+  if (game.running && !game.paused && $("setQuality")?.value === "auto" && renderer.getPixelRatio() > 1) {
+    slowFrameAcc = frameDt > 0.036 ? slowFrameAcc + frameDt : Math.max(0, slowFrameAcc - frameDt * .5);
+    if (slowFrameAcc > 3) renderer.setPixelRatio(1);
+  }
   pollInput();
   if (game.paused) acc = 0;
   else {
