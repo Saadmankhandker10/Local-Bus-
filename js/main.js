@@ -4,7 +4,7 @@ import { game, resetGame } from "./state.js";
 import { on, emit } from "./events.js";
 import { renderer, scene, initWorld, resetWorld, updateWorld } from "./world.js";
 import { initInput, pollInput, onTap, onAnyInput } from "./input.js";
-import { resetBus, updateBus, updateBusVisual, triggerHelperSlap } from "./bus.js";
+import { resetBus, updateBus, updateAutopilot, updateBusVisual, triggerHelperSlap } from "./bus.js";
 import { cam, updateCamera, resetCamera } from "./camera.js";
 import { resetTraffic, updateTraffic } from "./traffic.js";
 import { resetMarks, updateMarks } from "./marks.js";
@@ -18,7 +18,9 @@ import { applyTimeOfDay } from "./lighting.js";
 import {
   unlockAudio, toggleMute, isMuted, horn, slap, glassHit,
   updateAudio, crashSound, comboSound, boardDing, refuelSound, warnBeep,
+  mirrorSnap, carAlarmSound, rampFanfare, whistleSound,
 } from "./audio.js";
+import { startRunVideo, stopRunVideo } from "./newspaper.js";
 import { ROUTE, TOTAL } from "./route.js";
 import { SHOUTS } from "./data/shouts.bn.js";
 import { HEAVY_HIT } from "./i18n.js";
@@ -54,8 +56,10 @@ function start(fromCheckpoint) {
   updateWorld();
   updateLandmarks();
   game.running = true;
+  game.autopilot = false;
   setPaused(false);
   hideScreen();
+  startRunVideo(renderer.domElement);
   helperSays(lineFrom("helperStop", currentStage().id));
 }
 
@@ -93,6 +97,7 @@ function end(why, cause) {
   game.crashing = false;
   lastEnd = "fail";
   endReason = why; endCause = cause;
+  stopRunVideo();
   const photo = snapshot();
   showRunEnd(runReport(saveBest(), false), photo, journey.cp ? ROUTE.stages[journey.cp.stage].name : "");
 }
@@ -148,12 +153,22 @@ on("projectileHit", () => {
   say("যাত্রী", lineFrom("projectileHit"));
 });
 
-// Shahbagh student demonstration barricade, crossing pedestrians, boarding, refueling, and jam horns.
+// Shahbagh student demonstration barricade, crossing pedestrians, boarding, refueling, jam horns, mirrors, ramps, and cutscene whistle.
 on("demoBlocked", () => helperSays(lineFrom("demoBlock")));
 on("pedScared", () => helperSays(lineFrom("pedScared")));
 on("board", () => boardDing());
 on("refuel", () => refuelSound());
 on("jamHorn", () => horn());
+on("mirrorHit", () => mirrorSnap());
+on("carAlarm", () => carAlarmSound());
+on("rampJump", () => {
+  rampFanfare();
+  helperSays("ওস্তাদ! বাস তো রকেট বানায়া ফেলছেন! 🚀");
+});
+on("copWhistle", () => {
+  whistleSound();
+  say("পুলিশ", "ওই থামেন! গরীব মানুষ, ছাইড়া দেন! গাড়ি থানায় নেন!", 2.4);
+});
 
 // A heavy crash: big shake, then a short slow-motion moment before the game-over screen.
 on("heavyHit", e => {
@@ -191,6 +206,7 @@ on("journeyComplete", () => {
   lastEnd = "complete";
   endReason = "পৌঁছে গেছি! ঢাকা বিশ্ববিদ্যালয় 🎓";
   endCause = "complete";
+  stopRunVideo();
   helperSays(lineFrom("journeyDone"));
   const photo = snapshot();
   const isBestTime = saveBestTime(game.journeyT);
@@ -201,7 +217,16 @@ on("journeyComplete", () => {
 function step(dt) {
   game.time += dt;
   game.shake = Math.max(0, game.shake - dt * CFG.camera.shakeDecay);
-  if (!game.running) return;
+  if (!game.running) {
+    // Live Autopilot demo behind the title menu!
+    if (game.autopilot) {
+      updateAutopilot(dt);
+      updateWorld();
+      updateLandmarks();
+      updateTraffic(dt);
+    }
+    return;
+  }
   game.journeyT += dt;
 
   const d = updateBus(dt);
@@ -280,6 +305,7 @@ resetCamera();
 updateWorld();
 resetLandmarks(0);
 updateLandmarks();
+resetTraffic(0);
 
 initInput(onPauseInput);
 onAnyInput(unlockAudio);

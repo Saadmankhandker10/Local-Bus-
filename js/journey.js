@@ -64,7 +64,9 @@ export function sceneryAt(dist, side) {
   return { colors: st.buildings.colors, minH: st.buildings.minH, maxH: st.buildings.maxH, hidden };
 }
 
-/** Start the journey from the beginning, or from the last checkpoint. */
+let autoRotateIdx = -1;
+
+/** Start the journey from the beginning (or selected/rotating Dhaka area), or from the last checkpoint. */
 export function resetJourney(fromCheckpoint) {
   const cp = fromCheckpoint ? journey.cp : null;
   journey.done = false;
@@ -78,9 +80,11 @@ export function resetJourney(fromCheckpoint) {
     game.pass = cp.pass;
     game.journeyT = cp.time;
   } else {
-    journey.stage = 0;
+    autoRotateIdx = (autoRotateIdx + 1) % 3; // rotates 0 (Mohammadpur), 1 (Dhanmondi), 2 (Shahbag)
+    const startSt = game.startStage >= 0 ? game.startStage : autoRotateIdx;
+    journey.stage = startSt;
     journey.cp = null;
-    game.dist = game.prog = 0;
+    game.dist = game.prog = STAGE_START[startSt] || 0;
     game.journeyT = 0;
   }
   journey.stageStartDamage = game.damage;

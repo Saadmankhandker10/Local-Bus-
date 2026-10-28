@@ -195,3 +195,39 @@ export function warnBeep() {
   tone([784], t, 0.07, "square", 0.1);
   tone([784], t + 0.1, 0.07, "square", 0.1);
 }
+
+/** Crisp snap sound when grazing and breaking a vehicle's side mirror. */
+export function mirrorSnap() {
+  if (!ctx || muted) return;
+  const t = ctx.currentTime;
+  tone([1568, 2093], t, 0.06, "square", 0.14);
+}
+
+/** Car alarm ("wee-oo wee-oo") triggered when a car, VIP SUV, or police car is hit. */
+export function carAlarmSound() {
+  if (!ctx || muted) return;
+  const t = ctx.currentTime;
+  for (let i = 0; i < 3; i++) {
+    tone([880], t + i * 0.24, 0.1, "square", 0.09);
+    tone([660], t + i * 0.24 + 0.11, 0.1, "square", 0.09);
+  }
+}
+
+/** Celebratory ascending synth fanfare ("Technologia / Yooo!") when launching off a jump ramp. */
+export function rampFanfare() {
+  if (!ctx || muted) return;
+  const t = ctx.currentTime;
+  const notes = [523.25, 659.25, 783.99, 1046.5];
+  notes.forEach((n, i) => {
+    tone([n, n * 1.5], t + i * 0.09, 0.16, "sawtooth", 0.16);
+  });
+}
+
+/** Crisp traffic-police pea-whistle trill when the cop arrives in the "গণধোলাই" cutscene. */
+export function whistleSound() {
+  if (!ctx || muted) return;
+  const t = ctx.currentTime;
+  for (let i = 0; i < 8; i++) {
+    tone([2850 + (i % 2) * 240], t + i * 0.045, 0.04, "sine", 0.18);
+  }
+}

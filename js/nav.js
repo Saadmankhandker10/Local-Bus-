@@ -51,6 +51,27 @@ const SHAPES = SEGS.map(S => {
   };
 });
 
+// Pre-compute perpendicular cross-roads at every junction (চৌরাস্তা / মোড়) for the grid minimap.
+const CROSS_ROADS = [];
+(function buildCrossRoads() {
+  for (let segIdx = 0; segIdx < SEGS.length; segIdx++) {
+    const S = SEGS[segIdx];
+    for (const j of S.junctions || []) {
+      sample(segIdx, j.at * S.len, p);
+      const rx = Math.cos(p.yaw), rz = -Math.sin(p.yaw);
+      const L = 95;
+      const s0 = j.type === "X" ? -1 : j.side;
+      const s1 = j.type === "X" ? 1 : j.side;
+      CROSS_ROADS.push({
+        x0: p.x + rx * s0 * L, z0: p.z + rz * s0 * L,
+        x1: p.x + rx * s1 * L, z1: p.z + rz * s1 * L,
+        cx: p.x, cz: p.z,
+        name: j.name || S.mor || "",
+      });
+    }
+  }
+})();
+
 // Pre-build 3D roadside building blocks & Dhanmondi lake polygons once for the 3D/4D map extrusion.
 const MAP_BLDGS = [];
 const LAKE_PTS = [];
@@ -246,7 +267,17 @@ function drawMap(tod) {
     ctx.stroke();
   }
 
-  // Ground & Flyover roads.
+  // Ground & Flyover roads + perpendicular cross-road grid (চৌরাস্তা).
+  ctx.beginPath();
+  for (const cr of CROSS_ROADS) {
+    if (Math.abs(cr.cx - bx) > reach || Math.abs(cr.cz - bz) > reach) continue;
+    ctx.moveTo(cr.x0, cr.z0);
+    ctx.lineTo(cr.x1, cr.z1);
+  }
+  ctx.lineWidth = 14 * N.mapRoadScale;
+  ctx.strokeStyle = "#6d747b";
+  ctx.stroke();
+
   for (const kind of ["street", "main", "flyover"]) {
     const st = STYLE[kind];
     for (const pass of st.edge ? [0, 1] : [1]) {
@@ -307,13 +338,54 @@ function drawMap(tod) {
     ctx.fillRect(sx - wPx / 2, sy - wPx / 2 - hPx, wPx, wPx);
   }
 
-  // Live moving traffic dots (4th dimension: real-time vehicles).
+  // Live moving traffic dots (including ★ VIP car, Police car, Jump Ramp, and Heavy killer buses/trucks).
   eachTraffic((kind, vx, vy, vz) => {
     const sx = a * vx - b * vz + e, sy = b * vx + a * vz + f - vy * k * 0.5;
     if ((sx - R) ** 2 + (sy - R) ** 2 > R * R) return;
-    ctx.fillStyle = kind === "heavy" ? "#ff5252" : kind === "cng" ? "#00e676" : "#ffee58";
-    ctx.fillRect(sx - px * .7, sy - px * .7, px * 1.4, px * 1.4);
+    if (kind === "vip") {
+      ctx.font = `${Math.round(px * 3.2)}px sans-serif`;
+      ctx.fillStyle = "#e040fb";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("★", sx, sy);
+    } else if (kind === "policeCar") {
+      ctx.fillStyle = Math.floor(game.time * 10) % 2 === 0 ? "#ff1744" : "#00b0ff";
+      ctx.beginPath(); ctx.arc(sx, sy, px * 1.1, 0, Math.PI * 2); ctx.fill();
+    } else if (kind === "ramp") {
+      ctx.fillStyle = "#ff9100";
+      ctx.beginPath();
+      ctx.moveTo(sx, sy - px * 1.3); ctx.lineTo(sx + px * 1.2, sy + px); ctx.lineTo(sx - px * 1.2, sy + px);
+      ctx.closePath(); ctx.fill();
+    } else if (kind === "heavy") {
+      ctx.fillStyle = "#ff5252";
+      ctx.fillRect(sx - px * 1.1, sy - px * 1.1, px * 2.2, px * 2.2);
+    } else {
+      ctx.fillStyle = kind === "cng" ? "#00e676" : kind === "trench" ? "#ff5722" : "#ffee58";
+      ctx.fillRect(sx - px * .7, sy - px * .7, px * 1.4, px * 1.4);
+    }
   });
+
+  // Animated dashed radar line to nearest Police (when chased) or nearest CNG station.
+  let bestTarget = null, bestDist2 = Infinity;
+  const wantKind = crowd.active ? "police" : "cng";
+  eachMark((kind, x, z) => {
+    if (kind !== wantKind) return;
+    const d2 = (x - bx) ** 2 + (z - bz) ** 2;
+    if (d2 < bestDist2) { bestDist2 = d2; bestTarget = { kind, x, z }; }
+  });
+  if (bestTarget && bestDist2 < (reach * 1.2) ** 2) {
+    const tx = a * bestTarget.x - b * bestTarget.z + e;
+    const ty = b * bestTarget.x + a * bestTarget.z + f;
+    ctx.save();
+    ctx.setLineDash([px * 1.4, px * 1.1]);
+    ctx.lineDashOffset = -(game.time * 24) % (px * 2.5);
+    ctx.lineWidth = Math.max(1.8, px * 0.55);
+    ctx.strokeStyle = wantKind === "police" ? "#ff6fb5" : "#ffd600";
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(tx, ty);
+    ctx.stroke();
+    ctx.restore();
+  }
 
   // Live moving Metro Rail carriages overhead.
   eachMetroCar((mx, my, mz) => {
@@ -434,8 +506,18 @@ function drawBig4DMap(tod) {
     bctx.stroke();
   }
 
-  // Draw all roads (ground roads first, then 3D elevated flyover with height wy = P[i+1]).
+  // Draw cross-roads on the big 4D map too.
   bctx.lineCap = bctx.lineJoin = "round";
+  bctx.beginPath();
+  for (const cr of CROSS_ROADS) {
+    bctx.moveTo(projX(cr.x0, cr.z0), projY(cr.x0, 0, cr.z0));
+    bctx.lineTo(projX(cr.x1, cr.z1), projY(cr.x1, 0, cr.z1));
+  }
+  bctx.lineWidth = Math.max(2.5, 13 * scale);
+  bctx.strokeStyle = "#5c646b";
+  bctx.stroke();
+
+  // Draw all roads (ground roads first, then 3D elevated flyover with height wy = P[i+1]).
   for (const kind of ["street", "main", "flyover"]) {
     const st = STYLE[kind];
     for (const sh of SHAPES) {

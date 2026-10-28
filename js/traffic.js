@@ -6,24 +6,38 @@
 // from the bus along the road (negative = ahead), so the old collision rules still work.
 import { CFG } from "./config.js";
 import { rnd, pick, clamp } from "./utils.js";
-import { scene, person } from "./world.js";
+import { scene, box, person } from "./world.js";
 import { game } from "./state.js";
 import { emit, on } from "./events.js";
 import { sweptHit, sideGap } from "./physics.js";
-import { makeVehicle, makeStall, makePillar, beaconMat } from "./vehicles.js";
+import { makeVehicle, makeStall, makePillar, makeManhole, makeTrench, makeRamp, beaconMat } from "./vehicles.js";
 import { currentStage } from "./journey.js";
 import { SEGS, here, ahead, walk, place, lanesOf } from "./map.js";
 
-const T = CFG.traffic, B = CFG.bus, I = CFG.impact, W = CFG.warning, J = CFG.jam, PED = CFG.pedestrians;
+const T = CFG.traffic, B = CFG.bus, I = CFG.impact, W = CFG.warning, J = CFG.jam, PED = CFG.pedestrians, HZ = CFG.hazards;
 const LIGHT = T.types.filter(t => !t.heavy);
+const TRENCH_DEF = { name: "trench", w: 2.6, l: 4.8, h: 1.2, mass: 0.8, damage: 25, hazard: true };
+const MANHOLE_DEF = { name: "manhole", w: 1.35, l: 1.35, h: 0.3, mass: 0.2, damage: 15, hazard: true };
+const RAMP_DEF = { name: "ramp", w: 3.2, l: 6.2, h: 1.35, mass: 0, damage: HZ.rampBonus, isRamp: true };
 const jamSeg = SEGS.findIndex(s => s.id === J.segId);
 let jamHornT = 0, demoWarnT = 0, pedWarnT = 0;
 
 const objs = [];      // everything currently on the road
-const peds = [];      // crossing pedestrians (never crashable; they dodge or jump back onto the pavement)
+const peds = [];      // crossing pedestrians + ejected angry drivers
+const chunks = [];    // pooled flying 3D vehicle parts (bumpers, doors, hoods, mirrors, wheels)
+for (let i = 0; i < 24; i++) {
+  const m = box(.65, .28, .45, pick([0xe53935, 0x1e88e5, 0xfdd835, 0x263238, 0x2e9e4f]));
+  m.visible = false;
+  scene.add(m);
+  chunks.push({ m, active: false, seg: 0, s: 0, x: 0, y: 0, vx: 0, vy: 0, vz: 0, rx: 0, rz: 0, t: 0 });
+}
+
 let spawnTimer = 0;   // seconds until the next vehicle tries to spawn
 let nextStall = 0;    // odometer distance where the next stall appears
 let nextPed = 0;      // odometer distance where the next crossing pedestrian appears
+let nextTrench = 0;   // odometer distance where the next WASA trench appears
+let nextManhole = 0;  // odometer distance where the next open manhole appears
+let nextRamp = 0;     // odometer distance where the next jump ramp appears
 const pillarsDone = new Set(); // pillars already placed this run ("seg:index")
 const spot = { seg: 0, s: 0 }; // reused spawn position
 
@@ -41,29 +55,70 @@ function onBusRoad(seg) {
 export function resetTraffic(fromDist = 0) {
   for (const o of objs) scene.remove(o.m);
   for (const p of peds) scene.remove(p.m);
+  for (const c of chunks) { c.active = false; c.m.visible = false; }
   objs.length = 0;
   peds.length = 0;
   spawnTimer = T.firstSpawnDelay;
   nextStall = fromDist + rnd(CFG.stall.gapMin, CFG.stall.gapMax);
   nextPed = fromDist + rnd(PED.gapMin, PED.gapMax);
+  nextTrench = fromDist + rnd(110, HZ.trenchGapMax);
+  nextManhole = fromDist + rnd(85, HZ.manholeGapMax);
+  nextRamp = fromDist + rnd(140, HZ.rampGapMax);
   jamHornT = demoWarnT = pedWarnT = 0;
   pillarsDone.clear();
 }
 
-/** Add an object to the road. `static` things (stalls, pillars) stay fixed to the ground. */
+/** Add an object to the road. `static` things (stalls, pillars, trenches, ramps) stay fixed to the ground. */
 function add(t, m, seg, s, x, isStatic) {
   scene.add(m);
+  const S = SEGS[seg];
+  // On two-way boulevards, right-hand lanes (x > 0.6) carry oncoming traffic facing the bus!
+  const oncoming = !isStatic && S.half >= 6 && x > 0.6;
+  const dir = oncoming ? -1 : 1;
   const o = {
     t, m, seg, s, x, y: 0, z: 0,
-    v: isStatic ? 0 : t.v * rnd(.9, 1.1), // own forward speed
+    dir,
+    v: isStatic ? 0 : t.v * rnd(.9, 1.1) * (oncoming ? -0.58 : 1), // own forward speed (negative if oncoming)
     targetX: x, isStatic,
-    hit: false,
-    vx: 0, vy: 0, spin: 0, rot: 0,        // used after being launched
+    hit: false, fallen: false, alarm: false,
+    mirrorL: true, mirrorR: true,
+    vx: 0, vy: 0, spin: 0, rot: oncoming ? Math.PI : 0, // oncoming vehicles face Math.PI
     ph: rnd(0, 6),                        // wobble phase, so they don't all sway together
   };
   o.z = -ahead(seg, s);
   objs.push(o);
-  place(m, seg, s, x);
+  place(m, seg, s, x, 0, o.rot);
+}
+
+/** Spawn flying detachable 3D chunks (bumper, door, hood, wheel, or side mirror) at (seg, s, x). */
+function spawnChunks(seg, s, x, count = 3, isMirror = false) {
+  let spawned = 0;
+  for (const c of chunks) {
+    if (c.active) continue;
+    c.active = true;
+    c.seg = seg; c.s = s; c.x = x + rnd(-.4, .4); c.y = isMirror ? 1.1 : rnd(.5, 1.3);
+    c.vx = rnd(-7, 7); c.vy = isMirror ? rnd(3.5, 6.5) : rnd(4.5, 9.5); c.vz = rnd(-8, 8);
+    c.rx = rnd(-12, 12); c.rz = rnd(-12, 12);
+    c.t = isMirror ? 0.9 : 1.35;
+    c.m.scale.set(isMirror ? .26 : rnd(.45, .85), isMirror ? .18 : rnd(.2, .4), isMirror ? .22 : rnd(.35, .75));
+    c.m.visible = true;
+    place(c.m, c.seg, c.s, c.x, c.y);
+    if (++spawned >= count) break;
+  }
+}
+
+/** Eject an angry driver/puller from a crashed vehicle who shouts and runs to join the chasing mob! */
+function ejectDriver(seg, s, x) {
+  const m = person(pick([0xd32f2f, 0x1976d2, 0x388e3c, 0xfbc02d, 0x8e24aa]), 0);
+  scene.add(m);
+  const side = x >= 0 ? 1 : -1;
+  peds.push({
+    m, seg, s,
+    x: x + side * 1.1,
+    targetX: side * (SEGS[seg].half + 1.2),
+    scared: true, angry: true, ph: rnd(0, 6),
+  });
+  place(m, seg, s, x + side * 1.1);
 }
 
 /** Is anything near this spot already? Keeps new things from appearing inside others. */
@@ -132,6 +187,32 @@ function spawn(dt) {
     }
   }
 
+  // WASA road digging trenches with bamboo barricades.
+  if (game.dist >= nextTrench) {
+    nextTrench = game.dist + rnd(HZ.trenchGapMin, HZ.trenchGapMax);
+    walk(here.seg, here.s, T.spawnAhead, pickBranch, spot);
+    const lanes = lanesOf(spot.seg, T.lanes).filter(l => Math.abs(l) >= 2);
+    const x = pick(lanes);
+    if (!spawnBlocked(spot.seg, spot.s, x)) add(TRENCH_DEF, makeTrench(), spot.seg, spot.s, x, true);
+  }
+
+  // Open manholes on the road.
+  if (game.dist >= nextManhole) {
+    nextManhole = game.dist + rnd(HZ.manholeGapMin, HZ.manholeGapMax);
+    walk(here.seg, here.s, T.spawnAhead, pickBranch, spot);
+    const lanes = lanesOf(spot.seg, T.lanes);
+    const x = pick(lanes);
+    if (!spawnBlocked(spot.seg, spot.s, x)) add(MANHOLE_DEF, makeManhole(), spot.seg, spot.s, x, true);
+  }
+
+  // Wooden stunt jump ramps ("🚀 ঠেলায় চড়ে উড়েন!").
+  if (game.dist >= nextRamp) {
+    nextRamp = game.dist + rnd(HZ.rampGapMin, HZ.rampGapMax);
+    walk(here.seg, here.s, T.spawnAhead, pickBranch, spot);
+    const x = pick([-2.5, 2.5]);
+    if (!spawnBlocked(spot.seg, spot.s, x)) add(RAMP_DEF, makeRamp(), spot.seg, spot.s, x, true);
+  }
+
   // Flyover pillars: fixed spots down the middle of the road below a flyover.
   const P = CFG.pillar;
   for (const seg of [here.seg, ...SEGS[here.seg].next]) {
@@ -148,8 +229,16 @@ function spawn(dt) {
 
 /** Simple driving AI: follow the car in front, wobble, change lanes, avoid pillars. */
 function drive(o, dt) {
-  const t = o.t, lanes = lanesOf(o.seg, T.lanes);
-  const lmin = lanes[0], lmax = lanes[lanes.length - 1];
+  if (o.dir < 0) {
+    // Oncoming vehicles stay in the right-hand lanes and cruise steadily towards the bus.
+    const rLanes = [2.5, 5];
+    o.targetX = clamp(o.targetX, rLanes[0], rLanes[1]);
+    o.x += (o.targetX - o.x) * ease(T.laneResponse, dt);
+    if (o.t.wobble) o.x += Math.sin(game.time * o.t.wobbleFreq + o.ph) * o.t.wobble * 0.5 * dt;
+    return;
+  }
+  const t = o.t, lanes = lanesOf(o.seg, T.lanes).filter(l => l <= 0);
+  const lmin = lanes[0] ?? -5, lmax = lanes[lanes.length - 1] ?? 0;
   let targetV = t.v;
   for (const other of objs) {
     if (other === o || other.hit || other.seg !== o.seg) continue;
@@ -184,20 +273,36 @@ function drive(o, dt) {
   if (t.wobble) o.x += Math.sin(game.time * t.wobbleFreq + o.ph) * t.wobble * dt;
 }
 
-/** Launch a light object away from the bus. Lighter things fly further. */
+/** Launch a light object away from the bus. Lighter things fly further, parts detach, rickshaws tip over! */
 function launch(o) {
-  const closing = Math.max(0, game.speed - o.v);
-  const share = I.busMass / (I.busMass + o.t.mass); // close to 1 for a rickshaw, smaller for a car
+  const closing = Math.max(8, game.speed - o.v);
+  const share = I.busMass / (I.busMass + (o.t.mass || 0.5)); // close to 1 for a rickshaw, smaller for a car
   const side = o.x >= game.lat ? 1 : -1;
   o.hit = true;
-  o.v = o.v + closing * I.pushForward * share;
+  o.v = Math.max(0, o.v) + closing * I.pushForward * share;
   o.vx = side * (I.flingSide + closing * I.flingPerSpeed) * share;
   o.vy = I.hop * share;
-  o.spin = o.t === CFG.stall ? 0 : side * I.spin * share;
-  game.speed *= 1 - I.slowFactor * (o.t.mass / (I.busMass + o.t.mass));
+  o.spin = o.t === CFG.stall || o.t.hazard ? 0 : side * I.spin * share;
+  game.speed *= 1 - I.slowFactor * ((o.t.mass || 0.5) / (I.busMass + (o.t.mass || 0.5)));
+
+  // Detach flying 3D vehicle chunks (bumpers, doors, hoods, wheels).
+  if (!o.t.hazard && o.t !== CFG.stall) {
+    spawnChunks(o.seg, o.s, o.x, o.t.name === "vip" || o.t.name === "car" ? 4 : 2, false);
+    if (Math.random() < 0.75) ejectDriver(o.seg, o.s, o.x);
+  }
+  // Rickshaws and bikes tip onto their side ("fallen" state).
+  if (o.t.name === "rickshaw" || o.t.name === "bike") {
+    o.fallen = true;
+    o.fallDir = side;
+  }
+  // Cars, VIP SUVs, and Police cars set off hazard blinkers and car alarms!
+  if (o.t.name === "car" || o.t.name === "vip" || o.t.name === "policeCar") {
+    o.alarm = true;
+    emit("carAlarm");
+  }
 
   // Stalls come apart: every part gets its own little launch.
-  if (o.t === CFG.stall) {
+  if (o.t === CFG.stall || o.t.name === "trench") {
     for (const part of o.m.children) {
       part.userData.vel = [side * rnd(2, 8), rnd(3, 8), -rnd(2, 10)];
       part.userData.spin = rnd(-8, 8);
@@ -205,7 +310,7 @@ function launch(o) {
   }
 }
 
-/** Move a launched object: fly, fall, bounce, spin. */
+/** Move a launched object: fly, fall, bounce, spin, tip over, flash hazards. */
 function fly(o, dt) {
   o.v = Math.max(0, o.v - I.flyDrag * dt);
   o.vx -= o.vx * ease(I.sideDrag, dt);
@@ -213,9 +318,17 @@ function fly(o, dt) {
   o.y += o.vy * dt;
   if (o.y < 0) { o.y = 0; o.vy = -o.vy * .3; }
   o.rot += o.spin * dt;
-  if (o.t === CFG.stall) {
-    o.v = 0; o.vx = 0; o.y = 0; // the stall base stays; its parts fly instead
+  if (o.fallen) {
+    o.m.rotation.z = approachAngle(o.m.rotation.z, (o.fallDir || 1) * 1.42, 10 * dt);
+  }
+  if (o.alarm && o.m.userData.hazards) {
+    const blink = Math.floor(game.time * 9) % 2 === 0;
+    for (const hz of o.m.userData.hazards) hz.visible = blink;
+  }
+  if (o.t === CFG.stall || o.t.name === "trench") {
+    o.v = 0; o.vx = 0; o.y = 0; // the base stays; its parts fly instead
     for (const part of o.m.children) {
+      if (!part.userData.vel) continue;
       const [vx, vy, vz] = part.userData.vel;
       part.userData.vel[1] = vy - I.gravity * dt;
       part.position.x += vx * dt; part.position.z += vz * dt;
@@ -226,9 +339,14 @@ function fly(o, dt) {
   o.x += o.vx * dt;
 }
 
+function approachAngle(cur, target, step) {
+  return cur + (target - cur) * Math.min(1, step);
+}
+
 /** Move along the road; at the end of a piece, carry on to the next one. @returns false if it left the map */
 function advance(o, dt) {
   o.s += o.v * dt;
+  if (o.s < 0) return false;
   while (o.s > SEGS[o.seg].len) {
     const nx = SEGS[o.seg].next;
     if (!nx.length) return false;
@@ -284,14 +402,61 @@ export function updateTraffic(dt) {
       continue;
     }
 
+    // Animate police siren lightbars on patrol police cars.
+    if (o.m.userData.siren) {
+      const redOn = Math.floor(game.time * 10) % 2 === 0;
+      o.m.userData.siren.red.visible = redOn;
+      o.m.userData.siren.blue.visible = !redOn;
+    }
+
     if (!o.hit && !game.crashing && !game.caught && onBusRoad(o.seg)) {
-      if (sweptHit(bx, B.hitHalfWidth, o.x, t.w / 2, zPrev, o.z, B.hitHalfLength + t.l / 2)) {
-        if (!t.heavy) {
+      const hitNow = sweptHit(bx, B.hitHalfWidth, o.x, t.w / 2, zPrev, o.z, B.hitHalfLength + t.l / 2);
+      if (hitNow && game.busY < 1.8) {
+        if (t.isRamp) {
+          // Wooden stunt ramp: launch the bus into the air!
+          o.hit = true;
+          game.busVy = 12.2;
+          game.busY = 0.25;
+          game.speed = Math.max(game.speed, 34);
+          game.invulnT = 1.6;
+          emit("rampJump", { type: "ramp", damage: t.damage, x: o.m.position.x, y: o.m.position.y + 1.5, z: o.m.position.z });
+        } else if (t.hazard) {
+          // WASA trench or open manhole: jolt the bus suspension!
+          launch(o);
+          game.busVy = t.name === "trench" ? 5.6 : 3.4;
+          game.busY = 0.15;
+          game.shake = Math.max(game.shake, 0.75);
+          emit("crash", { type: t.name, damage: t.damage, x: o.m.position.x, y: o.m.position.y + 1.2, z: o.m.position.z });
+        } else if (!t.heavy) {
           launch(o);
           game.invulnT = CFG.hit.invulnTime;
-          emit("crash", { type: t.name, damage: t.damage });
+          emit("crash", {
+            type: t.name,
+            damage: t.damage,
+            x: o.m.position.x,
+            y: o.m.position.y + 1.4,
+            z: o.m.position.z,
+          });
         // Right after a light crash the bus may be shoved into something big: forgive that.
         } else if (game.invulnT <= 0) emit("heavyHit", { type: t.name });
+      } else if (!t.heavy && !t.isRamp && !t.hazard && o.m.userData.mirrors) {
+        // Side-mirror grazing: passing super close beside a car/VIP/policeCar snaps off its side mirror!
+        const sGap = sideGap(bx, B.hitHalfWidth, o.x, t.w / 2);
+        const zOverlap = Math.min(zPrev, o.z) < B.hitHalfLength + t.l / 2 && Math.max(zPrev, o.z) > -(B.hitHalfLength + t.l / 2);
+        if (zOverlap && sGap >= 0 && sGap < 0.58) {
+          const busOnLeft = bx < o.x;
+          if (busOnLeft && o.mirrorL) {
+            o.mirrorL = false;
+            o.m.userData.mirrors.left.visible = false;
+            spawnChunks(o.seg, o.s, o.x - t.w * .5, 1, true);
+            emit("mirrorHit", { type: "mirror", damage: HZ.mirrorBonus, x: o.m.position.x, y: o.m.position.y + 1.2, z: o.m.position.z });
+          } else if (!busOnLeft && o.mirrorR) {
+            o.mirrorR = false;
+            o.m.userData.mirrors.right.visible = false;
+            spawnChunks(o.seg, o.s, o.x + t.w * .5, 1, true);
+            emit("mirrorHit", { type: "mirror", damage: HZ.mirrorBonus, x: o.m.position.x, y: o.m.position.y + 1.2, z: o.m.position.z });
+          }
+        }
       }
 
       // Heavy thing ahead and in our path? Light its beacon and warn the HUD.
@@ -307,6 +472,22 @@ export function updateTraffic(dt) {
     }
 
     place(o.m, o.seg, o.s, o.x, o.y, o.rot);
+    if (o.fallen) o.m.rotation.z = (o.fallDir || 1) * 1.42;
+  }
+
+  // Update flying detachable 3D vehicle chunks.
+  for (const c of chunks) {
+    if (!c.active) continue;
+    c.t -= dt;
+    if (c.t <= 0) { c.active = false; c.m.visible = false; continue; }
+    c.vy -= I.gravity * dt;
+    c.x += c.vx * dt;
+    c.s += c.vz * dt;
+    c.y += c.vy * dt;
+    if (c.y < 0.15) { c.y = 0.15; c.vy = -c.vy * 0.45; c.vx *= 0.7; c.vz *= 0.7; }
+    place(c.m, c.seg, clamp(c.s, 0, SEGS[c.seg].len), c.x, c.y);
+    c.m.rotation.x += c.rx * dt;
+    c.m.rotation.z += c.rz * dt;
   }
 
   // Update crossing pedestrians: walk across, hesitate/jump back when the bus approaches, never crashable.
@@ -350,7 +531,10 @@ export function updateTraffic(dt) {
 // Horn: light vehicles just ahead in the bus's lane move one lane aside, and pedestrians jump back to the pavement.
 export function eachTraffic(fn) {
   for (const o of objs) {
-    if (!o.hit) fn(o.t.heavy ? "heavy" : o.t.name, o.m.position.x, o.m.position.y, o.m.position.z, o.m.rotation.y);
+    if (!o.hit) {
+      const kind = o.t.heavy ? "heavy" : o.t.isRamp ? "ramp" : o.t.hazard ? "trench" : o.t.name;
+      fn(kind, o.m.position.x, o.m.position.y, o.m.position.z, o.m.rotation.y);
+    }
   }
 }
 

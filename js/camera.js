@@ -22,6 +22,7 @@ let camYaw = null;  // smoothed direction the camera looks (null = snap on first
 let fov = C.fov;    // smoothed field of view
 let boostFx = 0;    // 0..1, how strong the boost effect is right now
 let introT = 0;     // seconds left in the skippable morning bus-stand camera sweep
+let orbitAng = 0;   // angle for the "গণধোলাই" cutscene orbit camera
 const p = { x: 0, y: 0, z: 0, yaw: 0, k: 0 }, q = { x: 0, y: 0, z: 0, yaw: 0, k: 0 };
 
 /** Same smoothing as in bus.js: frame-rate independent ease towards a target. */
@@ -32,6 +33,7 @@ export function resetCamera(withIntro = false) {
   camYaw = null;
   camLat = game.lat * C.followX;
   introT = withIntro ? C.introSeconds : 0;
+  orbitAng = 0;
 }
 
 /** Place the camera for this frame. @returns {number} boost effect strength 0..1 */
@@ -75,8 +77,27 @@ export function updateCamera(dt) {
     cz += (-rz * 8.5 + fz * 6) * sweep;
   }
 
-  cam.position.set(cx + rnd(-1, 1) * shake, p.y + C.height + rnd(-1, 1) * shake, cz);
-  cam.lookAt(ax + fx * C.lookAhead, p.y + C.lookY, az + fz * C.lookAhead);
+  // Dramatic "গণধোলাই / ঘেরাও" cutscene: orbit the camera around the surrounded bus!
+  if (game.caught) {
+    orbitAng += dt * 0.92;
+    const rad = 10.2;
+    const ox = ax + Math.sin(camYaw + orbitAng) * rad;
+    const oz = az + Math.cos(camYaw + orbitAng) * rad;
+    cam.position.set(ox + rnd(-1, 1) * shake, p.y + 3.9 + rnd(-1, 1) * shake, oz);
+    cam.lookAt(ax, p.y + 1.55, az);
+    followGround(cam.position.x, cam.position.z);
+    return boostFx;
+  }
+
+  // Menu Autopilot demo camera: gentle cinematic sway behind the cruising bus.
+  if (!game.running) {
+    const sway = Math.sin(game.time * 0.45) * 3.2;
+    cx += rx * sway;
+    cz += rz * sway;
+  }
+
+  cam.position.set(cx + rnd(-1, 1) * shake, p.y + C.height + (game.busY || 0) * 0.45 + rnd(-1, 1) * shake, cz);
+  cam.lookAt(ax + fx * C.lookAhead, p.y + C.lookY + (game.busY || 0) * 0.65, az + fz * C.lookAhead);
   followGround(cam.position.x, cam.position.z);
 
   const targetFov = C.baseFov + game.speed * C.fovPerSpeed + boostFx * C.boostFovKick;

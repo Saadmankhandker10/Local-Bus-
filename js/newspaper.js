@@ -6,6 +6,72 @@ import { bnNum, bnDate, clock, UI } from "./i18n.js";
 
 const FONT = "'Noto Sans Bengali', 'Nirmala UI', sans-serif";
 let current = null; // the last page shown, so "save image" can redraw it
+let mediaRec = null, recChunks = [], lastVideoBlob = null;
+
+/** Start recording the 3D canvas stream for the end-of-run video replay button. */
+export function startRunVideo(canvas) {
+  lastVideoBlob = null;
+  recChunks = [];
+  if (!canvas?.captureStream || typeof MediaRecorder === "undefined") return;
+  try {
+    const stream = canvas.captureStream(24);
+    const mime = MediaRecorder.isTypeSupported("video/webm;codecs=vp9") ? "video/webm;codecs=vp9"
+      : MediaRecorder.isTypeSupported("video/webm") ? "video/webm" : "";
+    mediaRec = mime ? new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 1800000 }) : new MediaRecorder(stream);
+    mediaRec.ondataavailable = e => {
+      if (e.data && e.data.size > 0) {
+        recChunks.push(e.data);
+        if (recChunks.length > 36) recChunks.shift(); // keep the last ~18 seconds compact
+      }
+    };
+    mediaRec.onstop = () => {
+      if (recChunks.length) {
+        lastVideoBlob = new Blob(recChunks, { type: mediaRec?.mimeType || "video/webm" });
+        if ($("clipBtn")) $("clipBtn").hidden = false;
+      }
+    };
+    mediaRec.start(500);
+  } catch {
+    mediaRec = null;
+  }
+}
+
+/** Stop recording at the end of a run so the final seconds + crash are ready to download/share. */
+export function stopRunVideo() {
+  if (mediaRec && mediaRec.state !== "inactive") {
+    try { mediaRec.stop(); } catch {}
+  }
+}
+
+/** Share or download the recorded WebM video clip of the run. */
+export async function saveRunVideo() {
+  if (!lastVideoBlob) return false;
+  const file = new File([lastVideoBlob], "local-bus-dhaka.webm", { type: lastVideoBlob.type || "video/webm" });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: PAPER.name }); return true; } catch {}
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(lastVideoBlob);
+  a.download = "local-bus-dhaka.webm";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  return true;
+}
+
+/** Funny Bangladeshi real-world equivalents for the run's total damage ("এই টাকায় হতো..."). */
+function priceEquivalents(damageUnits) {
+  const taka = Math.max(100, damageUnits * 10);
+  const kacchi = Math.max(1, Math.round(taka / 320));
+  const cha = Math.max(4, Math.round(taka / 20));
+  const pillow = (taka / 27000).toFixed(2);
+  const committee = Math.max(1, Math.round(taka / 1500));
+  return [
+    `🍛 কাচ্চি বিরিয়ানি (হাফ): ${bnNum(kacchi)} প্লেট`,
+    `☕ টংয়ের মালাই চা ও সিঙ্গারা: ${bnNum(cha)} সেট`,
+    `🛏 মেগা প্রকল্পের বালিশ: ${bnNum(pillow)}টি`,
+    `📋 যানজট তদন্ত কমিটির সমুচা-নাস্তা: ${bnNum(committee)} বার`,
+  ];
+}
 
 const STAMPS = {
   complete: { text: "ট্রিপ সফল ✓", color: "#1f6b3a" },
@@ -94,6 +160,28 @@ export function showPaper(run, photo) {
       `<div class="lrow"><span>সার্জেন্টের জরিমানা</span><b>−৳${bnNum(run.fines)}</b></div>` +
       `<div class="lrow ltot"><span>সর্বমোট স্কোর</span><b>${bnNum(run.score)}</b></div>`;
   }
+  const pboxEl = $("npPriceBox");
+  if (pboxEl) {
+    const eqs = priceEquivalents(run.damage);
+    pboxEl.innerHTML =
+      `<div class="pbox-head">💡 এই ৳${bnNum((run.damage * 10).toLocaleString("en-IN"))} রাস্তার ক্ষতির টাকায় হতো —</div>` +
+      eqs.map(line => `<div class="lrow"><span>${line}</span></div>`).join("");
+  }
+  const npDareEl = $("npDare");
+  if (npDareEl) {
+    const params = new URLSearchParams(location.search);
+    const dareVal = Number(params.get("dare")) || 0;
+    const dareAt = params.get("at") || "শাহবাগ";
+    if (dareVal > 0) {
+      const won = run.damage * 10 >= dareVal;
+      npDareEl.textContent = won
+        ? `🏆 অভিনন্দন! আপনি বন্ধুর ৳${bnNum(dareVal.toLocaleString("en-IN"))} (${dareAt}) চ্যালেঞ্জ ভেঙে ফেলেছেন!`
+        : `🔥 বন্ধুর চ্যালেঞ্জ ছিল ৳${bnNum(dareVal.toLocaleString("en-IN"))} (${dareAt}) — আরেকটু হলেই ভাঙত!`;
+      npDareEl.hidden = false;
+    } else {
+      npDareEl.hidden = true;
+    }
+  }
   const inappEl = $("inappNote");
   if (inappEl) inappEl.hidden = !isInAppBrowser();
   $("pnote").textContent = PAPER.disclaimer;
@@ -120,6 +208,26 @@ export async function copyRunSummary() {
 
 export function hidePaper() {
   $("paper").hidden = true;
+}
+
+/** Copy a challenge link (?dare=...&at=...) so friends can try to beat this run's damage! */
+export async function copyDareLink() {
+  if (!current) return false;
+  const { run } = current;
+  const taka = Math.max(100, run.damage * 10);
+  const url = new URL(location.href);
+  url.searchParams.set("dare", String(taka));
+  url.searchParams.set("at", run.stage);
+  const text = `🔥 আমি "${run.stage}" এলাকায় লোকাল বাস চালিয়ে ৳${bnNum(taka.toLocaleString("en-IN"))} রাস্তার ড্যামেজ করেছি! আমার রেকর্ড ভাঙতে পারবেন? 👇\n${url.toString()}`;
+  if (navigator.share) {
+    try { await navigator.share({ title: PAPER.name, text, url: url.toString() }); return true; } catch {}
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Draw text that wraps at word boundaries. @returns {number} y after the last line */
@@ -172,6 +280,15 @@ export async function savePaperImage() {
   g.fillRect(M, y, W - 2 * M, 2); y += 18;
   g.font = `600 30px ${FONT}`;
   for (const l of statLines(run)) y = wrap(g, l, M, y, W - 2 * M, 42);
+
+  // Draw the "এই টাকায় হতো..." box on the exported PNG image too.
+  y += 14;
+  g.fillStyle = "#4a148c"; g.font = `700 28px ${FONT}`;
+  y = wrap(g, `💡 এই ৳${bnNum((run.damage * 10).toLocaleString("en-IN"))} ক্ষতির টাকায় হতো:`, M, y, W - 2 * M, 38);
+  g.fillStyle = "#222"; g.font = `600 25px ${FONT}`;
+  for (const eq of priceEquivalents(run.damage)) {
+    y = wrap(g, "  • " + eq, M, y, W - 2 * M, 35);
+  }
 
   // Diagonal rubber stamp on the exported newspaper PNG.
   const stamp = STAMPS[run.cause] || STAMPS.default;

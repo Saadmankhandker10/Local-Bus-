@@ -16,8 +16,19 @@ canvas{display:block}
 .bar i{display:block;height:100%;width:100%;transition:width .12s linear}
 #hpbar{background:#26a69a}#hpbox.low{animation:lowfuel 1s ease-in-out infinite alternate}#comfortbar{background:#43a047}#comfortbox.low #comfortbar{background:#ff7043}
 
-/* Top-centre red chasing crowd pill */
+/* Top-centre red chasing crowd pill & yellow Wrong-Way multiplier pill */
 #crowdbox{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:linear-gradient(180deg,#d32f2f,#9a1b1b);border:2px solid #ffcdd2;color:#fff;padding:6px 22px;border-radius:22px;font-size:17px;font-weight:800;box-shadow:0 4px 14px rgba(0,0,0,.6);pointer-events:none;z-index:19}
+#wrongWay{position:fixed;top:56px;left:50%;transform:translateX(-50%);background:linear-gradient(180deg,#ffca28,#f57f17);border:2px solid #fff8e1;color:#111;padding:4px 18px;border-radius:18px;font-size:15px;font-weight:900;box-shadow:0 4px 14px rgba(0,0,0,.55);pointer-events:none;z-index:19;animation:lowfuel .55s ease-in-out infinite alternate}
+#placeCard{display:inline-flex;align-items:center;gap:6px;background:rgba(15,20,18,.84);border:1.5px solid rgba(255,213,79,.5);color:#fff8e1;padding:3px 11px;border-radius:14px;font-size:12.5px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.live-dot{width:8px;height:8px;border-radius:50%;background:#ff1744;box-shadow:0 0 6px #ff1744;animation:livepulse 1s ease-in-out infinite alternate}
+@keyframes livepulse{to{opacity:.3;transform:scale(.85)}}
+
+/* Floating +৳ damage popups & airborne ramp jump meme banner */
+#floaters{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:18}
+.floater{position:absolute;transform:translate(-50%,-50%);font-weight:900;font-size:24px;color:#ffd54f;text-shadow:0 2px 0 #8d3b14,0 3px 8px #000;white-space:nowrap;animation:floatup 1.05s ease-out forwards}
+.floater small{display:block;font-size:14px;color:#ff80ab;text-align:center}
+@keyframes floatup{0%{opacity:0;transform:translate(-50%,-20%) scale(.6)}18%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}100%{opacity:0;transform:translate(-50%,-155%) scale(.95)}}
+#meme{position:fixed;top:19%;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#6a1b9a,#d81b60);border:3px solid #ffd54f;color:#fff;padding:10px 26px;border-radius:20px;font-size:clamp(20px,4vw,28px);font-weight:900;text-shadow:0 2px 6px #000;box-shadow:0 8px 26px rgba(0,0,0,.65);pointer-events:none;z-index:22;animation:cardin .35s ease-out}
 
 /* Top-right cream fuel card + circular street radar minimap + magenta upcoming-mark pill */
 #nav{position:fixed;top:12px;right:14px;width:152px;display:flex;flex-direction:column;align-items:flex-end;gap:6px;z-index:18}
@@ -93,8 +104,19 @@ button:active{transform:translateY(1px)}
 #cardBody{font-size:15px;margin-top:6px}
 #restart{background:#90caf9}
 #copyBtn{background:#e0f2f1;color:#004d40}
+#clipBtn{background:linear-gradient(180deg,#ff4081,#c2185b);color:#fff}
+#dareBtn{background:linear-gradient(180deg,#ff9100,#e65100);color:#fff}
 #installBtn{background:var(--teal-led,#35e0c2);color:#00251a}
 #title4dMapBtn{background:#1f5fae;color:#fff}
+.start-spot-pill{background:rgba(31,107,58,.88);border:1.5px solid #ffd54f;color:#fff8e1;font-size:13.5px;padding:5px 15px;border-radius:18px;font-weight:700}
+#dareBanner{background:linear-gradient(90deg,#b71c1c,#e65100);border:2px solid #ffd54f;color:#fff;padding:6px 18px;border-radius:16px;font-size:14.5px;font-weight:800;margin-bottom:8px;max-width:560px;box-shadow:0 4px 12px rgba(0,0,0,.5)}
+#wantedBox{margin-top:10px;background:rgba(18,26,21,.88);border:1.5px dashed rgba(255,194,26,.65);border-radius:12px;padding:8px 14px;width:min(520px,92vw);text-align:left;font-size:12.5px}
+.wanted-head{font-weight:800;color:#ffd54f;border-bottom:1px solid rgba(255,255,255,.15);padding-bottom:3px;margin-bottom:4px;text-align:center}
+.wrow{display:flex;justify-content:space-between;padding:2px 0;color:#e0e0e0}
+.wrow.you{color:#35e0c2;font-weight:800}
+#npPriceBox{margin-top:8px;background:#f3e5f5;border:1.5px dashed #6a1b9a;border-radius:6px;padding:7px 10px;font-size:12.5px;color:#222}
+.pbox-head{font-weight:800;color:#4a148c;border-bottom:1px solid #ce93d8;padding-bottom:2px;margin-bottom:4px}
+#npDare{margin-top:8px;background:#ffebee;border:1.5px solid #c62828;color:#b71c1c;padding:6px 10px;border-radius:6px;font-size:13px;font-weight:800;text-align:center}
 .fiction{margin-top:8px;font-size:12px;opacity:.75}
 .btns{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 #share{background:#fff;color:#1a1a1a}

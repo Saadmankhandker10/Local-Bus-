@@ -10,13 +10,64 @@ const DARK = 0x263238, TYRE = 0x111111;
 /** Red warning light on top of heavy things. Shared, so every beacon pulses together. */
 export const beaconMat = new THREE.MeshBasicMaterial({ color: 0xff1a1a, transparent: true, opacity: 0.9 });
 const beaconGeo = new THREE.SphereGeometry(.35, 10, 8);
+const vipBadge = plate("▲ ভিআইপি গাড়ি", 2.2, .48, "#4a148c", "#ffd54f");
+const policeSign = plate("পুলিশ · POLICE", 1.5, .34, "#1a237e", "#ffffff");
+const rampSign = plate("🚀 ঠেলায় চড়ে উড়েন!", 2.6, .55, "#ffeb3b", "#b71c1c");
+const trenchSign = plate("⚠ ওয়াসার কাজ চলছে", 2.4, .52, "#b71c1c", "#ffffff");
 
+function addMirrorsAndHazards(g, t, color) {
+  const left = box(.22, .14, .18, color, -t.w * .56, t.h * .58, -t.l * .18);
+  const right = box(.22, .14, .18, color, t.w * .56, t.h * .58, -t.l * .18);
+  const hzL = box(.22, .16, .08, 0xff9800, -t.w * .38, t.h * .36, t.l * .51);
+  const hzR = box(.22, .16, .08, 0xff9800, t.w * .38, t.h * .36, t.l * .51);
+  hzL.visible = hzR.visible = false;
+  g.add(left, right, hzL, hzR);
+  g.userData.mirrors = { left, right };
+  g.userData.hazards = [hzL, hzR];
+}
 
 function car(t, c) {
   const g = new THREE.Group();
   g.add(box(t.w, t.h * .6, t.l, c, 0, t.h * .3 + .3, 0));
   g.add(box(t.w * .85, t.h * .45, t.l * .45, DARK, 0, t.h * .6 + .3 + t.h * .2, -t.l * .12));
   for (const s of [-1, 1]) g.add(box(.25, .5, t.l * .8, TYRE, s * t.w * .5, .3, 0));
+  addMirrorsAndHazards(g, t, c);
+  return g;
+}
+
+function vip(t, c) {
+  const g = new THREE.Group();
+  g.add(box(t.w, t.h * .62, t.l, c, 0, t.h * .32 + .3, 0));                  // sleek black SUV body
+  g.add(box(t.w + .03, .12, t.l + .02, 0xffd54f, 0, .62, 0));                // gold luxury trim stripe
+  g.add(box(t.w * .88, t.h * .46, t.l * .55, 0x0d1117, 0, t.h * .85, -.1));  // dark tinted VIP cabin
+  for (const s of [-1, 1]) g.add(box(.28, .55, t.l * .82, TYRE, s * t.w * .5, .32, 0));
+  // Front hood flagpole + miniature flag
+  g.add(box(.05, .65, .05, 0xffd54f, -t.w * .38, t.h * .75, -t.l * .45));
+  g.add(box(.28, .18, .04, 0x1f6b3a, -t.w * .38 + .14, t.h * .98, -t.l * .45));
+  // Floating overhead VIP marker
+  const badge = vipBadge.clone();
+  badge.position.set(0, t.h + 1.15, 0);
+  g.add(badge);
+  g.userData.vipBadge = badge;
+  addMirrorsAndHazards(g, t, 0xffd54f);
+  return g;
+}
+
+function policeCar(t) {
+  const g = new THREE.Group();
+  g.add(box(t.w, t.h * .58, t.l, 0xffffff, 0, t.h * .3 + .3, 0));            // white body
+  g.add(box(t.w + .02, .28, t.l + .02, 0x1a237e, 0, .58, 0));                // navy police stripe
+  g.add(box(t.w * .86, t.h * .45, t.l * .48, DARK, 0, t.h * .82, -.1));      // cabin
+  for (const s of [-1, 1]) g.add(box(.26, .52, t.l * .8, TYRE, s * t.w * .5, .3, 0));
+  // Flashing Red & Blue roof lightbar
+  const redBar = box(.48, .18, .28, 0xff1744, -.26, t.h + .22, -.1);
+  const blueBar = box(.48, .18, .28, 0x00b0ff, .26, t.h + .22, -.1);
+  g.add(redBar, blueBar);
+  const sign = policeSign.clone();
+  sign.position.set(0, .82, t.l * .51);
+  g.add(sign);
+  g.userData.siren = { red: redBar, blue: blueBar };
+  addMirrorsAndHazards(g, t, 0x1a237e);
   return g;
 }
 
@@ -57,7 +108,7 @@ function rivalBus(t, c) {
   return g;
 }
 
-const BUILDERS = { car, rickshaw, bike, truck, bus: rivalBus };
+const BUILDERS = { car, vip, policeCar, rickshaw, bike, truck, bus: rivalBus };
 
 /** Build a traffic vehicle. Heavy ones get a (hidden) red warning beacon on top. */
 export function makeVehicle(t) {
@@ -131,5 +182,62 @@ export function makePillar() {
   b.visible = false;
   g.add(b);
   g.userData.beacon = b;
+  return g;
+}
+
+const manholeGeo = new THREE.CylinderGeometry(.68, .68, .06, 14);
+const manholeMat = new THREE.MeshLambertMaterial({ color: 0x0d0d0d });
+const lidMat = new THREE.MeshLambertMaterial({ color: 0x616161 });
+
+/** Open manhole on the road with its concrete cover pushed aside and a red bamboo warning stick. */
+export function makeManhole() {
+  const g = new THREE.Group();
+  const hole = new THREE.Mesh(manholeGeo, manholeMat);
+  hole.position.y = .03;
+  const lid = new THREE.Mesh(manholeGeo, lidMat);
+  lid.position.set(.85, .06, .35);
+  g.add(hole, lid);
+  g.add(box(.08, 1.3, .08, 0x8d6e63, -.45, .65, 0)); // bamboo stick stuck in hole
+  g.add(box(.38, .28, .05, 0xd32f2f, -.3, 1.2, 0));   // red cloth danger flag
+  return g;
+}
+
+/** WASA / City Corporation road digging trench surrounded by bamboo barricades and dirt mounds. */
+export function makeTrench() {
+  const g = new THREE.Group();
+  g.add(box(2.6, .08, 4.8, 0x14110f, 0, .03, 0));     // dark excavated pit
+  g.add(box(2.2, .45, 1.4, 0x5d4037, 0, .22, -1.6));  // heaped earth mound
+  // Bamboo barricade posts and rails around the pit
+  for (const x of [-1.35, 1.35]) for (const z of [-2.4, 0, 2.4]) {
+    g.add(box(.1, 1.2, .1, 0x8d6e63, x, .6, z));
+  }
+  for (const z of [-2.4, 2.4]) {
+    g.add(box(2.8, .1, .1, 0xd4a359, 0, .95, z));
+    g.add(box(2.8, .1, .1, 0xb71c1c, 0, .55, z));
+  }
+  const s = trenchSign.clone();
+  s.position.set(0, 1.45, 2.45);
+  g.add(s);
+  return g;
+}
+
+/** Wooden stunt ramp ("ঠেলায় চড়ে উড়েন!") that launches the bus into the air! */
+export function makeRamp() {
+  const g = new THREE.Group();
+  const deck = new THREE.Group();
+  deck.rotation.x = 0.22; // inclined upward towards -z (forward)
+  deck.add(box(3.2, .18, 6.2, 0x8d6e63, 0, .65, 0));          // wooden plank deck
+  deck.add(box(3.26, .06, 6.22, 0xffc21a, 0, .75, 0));        // yellow chevron paint
+  for (const s of [-1, 1]) {
+    deck.add(box(.18, .32, 6.2, 0xb71c1c, s * 1.55, .82, 0)); // red side rails
+  }
+  g.add(deck);
+  // Support trestles under the high(-z) end of the ramp
+  for (const s of [-1.3, 0, 1.3]) {
+    g.add(box(.22, 1.3, .22, 0x5d4037, s, .65, -2.5));
+  }
+  const sign = rampSign.clone();
+  sign.position.set(0, 1.85, -2.7);
+  g.add(sign);
   return g;
 }

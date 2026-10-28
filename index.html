@@ -35,13 +35,17 @@
     <div class="box" id="hpbox"><span data-i18n="lblHp">🚌 বডি</span><div class="bar"><i id="hpbar"></i></div></div>
     <div class="box" id="comfortbox"><span data-i18n="lblComfort">😊 স্বস্তি</span><div class="bar"><i id="comfortbar"></i></div></div>
   </div>
+  <div id="placeCard"><span class="live-dot"></span><span id="placeText">সরাসরি · মোহাম্মদপুর মোড়</span></div>
 </div>
 
-<!-- Top-centre red pill when the public is chasing behind the bus -->
+<!-- Top-centre red pill when the public is chasing behind the bus + yellow Wrong-Way multiplier pill -->
 <div id="crowdbox" hidden>
   <span id="crowdText">পাবলিক পিছে! ৬ জন!</span>
   <div class="bar" hidden><i id="crowdbar"></i></div>
 </div>
+<div id="wrongWay" hidden>⚠ উল্টো পথ · ক্ষতি ×১.৫</div>
+<div id="floaters"></div>
+<div id="meme" hidden>🚀 ঠেলায় চড়ে উড়ন্ত লোকাল বাস! +৳১,০০০</div>
 
 <!-- Top-right fuel card + circular street-radar minimap + upcoming mark pill -->
 <div id="nav" hidden>
@@ -73,15 +77,22 @@
       <h1 id="title" data-i18n="title">লোকাল বাস — ঢাকা রুট</h1>
       <div id="route">মোহাম্মদপুর → ধানমন্ডি → সায়েন্সল্যাব → শাহবাগ → ঢাকা বিশ্ববিদ্যালয়</div>
     </div>
+    <div id="dareBanner" hidden></div>
     <div id="bestBanner" hidden></div>
+    <div style="margin-bottom:8px">
+      <button type="button" id="startPlaceBtn" class="start-spot-pill">📍 শুরুর এলাকা: অটো রোটেশন (ক্লিক করে বদলান)</button>
+    </div>
     <div id="sub">
-      রিকশা, বাইক, সিএনজি, গাড়ি আর দোকানে ধাক্কা দিলে <b>ড্যামেজ</b> বাড়ে, পরপর দিলে কম্বো!<br>
-      <b>ট্রাক, অন্য বাস আর পিলারে</b> লাগলেই খেলা শেষ ⚠ · পথচারীদের হর্ন (<b>H</b>) দিয়ে সরান।<br>
-      ধাক্কার পর পাবলিক দৌড়াবে 🏃 আর ইট-স্যান্ডেল ছুঁড়বে — ডানে-বামে কাটিয়ে পালান!<br>
-      হলুদ <b>⛽ সিএনজি</b> দাগে থেমে তেল নিন। গোলাপি <b>👮 পুলিশ</b> দাগে থেমে জরিমানা দিলে পাবলিক চলে যায়।<br>
-      নীল <b>বাস স্টপে</b> আস্তে থামলে যাত্রী ওঠে, ভাড়া বাড়ে। শাহবাগের মিছিল এড়াতে বাম লেন বা <b>কাঁটাবনের গলি</b> ধরুন!<br><br>
-      <b>W/↑</b> চালান &nbsp; <b>S/↓</b> ব্রেক &nbsp; <b>A D / ← →</b> ঘুরান &nbsp; <b>Shift/Space</b> বুস্ট<br>
+      রিকশা, বাইক, সিএনজি, গাড়ি, <b>ভিআইপি গাড়ি</b> আর দোকানে ধাক্কা দিলে <b>ড্যামেজ</b> বাড়ে, পরপর দিলে কম্বো!<br>
+      ডিভাইডারের গ্যাপ দিয়ে ডান লেনে ঢুকলে <b>উল্টো পথ · ক্ষতি ×১.৫</b> বোনাস! যেকোনো <b>চৌরাস্তায় (মোড়ে)</b> বামে বা ডানে ঘুরুন!<br>
+      কাঠের র‍্যাম্পে উঠলে <b>বাস আকাশে উড়বে 🚀</b> · গাড়ির পাশ ঘেঁষে গেলে <b>সাইড মিরর</b> ভেঙে বোনাস!<br>
+      হলুদ <b>⛽ সিএনজি</b> দাগে থেমে তেল নিন। গোলাপি <b>👮 পুলিশ</b> দাগে থেমে জরিমানা দিলে পাবলিক চলে যায়।<br><br>
+      <b>W/↑</b> চালান &nbsp; <b>S/↓</b> ব্রেক &nbsp; <b>A D / ← →</b> মোড়ে ঘুরান &nbsp; <b>Shift/Space</b> বুস্ট<br>
       <b>H</b> হর্ন &nbsp; <b>G</b> ওস্তাদের হাঁক &nbsp; <b>M</b> সাউন্ড &nbsp; <b>P/Esc</b> বিরতি &nbsp; <b>Tab</b> বড় ম্যাপ
+    </div>
+    <div id="wantedBox">
+      <div class="wanted-head">🚨 মোস্ট ওয়ান্টেড ওস্তাদ তালিকা <small>· ধরিয়ে দিলে পুরস্কার: এক কাপ চা</small></div>
+      <div id="wantedList"></div>
     </div>
     <div class="fiction">এটি একটি কাল্পনিক, ব্যঙ্গাত্মক গেম। বাস্তবে নিরাপদে চালান।</div>
   </div>
@@ -98,8 +109,10 @@
         <p id="pstory"></p>
         <div id="pstats"></div>
         <div id="ledger"></div>
+        <div id="npPriceBox"></div>
       </div>
     </div>
+    <div id="npDare" hidden></div>
     <div id="inappNote" hidden>💡 ফেসবুক/মেসেঞ্জার ব্রাউজারে ছবি ডাউনলোড না হলে ওপরে ⋮ চেপে "Open in Browser"-এ খুলুন অথবা "স্কোর কপি" চাপুন।</div>
     <div id="pnote"></div>
   </div>
@@ -108,6 +121,8 @@
     <button id="title4dMapBtn" type="button">🗺 পুরো ঢাকা ম্যাপ</button>
     <button id="restart" hidden data-i18n="restartBtn">শুরু থেকে</button>
     <button id="share" hidden data-i18n="shareBtn">📰 ছবি সেভ / শেয়ার</button>
+    <button id="clipBtn" hidden type="button">🎬 ভিডিও সেভ / শেয়ার</button>
+    <button id="dareBtn" hidden type="button">🔥 চ্যালেঞ্জ লিংক কপি</button>
     <button id="copyBtn" hidden data-i18n="copyBtn">📋 স্কোর কপি</button>
     <button id="installBtn" hidden>📲 অ্যাপ ইনস্টল</button>
   </div>

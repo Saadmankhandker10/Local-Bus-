@@ -29,6 +29,12 @@ export const game = {
   journeyT: 0, // seconds since the journey started (kept across checkpoints)
   shake: 0,   // camera shake strength, fades over time
   onMark: "", // "cng" or "police" while the bus stands on that mark
+  wrongWay: false, // true when driving on the right-hand (oncoming) side of the median island
+  busY: 0,         // vertical height of the bus above the road (when jumping ramps / trenches)
+  busVy: 0,        // vertical velocity of the bus
+  autopilot: true, // true while the menu background autopilot demo is running
+  startStage: -1,  // -1 = rotate automatically each run, or 0..3 for a specific Dhaka spot
+  morName: "মোহাম্মদপুর বাসস্ট্যান্ড", // current Dhaka intersection / live TV location badge
 };
 
 /** Reset the numbers for a fresh run. (Score and crowd are reset in their own modules.) */
@@ -38,7 +44,7 @@ export function resetGame() {
   game.caught = false;
   game.speed = CFG.bus.startSpeed;
   game.vx = 0;
-  game.lat = 0;
+  game.lat = -2.5; // start in the left (correct) lane of the two-way boulevard
   game.yaw = 0;
   game.prog = 0;
   game.accel = 0;
@@ -53,4 +59,7 @@ export function resetGame() {
   game.dist = 0;
   game.shake = 0;
   game.onMark = "";
+  game.wrongWay = false;
+  game.busY = 0;
+  game.busVy = 0;
 }

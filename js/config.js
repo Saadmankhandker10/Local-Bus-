@@ -120,7 +120,7 @@ export const CFG = {
     runBobHz: 3,         // running bounce speed
     runBob: 0.25,        // running bounce height
     ringRadius: 4.2,     // when they catch the bus, they stand around it in a ring this wide
-    caughtSeconds: 1.8,  // the "surrounded" moment before the game-over screen
+    caughtSeconds: 3.8,  // dramatic "গণধোলাই / ঘেরাও" cutscene before the newspaper screen
     ringSpeed: 6,        // how fast they walk into the ring
 
     // Thrown cartoon projectiles (brick, helmet, sandal, bottle, tea cup) from the chasing crowd.
@@ -227,13 +227,27 @@ export const CFG = {
         wobble: 1.2, wobbleFreq: 1.5, colors: [0x212121, 0xd32f2f, 0x1565c0] },
       { name: "cng",      shape: "car",      w: 1.6, l: 2.8, h: 1.6, v: 12, wt: 3.5, mass: 0.6, damage: 20,
         laneChange: 0.25, colors: [0x2e9e4f] },
-      { name: "car",      shape: "car",      w: 1.9, l: 4.2, h: 1.4, v: 15, wt: 3,   mass: 1.5, damage: 30,
+      { name: "car",       shape: "car",       w: 1.9, l: 4.2, h: 1.4,  v: 15, wt: 3,    mass: 1.5, damage: 30,
         colors: [0xe53935, 0x1e88e5, 0xfafafa, 0x424242, 0xfdd835] },
-      { name: "truck",    shape: "truck",    w: 2.6, l: 8,   h: 3.0, v: 9,  wt: 1.2, heavy: true,
+      { name: "vip",       shape: "vip",       w: 2.0, l: 4.6, h: 1.55, v: 17, wt: 0.85, mass: 1.8, damage: 120,
+        laneChange: 0.2, colors: [0x111111, 0x1c2833] },
+      { name: "policeCar", shape: "policeCar", w: 1.95, l: 4.4, h: 1.5, v: 18, wt: 0.7,  mass: 1.7, damage: 80,
+        laneChange: 0.25, colors: [0x1a237e] },
+      { name: "truck",     shape: "truck",     w: 2.6, l: 8,   h: 3.0,  v: 9,  wt: 1.2,  heavy: true,
         colors: [0xf57c00, 0x5d4037, 0x1565c0] },
-      { name: "bus",      shape: "bus",      w: 2.6, l: 7.5, h: 2.8, v: 11, wt: 1,   heavy: true,
+      { name: "bus",       shape: "bus",       w: 2.6, l: 7.5, h: 2.8,  v: 11, wt: 1,    heavy: true,
         colors: [0xc62828, 0x1565c0, 0x6a1b9a] },
     ],
+  },
+
+  // Street hazards & stunt ramps (WASA road trench, open manhole, wooden jump ramp).
+  hazards: {
+    trenchGapMin: 210, trenchGapMax: 360,
+    manholeGapMin: 170, manholeGapMax: 300,
+    rampGapMin: 250, rampGapMax: 420,
+    rampBonus: 100,      // base damage bonus for launching off a ramp (×10 = ৳1,000)
+    mirrorBonus: 30,     // base damage bonus for grazing & snapping a car's side mirror (×10 = ৳300)
+    wrongWayMult: 1.5,   // damage multiplier when driving in oncoming lanes (right of the median)
   },
 
   // Traffic mix on special roads (multiplies each type's chance; 0 = never).

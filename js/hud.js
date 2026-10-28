@@ -1,21 +1,25 @@
 // Everything drawn with HTML on top of the 3D view: numbers, bars, route progress,
 // stage cards, messages, and screens.
+import * as THREE from "three";
 import { CFG } from "./config.js";
 import { $, clamp } from "./utils.js";
 import { game } from "./state.js";
 import { on } from "./events.js";
-import { stats, comboMult, bestScore, bestTime } from "./score.js";
+import { stats, comboMult, bestScore, bestTime, getWantedList, saveWantedEntry } from "./score.js";
 import { crowd } from "./crowd.js";
 import { ROUTE, TOTAL } from "./route.js";
 import { progress } from "./journey.js";
 import { NAMES, bnNum, clock, getLang, setLang, applyLangDOM } from "./i18n.js";
-import { showPaper, hidePaper, savePaperImage, copyRunSummary } from "./newspaper.js";
+import { showPaper, hidePaper, savePaperImage, copyRunSummary, saveRunVideo, copyDareLink } from "./newspaper.js";
 import { TICKER } from "./data/ticker.bn.js";
 import { nearestCng } from "./marks.js";
 import { renderer } from "./world.js";
+import { cam } from "./camera.js";
 
 let msgT = 0;   // seconds left before the current message disappears
 let cardT = 0;  // seconds left before the stage card hides
+let memeT = 0;  // seconds left before the airborne ramp meme banner hides
+const projVec = new THREE.Vector3();
 
 /** Show a short message in the middle of the screen. */
 export function msg(text, ms = 1200) {
@@ -54,7 +58,34 @@ export function refreshBestBanner() {
   el.textContent = parts.join("   ·   ");
   el.hidden = false;
 }
+
+/** Refresh the "মোস্ট ওয়ান্টেড" leaderboard and the friend-challenge banner on the title screen. */
+export function refreshWantedAndDare() {
+  const wl = $("wantedList");
+  if (wl) {
+    const list = getWantedList();
+    wl.innerHTML = list.map((it, idx) =>
+      `<div class="wrow${it.isYou ? " you" : ""}">` +
+      `<span>#${bnNum(idx + 1)} ${it.name} <small>(${it.stage})</small></span>` +
+      `<b>৳${bnNum(it.score.toLocaleString("en-IN"))}</b></div>`
+    ).join("");
+  }
+  const db = $("dareBanner");
+  if (db) {
+    const params = new URLSearchParams(location.search);
+    const dareVal = Number(params.get("dare")) || 0;
+    const dareAt = params.get("at") || "শাহবাগ";
+    if (dareVal > 0) {
+      db.textContent = `🔥 এক বন্ধু "${dareAt}" এলাকায় ৳${bnNum(dareVal.toLocaleString("en-IN"))} রাস্তার ড্যামেজ করে চ্যালেঞ্জ দিয়েছে! ভাঙতে পারবেন?`;
+      db.hidden = false;
+    } else {
+      db.hidden = true;
+    }
+  }
+}
+
 refreshBestBanner();
+refreshWantedAndDare();
 applyLangDOM();
 
 const CRASH_TICKER = {
@@ -62,17 +93,55 @@ const CRASH_TICKER = {
   rickshaw: "রিকশায় লোকাল বাসের ধাক্কা, হেল্পার বললেন 'সামনে খালি ছিল'",
   cng: "সিএনজি অটোরিকশায় ঠোকাঠুকি, চালকের সাথে তুমুল তর্ক",
   car: "প্রাইভেট কারে আচমকা ঘষা, হর্ন বাজিয়ে ছুটছে লোকাল বাস",
+  vip: "ভিআইপি কালো গাড়িতে লোকাল বাসের ধাক্কা! হেল্পার বললেন 'স্যার ব্রেক ধরছিল না'",
+  policeCar: "টহল পুলিশের গাড়িতে লোকাল বাসের ধাক্কা, ওয়াকিটকিতে তোলপাড়!",
   stall: "রাস্তার পাশের দোকানে বাসের ধাক্কা, চায়ের কাপ ও সিঙ্গারা আকাশে",
+  trench: "ওয়াসার খোঁড়া গর্তে লোকাল বাসের চাকা, যাত্রীরা শূন্যে লাফালেন!",
+  ramp: "কাঠের র‍্যাম্পে চড়ে আকাশে উড়ল লোকাল বাস! প্রত্যক্ষদর্শীরা হতবাক!",
 };
 
+/** Spawn a floating +৳ damage number and comic hit-word over the 3D impact point. */
+function spawnFloater(e) {
+  const wrap = $("floaters");
+  if (!wrap) return;
+  let sx = innerWidth * 0.5, sy = innerHeight * 0.42;
+  if (e.x !== undefined && e.z !== undefined) {
+    projVec.set(e.x, e.y || 1.4, e.z).project(cam);
+    if (projVec.z < 1) {
+      sx = clamp((projVec.x * 0.5 + 0.5) * innerWidth, 80, innerWidth - 80);
+      sy = clamp((-projVec.y * 0.5 + 0.5) * innerHeight, 70, innerHeight - 90);
+    }
+  }
+  const div = document.createElement("div");
+  div.className = "floater";
+  div.style.left = `${sx.toFixed(0)}px`;
+  div.style.top = `${sy.toFixed(0)}px`;
+  const wwTag = e.wrongWay ? " · উল্টো পথ ×১.৫" : "";
+  div.innerHTML = `${e.word || "ধুম!"} +৳${bnNum(e.gained.toLocaleString("en-IN"))}<small>${NAMES[e.type] || ""}${wwTag}</small>`;
+  wrap.appendChild(div);
+  setTimeout(() => div.remove(), 1050);
+}
+
 /* ====== Event reactions ====== */
-on("crash", e => {
-  $("dmgPop").textContent = `${NAMES[e.type]}! +৳${bnNum(e.gained)}` + (game.combo > 1 ? `  কম্বো x${bnNum(comboMult())}` : "");
+on("floatDmg", e => {
+  spawnFloater(e);
+  $("dmgPop").textContent = `${NAMES[e.type] || "ধাক্কা"}! +৳${bnNum(e.gained.toLocaleString("en-IN"))}` + (game.combo > 1 ? `  কম্বো x${bnNum(comboMult())}` : "");
   pop($("dmgPop"));
   const news = CRASH_TICKER[e.type];
   if (news && $("tickerTrack")) {
     $("tickerTrack").textContent = `${news}   ✦   ` + TICKER.join("   ✦   ");
   }
+});
+on("rampJump", e => {
+  if ($("meme")) {
+    $("meme").textContent = `🚀 ঠেলায় চড়ে উড়ন্ত লোকাল বাস! +৳${bnNum(((e.gained || 100) * 10).toLocaleString("en-IN"))}`;
+    $("meme").hidden = false;
+    memeT = 2.2;
+  }
+});
+on("morPass", e => {
+  if ($("placeText")) $("placeText").textContent = `সরাসরি · ${e.name}`;
+  if (game.running) msg(`📍 ${e.name}`, 1300);
 });
 on("chaseStart", () => msg("পাবলিক দৌড়াচ্ছে! পালান! 🏃", 1400));
 on("crowdGaveUp", () => msg("পাবলিক হাল ছেড়ে দিল 😅", 1400));
@@ -126,6 +195,7 @@ export function updateHud(dt, boostFx) {
   const close = chasing ? clamp(1 - (crowd.gap - CFG.crowd.catchGap) / (CFG.crowd.cueGap - CFG.crowd.catchGap), 0, 1) : 0;
   $("crowdbar").style.width = (close * 100).toFixed(1) + "%";
   $("crowdcue").style.opacity = close.toFixed(3);
+  if ($("wrongWay")) $("wrongWay").hidden = !(game.running && game.wrongWay);
 
   // Red warning: text + icon (not colour alone) and a soft red glow at the screen edges.
   const warn = game.running && game.warn;
@@ -133,6 +203,7 @@ export function updateHud(dt, boostFx) {
   $("vignette").style.opacity = warn ? (.35 + .25 * Math.sin(game.time * Math.PI * 2 * CFG.warning.pulseHz)).toFixed(3) : "0";
   if (msgT > 0) { msgT -= dt; if (msgT <= 0) $("msg").textContent = ""; }
   if (cardT > 0) { cardT -= dt; if (cardT <= 0) $("stagecard").hidden = true; }
+  if (memeT > 0) { memeT -= dt; if (memeT <= 0 && $("meme")) $("meme").hidden = true; }
 }
 
 /** Call fns when the main button (start / from checkpoint) or the "from the start" button is pressed. */
@@ -140,10 +211,37 @@ export function onStartPressed(main, fromStart) {
   $("go").onclick = main;
   $("restart").onclick = fromStart;
   $("share").onclick = () => savePaperImage();
+  if ($("clipBtn")) {
+    $("clipBtn").onclick = async () => {
+      const ok = await saveRunVideo();
+      if (!ok) msg("ভিডিও তৈরির জন্য অন্তত কয়েক সেকেন্ড খেলুন!", 1400);
+    };
+  }
+  if ($("dareBtn")) {
+    $("dareBtn").onclick = async () => {
+      const ok = await copyDareLink();
+      msg(ok ? "🔥 চ্যালেঞ্জ লিংক কপি হয়েছে! বন্ধুকে পাঠান!" : "লিংক কপি করা যায়নি", 1500);
+    };
+  }
   if ($("copyBtn")) {
     $("copyBtn").onclick = async () => {
       const ok = await copyRunSummary();
       msg(ok ? "📋 স্কোর কপি হয়েছে!" : "কপি করা যায়নি", 1400);
+    };
+  }
+  if ($("startPlaceBtn")) {
+    const spots = [
+      { idx: -1, label: "অটো রোটেশন (মোহাম্মদপুর / ধানমন্ডি / শাহবাগ / ঢাবি)" },
+      { idx: 0,  label: "মোহাম্মদপুর বাসস্ট্যান্ড" },
+      { idx: 1,  label: "ধানমন্ডি ২৭ — লেকপাড়" },
+      { idx: 2,  label: "সায়েন্সল্যাব — শাহবাগ মোড়" },
+      { idx: 3,  label: "ঢাকা বিশ্ববিদ্যালয় — টিএসসি" },
+    ];
+    let cur = 0;
+    $("startPlaceBtn").onclick = () => {
+      cur = (cur + 1) % spots.length;
+      game.startStage = spots[cur].idx;
+      $("startPlaceBtn").textContent = `📍 শুরুর এলাকা: ${spots[cur].label}`;
     };
   }
 }
@@ -249,11 +347,14 @@ export function onPauseButton(fn) {
 export function hideScreen() {
   hidePaper();
   $("share").hidden = true;
+  if ($("clipBtn")) $("clipBtn").hidden = true;
+  if ($("dareBtn")) $("dareBtn").hidden = true;
   if ($("copyBtn")) $("copyBtn").hidden = true;
   $("screen").style.display = "none";
   $("pausebtn").hidden = false;
   $("msg").textContent = "";
   $("stagecard").hidden = true;
+  if ($("meme")) $("meme").hidden = true;
   cardT = 0;
   // Move focus off the start button, or Space (boost) would "click" it again.
   document.activeElement?.blur();
@@ -271,6 +372,8 @@ function clearOverlays() {
   $("pausebtn").hidden = true;
   $("warn").hidden = true;
   $("crowdbox").hidden = true;
+  if ($("wrongWay")) $("wrongWay").hidden = true;
+  if ($("meme")) $("meme").hidden = true;
   $("stagecard").hidden = true;
   $("vignette").style.opacity = "0";
   $("crowdcue").style.opacity = "0";
@@ -289,11 +392,14 @@ export function crashList() {
  */
 export function showRunEnd(run, photo, checkpointName) {
   clearOverlays();
+  saveWantedEntry(run.stage);
   refreshBestBanner();
+  refreshWantedAndDare();
   if ($("ticker")) $("ticker").hidden = false;
   $("titleblock").hidden = true;
   showPaper(run, photo);
   $("share").hidden = false;
+  if ($("dareBtn")) $("dareBtn").hidden = false;
   if ($("copyBtn")) $("copyBtn").hidden = false;
   if (run.cause === "complete") {
     $("go").textContent = "🎫 আবার যাত্রা";

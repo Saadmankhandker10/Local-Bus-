@@ -14,6 +14,12 @@ export const NAMES = {
   bike: "বাইক",
   cng: "সিএনজি",
   car: "প্রাইভেট কার",
+  vip: "ভিআইপি গাড়ি",
+  policeCar: "পুলিশের গাড়ি",
+  mirror: "সাইড মিরর",
+  ramp: "উড়ন্ত র‍্যাম্প",
+  trench: "ওয়াসার গর্ত",
+  manhole: "ম্যানহোল",
   truck: "ট্রাক",
   bus: "বাস",
   stall: "দোকান",
@@ -57,11 +63,18 @@ export const UI = {
   m: "মি", left: "বামে", right: "ডানে", uTurn: "ইউ-টার্ন",
 };
 
-/** Names of the side streets and flyovers (keyed by the alt id in map.js), for the GPS and the helper. */
+/** Names of the cross-avenues and side streets (keyed by the branch id in map.js), for the GPS and the helper. */
 export const ROADS = {
-  "mohammadpur-lane": "মোহাম্মদপুরের গলি",
-  "kalabagan-lane": "কলাবাগানের গলি",
-  "katabon-lane": "কাঁটাবনের গলি",
+  "mohammadpur-lane": "মোহাম্মদপুর তাজমহল রোড",
+  "shyamoli-ring-road": "শ্যামলী — রিং রোড",
+  "mirpur-road-north": "ফার্মগেট — মিরপুর ১০ রোড",
+  "satmasjid-road": "সাতমসজিদ রোড — জিগাতলা",
+  "kalabagan-lane": "কলাবাগান — গ্রিন রোড",
+  "newmarket-azimpur": "নিউমার্কেট — আজিমপুর রোড",
+  "katabon-lane": "কাঁটাবন — এলিফ্যান্ট রোড",
+  "karwan-farmgate": "কারওয়ান বাজার — ফার্মগেট",
+  "matsya-motijheel": "মৎস্য ভবন — মতিঝিল রোড",
+  "nilkhet-palashi": "নীলক্ষেত — পলাশী মোড়",
 };
 
 /** Bilingual HUD and button labels keyed by data-i18n attribute. */

@@ -135,22 +135,30 @@ function wall(seg, x, y0, h, mat, range) {
   }
 }
 
-/** A straight side road leaving a junction (looks only; the kerb keeps the bus out). */
+/** A cross-road intersecting at a junction (with zebra crossing and dashed centre line). */
 function stub(seg, s, side) {
   sample(seg, s, pt);
-  const S = SEGS[seg], h = W.stubWidth / 2, L = W.stubLength;
+  const S = SEGS[seg], h = 7, L = 95;
   const rx = Math.cos(pt.yaw), rz = -Math.sin(pt.yaw);
   const fx = -Math.sin(pt.yaw), fz = -Math.cos(pt.yaw);
   const ox = pt.x + rx * side * S.half, oz = pt.z + rz * side * S.half;
   const corner = (d, a, y) => [ox + rx * side * d + fx * a, pt.y + y, oz + rz * side * d + fz * a];
-  const quad = (mat, a0, a1, y) => {
+  const quad = (mat, d0, d1, a0, a1, y) => {
     const b = batch(mat), base = b.pos.length / 3;
-    b.pos.push(...corner(0, a0, y), ...corner(0, a1, y), ...corner(L, a0, y), ...corner(L, a1, y));
+    b.pos.push(...corner(d0, a0, y), ...corner(d0, a1, y), ...corner(d1, a0, y), ...corner(d1, a1, y));
     b.idx.push(base, base + 2, base + 1, base + 1, base + 2, base + 3);
   };
-  quad(MATS.road, -h, h, -.01);
-  quad(MATS.pave, h, h + 2, .1);
-  quad(MATS.pave, -h - 2, -h, .1);
+  quad(MATS.road, -0.5, L, -h, h, .004);
+  quad(MATS.pave, 0, L, h, h + 2.5, .14);
+  quad(MATS.pave, 0, L, -h - 2.5, -h, .14);
+  // Zebra crossing stripes across the mouth of the cross-street.
+  for (let a = -h + 1.2; a <= h - 1.2; a += 1.6) {
+    quad(MATS.line, 1.2, 4.4, a - 0.35, a + 0.35, .02);
+  }
+  // Dashed centre divider along the cross-street.
+  for (let d = 8; d < L - 6; d += 10) {
+    quad(MATS.line, d, d + 4, -0.1, 0.1, .02);
+  }
 }
 
 const MATS = {
@@ -201,13 +209,31 @@ function buildRoads() {
       for (const s of [-1, 1]) band(i, s * h * .52 - .08, s * h * .52 + .08, lift + .015, MATS.line, W.dash);
     }
 
-    // Yellow-and-black striped centre median island with low-poly trees and bushes
-    // (placed on main road stretches that don't have centre flyover/metro pillars).
-    if (S.main) {
-      const pFrom = S.pillarFrom !== undefined ? S.pillarFrom / S.len : 1;
-      const pTo = S.pillarTo !== undefined ? S.pillarTo / S.len : 0;
-      const ranges = S.pillarFrom === undefined ? [[0.02, 0.98]]
-        : [[0.02, Math.max(0.02, pFrom - 0.03)], [Math.min(0.98, pTo + 0.03), 0.98]].filter(r => r[1] - r[0] > 0.06);
+    // Yellow-and-black striped centre median island with low-poly trees and bushes,
+    // featuring open gaps at every crossroad (মোড়) and every ~75 units for wrong-way/U-turn lane switching.
+    if (S.half >= 6) {
+      const inGap = d => {
+        if (d < 14 || d > S.len - 14) return true;
+        for (const j of S.junctions || []) {
+          if (Math.abs(d - j.at * S.len) < 12) return true;
+        }
+        return (d % 80) > 68;
+      };
+      // Build continuous median sub-ranges between gaps.
+      const ranges = [];
+      let rStart = null;
+      const stepD = 4;
+      for (let d = 0; d <= S.len; d += stepD) {
+        const g = inGap(d);
+        if (!g && rStart === null) rStart = d / S.len;
+        else if (g && rStart !== null) {
+          const rEnd = (d - stepD) / S.len;
+          if (rEnd - rStart > 0.03) ranges.push([rStart, rEnd]);
+          rStart = null;
+        }
+      }
+      if (rStart !== null && 0.98 - rStart > 0.03) ranges.push([rStart, 0.98]);
+
       for (const rg of ranges) {
         band(i, -.42, .42, .16, MATS.median, null, rg);
         for (const s of [-1, 1]) {
@@ -216,7 +242,7 @@ function buildRoads() {
           band(i, mx0, mx1, .17, MATS.kerbBlack, [2, 4, 2], rg);
         }
         // Plant median trees every 18 units and small green bushes in between.
-        for (let d = rg[0] * S.len + 8; d < rg[1] * S.len - 8; d += 9) {
+        for (let d = rg[0] * S.len + 6; d < rg[1] * S.len - 6; d += 9) {
           sample(i, d, pt);
           if (Math.round(d / 9) % 2 === 0) {
             const trunk = box(.24, 2.2, .24, 0x3e2723, pt.x, pt.y + 1.2, pt.z);

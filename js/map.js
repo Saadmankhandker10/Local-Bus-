@@ -17,32 +17,83 @@ export const MAP = {
 
   legs: [
     // ---- Stage 1: Mohammadpur (heading east) ----
-    { id: "mohammadpur-stand", stage: 0, path: [["s", 380], ["r", 12, 300], ["s", 300], ["l", 20, 240], ["s", 260]],
-      junctions: [{ at: 0.6, type: "T", side: -1 }] },
-    { id: "mohammadpur-flyover", stage: 0, path: [["s", 200], ["r", 10, 450], ["s", 420], ["l", 10, 450], ["s", 200]],
-      alt: { id: "mohammadpur-lane", kind: "street", side: 1, width: 9, bulge: 22, chord: 0.45 } },
-    { id: "asad-gate", stage: 0, path: [["s", 360], ["r", 90, 45], ["s", 300]],
-      junctions: [{ at: 0.45, type: "T", side: 1 }] },
+    { id: "mohammadpur-stand", mor: "মোহাম্মদপুর বাসস্ট্যান্ড মোড়", stage: 0,
+      path: [["s", 380], ["r", 12, 300], ["s", 300], ["l", 20, 240], ["s", 260]],
+      junctions: [
+        { at: 0.32, type: "X", name: "তাজমহল রোড মোড়" },
+        { at: 0.68, type: "X", name: "টাউন হল মোড়" },
+      ] },
+    { id: "mohammadpur-flyover", mor: "শ্যামলী — লালমাটিয়া মোড়", stage: 0,
+      path: [["s", 200], ["r", 10, 450], ["s", 420], ["l", 10, 450], ["s", 200]],
+      alt: { id: "mohammadpur-lane", mor: "তাজমহল রোড — রিং রোড মোড়", kind: "main", side: 1, width: 14, bulge: 38, chord: 0.45 },
+      alt2: { id: "shyamoli-ring-road", mor: "শ্যামলী — কল্যাণপুর মোড়", kind: "main", side: -1, width: 14, bulge: 38, chord: 0.45 },
+      junctions: [
+        { at: 0.25, type: "X", name: "নূরজাহান রোড মোড়" },
+        { at: 0.72, type: "X", name: "লালমাটিয়া আড়ং মোড়" },
+      ] },
+    { id: "asad-gate", mor: "আসাদগেট মোড়", stage: 0,
+      path: [["s", 360], ["r", 90, 45], ["s", 300]],
+      alt: { id: "mirpur-road-north", mor: "ফার্মগেট — মিরপুর ১০ গোলচত্বর", kind: "main", side: -1, width: 14, bulge: 46, chord: 0.35 },
+      junctions: [
+        { at: 0.45, type: "X", name: "আসাদগেট — সংসদ ভবন মোড়" },
+        { at: 0.85, type: "X", name: "মানিক মিয়া অ্যাভিনিউ মোড়" },
+      ] },
 
     // ---- Stage 2: Dhanmondi (heading south) ----
-    { id: "dhanmondi-north", stage: 1, path: [["s", 260], ["l", 8, 500], ["s", 360]] },
-    { id: "dhanmondi-mid", stage: 1, path: [["s", 260], ["r", 18, 280], ["s", 320], ["l", 18, 280], ["s", 260]],
-      // A narrow lane through the neighbourhood: shorter, but full of rickshaws.
-      alt: { id: "kalabagan-lane", kind: "street", side: -1, width: 9, bulge: 22, chord: 0.55 } },
-    { id: "dhanmondi-south", stage: 1, path: [["s", 320], ["l", 10, 320], ["s", 420]],
-      junctions: [{ at: 0.98, type: "X" }] },
+    { id: "dhanmondi-north", mor: "ধানমন্ডি ২৭ মোড়", stage: 1,
+      path: [["s", 260], ["l", 8, 500], ["s", 360]],
+      alt: { id: "satmasjid-road", mor: "সাতমসজিদ রোড — জিগাতলা মোড়", kind: "main", side: 1, width: 14, bulge: 42, chord: 0.4 },
+      junctions: [
+        { at: 0.35, type: "X", name: "ধানমন্ডি ২৭ মোড়" },
+        { at: 0.78, type: "X", name: "শংকর বাসস্ট্যান্ড মোড়" },
+      ] },
+    { id: "dhanmondi-mid", mor: "কলাবাগান — ধানমন্ডি ১৫ মোড়", stage: 1,
+      path: [["s", 260], ["r", 18, 280], ["s", 320], ["l", 18, 280], ["s", 260]],
+      alt: { id: "kalabagan-lane", mor: "কলাবাগান — গ্রিন রোড মোড়", kind: "main", side: -1, width: 14, bulge: 38, chord: 0.5 },
+      junctions: [
+        { at: 0.28, type: "X", name: "ধানমন্ডি ১৫ মোড়" },
+        { at: 0.65, type: "X", name: "কলাবাগান মাঠ মোড়" },
+      ] },
+    { id: "dhanmondi-south", mor: "ধানমন্ডি ২ — সিটি কলেজ মোড়", stage: 1,
+      path: [["s", 320], ["l", 10, 320], ["s", 420]],
+      alt: { id: "newmarket-azimpur", mor: "নিউমার্কেট — আজিমপুর মোড়", kind: "main", side: 1, width: 14, bulge: 44, chord: 0.4 },
+      junctions: [
+        { at: 0.45, type: "X", name: "ল্যাবএইড — গ্রিন রোড মোড়" },
+        { at: 0.94, type: "X", name: "সায়েন্সল্যাব চৌরাস্তা" },
+      ] },
 
-    // ---- Stage 3: Science Lab, New Market, Shahbag (east, a U-turn, then east again) ----
-    { id: "science-lab", stage: 2, path: [["l", 90, 40], ["s", 360], ["l", 180, 22], ["s", 80], ["r", 90, 30], ["s", 140], ["r", 90, 36], ["s", 320]],
-      junctions: [{ at: 0.02, type: "X" }] },
-    { id: "shahbag-approach", stage: 2, path: [["s", 420], ["l", 6, 600], ["s", 320]],
-      // The way round the jam at the big junction.
-      alt: { id: "katabon-lane", kind: "street", side: -1, width: 9, bulge: 24, chord: 0.3 },
-      junctions: [{ at: 0.99, type: "X" }] },
+    // ---- Stage 3: Science Lab, New Market, Shahbag ----
+    { id: "science-lab", mor: "সায়েন্সল্যাব মোড়", stage: 2,
+      path: [["l", 90, 40], ["s", 360], ["l", 180, 22], ["s", 80], ["r", 90, 30], ["s", 140], ["r", 90, 36], ["s", 320]],
+      alt: { id: "karwan-farmgate", mor: "কারওয়ান বাজার — ফার্মগেট মোড়", kind: "main", side: -1, width: 14, bulge: 42, chord: 0.35 },
+      junctions: [
+        { at: 0.06, type: "X", name: "সায়েন্সল্যাব মোড়" },
+        { at: 0.42, type: "X", name: "নিউমার্কেট গেট মোড়" },
+        { at: 0.78, type: "X", name: "বাটা সিগন্যাল — এলিফ্যান্ট রোড মোড়" },
+      ] },
+    { id: "shahbag-approach", mor: "শাহবাগ মোড়", stage: 2,
+      path: [["s", 420], ["l", 6, 600], ["s", 320]],
+      alt: { id: "katabon-lane", mor: "কাঁটাবন — বাংলামোটর মোড়", kind: "main", side: -1, width: 14, bulge: 36, chord: 0.3 },
+      alt2: { id: "nilkhet-palashi", mor: "নীলক্ষেত — পলাশী মোড়", kind: "main", side: 1, width: 14, bulge: 38, chord: 0.35 },
+      junctions: [
+        { at: 0.25, type: "X", name: "কাঁটাবন ঢাল মোড়" },
+        { at: 0.94, type: "X", name: "শাহবাগ জাতীয় জাদুঘর মোড়" },
+      ] },
 
     // ---- Stage 4: Dhaka University (heading south) ----
-    { id: "du-north", stage: 3, path: [["s", 70], ["r", 90, 40], ["s", 320], ["l", 15, 300], ["s", 260]] },
-    { id: "du-campus", stage: 3, path: [["s", 320], ["r", 20, 260], ["s", 420], ["l", 20, 260], ["s", 320]] },
+    { id: "du-north", mor: "টিএসসি — চারুকলা মোড়", stage: 3,
+      path: [["s", 70], ["r", 90, 40], ["s", 320], ["l", 15, 300], ["s", 260]],
+      alt: { id: "matsya-motijheel", mor: "মৎস্য ভবন — পল্টন — মতিঝিল মোড়", kind: "main", side: -1, width: 14, bulge: 44, chord: 0.4 },
+      junctions: [
+        { at: 0.18, type: "X", name: "চারুকলা — ছবির হাট মোড়" },
+        { at: 0.65, type: "X", name: "টিএসসি রাজু ভাস্কর্য মোড়" },
+      ] },
+    { id: "du-campus", mor: "কার্জন হল — দোয়েল চত্বর মোড়", stage: 3,
+      path: [["s", 320], ["r", 20, 260], ["s", 420], ["l", 20, 260], ["s", 320]],
+      junctions: [
+        { at: 0.32, type: "X", name: "শহীদ মিনার — মেডিকেল মোড়" },
+        { at: 0.72, type: "X", name: "দোয়েল চত্বর — কার্জন হল মোড়" },
+      ] },
   ],
 };
 
@@ -150,28 +201,33 @@ const MAIN = [];
   let prog = 0;
   for (const [li, leg] of MAP.legs.entries()) {
     const seg = makeSeg(commandPoints(leg.path, pose), {
-      id: leg.id, kind: "main", side: 0, half: MAP.width / 2, stage: leg.stage, main: true,
+      id: leg.id, mor: leg.mor || "", kind: "main", side: 0, half: MAP.width / 2, stage: leg.stage, main: true,
       junctions: leg.junctions || [], from: li, turns: turnsOf(leg.path),
     });
     seg.p0 = prog; prog += seg.len; seg.p1 = prog;
     MAIN.push(SEGS.length); SEGS.push(seg);
-    if (leg.alt) {
-      const a = makeAlt(seg, leg.alt);
-      a.p0 = seg.p0; a.p1 = seg.p1; a.from = li; a.junctions = [];
+    const altBranches = [leg.alt, leg.alt2].filter(Boolean);
+    seg.alts = [];
+    for (const altDef of altBranches) {
+      const a = makeAlt(seg, altDef);
+      a.mor = altDef.mor || leg.mor || "";
+      a.p0 = seg.p0; a.p1 = seg.p1; a.from = li;
+      a.junctions = [{ at: 0.5, type: "X", name: a.mor }];
       const f = a.len / seg.len;
       a.turns = seg.turns.map(t => ({ ...t, s: t.s * f, end: t.end * f }));
-      seg.alt = SEGS.length;
+      const idx = SEGS.length;
+      if (seg.alt === undefined) seg.alt = idx;
+      seg.alts.push(idx);
       SEGS.push(a);
     }
   }
-  // Connect: each leg leads to the next leg's main road and its alt (if any).
+  // Connect: each leg leads to the next leg's main road and all its left/right branches.
   for (let li = 0; li < MAIN.length; li++) {
     const nextMain = MAIN[li + 1];
     if (nextMain === undefined) continue;
-    const targets = [nextMain];
-    if (SEGS[nextMain].alt !== undefined) targets.push(SEGS[nextMain].alt);
+    const targets = [nextMain, ...(SEGS[nextMain].alts || [])];
     SEGS[MAIN[li]].next = targets;
-    if (SEGS[MAIN[li]].alt !== undefined) SEGS[SEGS[MAIN[li]].alt].next = targets;
+    for (const altIdx of SEGS[MAIN[li]].alts || []) SEGS[altIdx].next = targets;
   }
 })();
 

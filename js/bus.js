@@ -5,6 +5,7 @@ import { clamp, pick, rnd } from "./utils.js";
 import { scene, box, plate } from "./world.js";
 import { input } from "./input.js";
 import { game } from "./state.js";
+import { emit } from "./events.js";
 import { SEGS, here, sample, place, fromProgress, progressOf } from "./map.js";
 import { SLOGANS, COMPANIES, PLATES } from "./data/slogans.bn.js";
 
@@ -165,24 +166,32 @@ buildBus();
 scene.add(bus);
 
 const pos = { x: 0, y: 0, z: 0, yaw: 0, k: 0 }; // reused road sample
+let lastMorKey = "";
 
 /** Put the bus on the main road at a journey progress value, facing along the road. */
 export function resetBus(progress = 0) {
   fromProgress(progress, here);
   here.prev = -1;
-  game.lat = 0;
+  game.lat = -2.5;
   game.yaw = 0;
   game.prog = progress;
+  game.busY = 0;
+  game.busVy = 0;
+  game.wrongWay = false;
+  lastMorKey = "";
+  if (SEGS[here.seg]?.mor) game.morName = SEGS[here.seg].mor;
   body.rotation.set(0, 0, 0);
   body.position.set(0, 0, 0);
+  if (companyBoard) { companyBoard.position.set(0, 2.96, 3.35); companyBoard.rotation.set(0, 0, 0); }
+  if (sloganBoard) { sloganBoard.position.set(0, 1.68, 3.53); sloganBoard.rotation.set(0, 0, 0); }
   if (progress === 0) refreshBusSigns();
   for (const p of exhaustPool) { p.active = false; p.m.visible = false; }
   placeBus();
 }
 
-/** Move the 3D bus to its spot on the road. */
+/** Move the 3D bus to its spot on the road (including airborne height game.busY). */
 function placeBus() {
-  place(bus, here.seg, here.s, game.lat, 0, -game.yaw);
+  place(bus, here.seg, here.s, game.lat, game.busY || 0, -game.yaw);
 }
 
 /**
@@ -193,13 +202,42 @@ function approach(current, target, rate, dt) {
   return current + (target - current) * (1 - Math.exp(-rate * dt));
 }
 
-/** At the end of a road piece, take the branch on the side the bus is driving. */
+/** At an intersection (মোড়), take the left or right avenue if steering or positioned on that side. */
 export function chooseNext(list) {
-  for (const n of list) {
-    const S = SEGS[n];
-    if (S.side && Math.sign(game.lat) === S.side && Math.abs(game.lat) > CFG.map.forkLat) return n;
+  const wantSide = Math.abs(input.steer) > 0.25 ? Math.sign(input.steer)
+    : Math.abs(game.lat) > CFG.map.forkLat ? Math.sign(game.lat) : 0;
+  if (wantSide !== 0) {
+    for (const n of list) {
+      const S = SEGS[n];
+      if (S.side === wantSide) return n;
+    }
   }
   return list[0];
+}
+
+/** Autopilot demo mode while the title screen is shown behind the menu. */
+export function updateAutopilot(dt) {
+  game.speed = 16;
+  game.boostT = 0;
+  game.accel = 0;
+  const targetLat = -2.6 + Math.sin(game.time * 0.55) * 1.4;
+  game.vx = (targetLat - game.lat) * 2.2;
+  game.lat += game.vx * dt;
+  game.yaw = clamp(game.vx * 0.04, -0.25, 0.25);
+  const ds = game.speed * dt;
+  here.s += ds;
+  while (here.s > SEGS[here.seg].len) {
+    if (!SEGS[here.seg].next.length) {
+      fromProgress(0, here);
+      break;
+    }
+    here.s -= SEGS[here.seg].len;
+    here.prev = here.seg;
+    here.seg = SEGS[here.seg].next[0];
+  }
+  game.prog = progressOf(here.seg, here.s);
+  game.dist += ds;
+  placeBus();
 }
 
 /**
@@ -259,15 +297,48 @@ export function updateBus(dt) {
   game.lat = x;
 
   // Move along the road; at the end of a piece, continue on the next one (or the branch we chose).
+  const prevS = here.s;
   const ds = game.speed * Math.cos(game.yaw) * dt;
   here.s += ds;
+
+  // Check if we crossed a named Dhaka crossroad (মোড়) along the current segment.
+  for (const [ji, j] of (S.junctions || []).entries()) {
+    const js = j.at * S.len;
+    const key = `${here.seg}:${ji}`;
+    if (j.name && prevS < js && here.s >= js && lastMorKey !== key) {
+      lastMorKey = key;
+      game.morName = j.name;
+      emit("morPass", { name: j.name });
+    }
+  }
+
   while (here.s > SEGS[here.seg].len && SEGS[here.seg].next.length) {
     here.s -= SEGS[here.seg].len;
     here.prev = here.seg;
     here.seg = chooseNext(SEGS[here.seg].next);
+    const nextSeg = SEGS[here.seg];
+    if (nextSeg.mor) {
+      game.morName = nextSeg.mor;
+      emit("morPass", { name: nextSeg.mor, turned: nextSeg.side !== 0 });
+    }
   }
   here.s = Math.min(here.s, SEGS[here.seg].len);
   game.prog = progressOf(here.seg, here.s);
+
+  // Wrong-way detection: driving on the right side of the median island (oncoming traffic lanes).
+  game.wrongWay = SEGS[here.seg].half >= 6 && game.lat > 0.75;
+
+  // Airborne ramp jump / WASA trench vertical physics.
+  if (game.busY > 0 || game.busVy !== 0) {
+    game.busVy -= 26 * dt;
+    game.busY += game.busVy * dt;
+    if (game.busY <= 0) {
+      game.busY = 0;
+      game.busVy = 0;
+      game.shake = Math.max(game.shake, 0.45);
+      emit("busLanded");
+    }
+  }
 
   game.fuel -= (F.baseDrain + game.speed / F.speedDrainRef * F.speedDrain + (boosting ? F.boostDrain : 0)) * dt;
   game.fuel = Math.max(0, game.fuel);
@@ -275,13 +346,29 @@ export function updateBus(dt) {
   return ds;
 }
 
-/** Animate the look of the bus (lean, nose dip, wheels, brake lights). Call once per frame. */
+/** Animate the look of the bus (lean, nose dip, wheels, brake lights, cutscene rocking). Call once per frame. */
 export function updateBusVisual(dt) {
   const k = B.visualSmoothing;
-  // Body leans outwards in a turn; nose dips when braking; subtle suspension bounce on the road.
-  body.rotation.z = approach(body.rotation.z, game.vx * B.rollPerSideSpeed, k, dt);
-  body.rotation.x = approach(body.rotation.x, clamp(game.accel * B.pitchPerAccel, -B.maxPitch, B.maxPitch), k, dt);
-  body.position.y = game.running ? Math.sin(game.dist * 1.9) * .025 : 0;
+  if (game.caught) {
+    // Dramatic "গণধোলাই / ঘেরাও" cutscene: the crowd rocks the bus and knocks signboards loose!
+    body.rotation.z = Math.sin(game.time * 19) * 0.11;
+    body.rotation.x = Math.cos(game.time * 13) * 0.04;
+    body.position.y = Math.abs(Math.sin(game.time * 15)) * 0.08;
+    if (companyBoard) {
+      companyBoard.rotation.z = 0.28;
+      companyBoard.position.y = 2.75;
+    }
+    if (sloganBoard) {
+      sloganBoard.rotation.z = -0.22;
+    }
+  } else {
+    // Body leans outwards in a turn; nose dips when braking or pitches up during a ramp jump.
+    const airPitch = game.busY > 0.05 ? clamp(-game.busVy * 0.022, -0.22, 0.22) : 0;
+    const targetPitch = clamp(game.accel * B.pitchPerAccel, -B.maxPitch, B.maxPitch) + airPitch;
+    body.rotation.z = approach(body.rotation.z, game.vx * B.rollPerSideSpeed, k, dt);
+    body.rotation.x = approach(body.rotation.x, targetPitch, k, dt);
+    body.position.y = game.running && game.busY === 0 ? Math.sin(game.dist * 1.9) * .025 : 0;
+  }
 
   const spin = game.speed * dt / B.wheelRadius; // rolling without slipping: angle = distance / radius
   for (const w of wheels) w.rotation.x -= spin;

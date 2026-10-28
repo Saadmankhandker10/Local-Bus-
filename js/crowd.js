@@ -3,7 +3,7 @@
 import * as THREE from "three";
 import { CFG } from "./config.js";
 import { rnd, pick } from "./utils.js";
-import { scene } from "./world.js";
+import { scene, box, person } from "./world.js";
 import { SEGS, here, sample } from "./map.js";
 import { game } from "./state.js";
 import { on, emit } from "./events.js";
@@ -62,6 +62,32 @@ const shardPool = Array.from({ length: K.shardPool }, () => {
   return { m, active: false, t: 0, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0 };
 });
 
+// Cutscene extras for the "গণধোলাই / ঘেরাও" sequence:
+//   - 4 bystanders holding up smartphones with blinking camera flashes
+//   - 1 traffic police officer who walks in and blows his whistle at 2.3 s
+const flashGeo = new THREE.SphereGeometry(.18, 6, 6);
+const flashMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+const filmers = Array.from({ length: 4 }, (_, i) => {
+  const g = person([0x1565c0, 0x00897b, 0x6a1b9a, 0x4e342e][i], 0);
+  // Raised arm + smartphone + camera flash sphere
+  g.add(box(.12, .45, .12, 0xc68642, .24, 1.15, -.22));
+  g.add(box(.14, .24, .04, 0x111111, .24, 1.38, -.32));
+  const flash = new THREE.Mesh(flashGeo, flashMat);
+  flash.position.set(.24, 1.42, -.36);
+  g.add(flash);
+  g.userData.flash = flash;
+  g.visible = false;
+  scene.add(g);
+  return g;
+});
+
+const cutsceneCop = person(0xf5f5f5, 0, 0x1a237e);
+cutsceneCop.add(box(.12, .42, .12, 0xf5f5f5, -.25, 1.15, -.2)); // raised hand with whistle
+cutsceneCop.visible = false;
+scene.add(cutsceneCop);
+let caughtElapsed = 0;
+let whistleBlown = false;
+
 function spawnShards(lat, back) {
   let spawned = 0;
   for (const s of shardPool) {
@@ -91,9 +117,13 @@ export function resetCrowd() {
   crowd.active = false;
   crowd.crashes = 0;
   throwT = 0;
+  caughtElapsed = 0;
+  whistleBlown = false;
   bodies.count = heads.count = 0;
   for (const p of projPool) { p.active = false; p.m.visible = false; }
   for (const s of shardPool) { s.active = false; s.m.visible = false; }
+  for (const f of filmers) f.visible = false;
+  cutsceneCop.visible = false;
 }
 
 function hide(reason) {
@@ -122,6 +152,7 @@ on("crash", () => {
 });
 
 on("fineClosed", () => { if (crowd.active) hide("crowdCleared"); });
+on("rampJump", () => { if (crowd.active) crowd.gap += 18; });
 
 /** Move the chase for one step: close the gap, throw cartoon items, catch the bus, or give up. */
 export function updateCrowd(dt) {
@@ -183,7 +214,7 @@ export function updateCrowd(dt) {
   if (crowd.escapeT >= K.escapeTime) hide("crowdGaveUp");
 }
 
-/** Place every person for this frame (running behind the bus, or in a ring around it). */
+/** Place every person for this frame (running behind the bus, or in a ring around it + filmers + cop). */
 export function updateCrowdVisual(dt) {
   if (!crowd.active) return;
   bodies.count = heads.count = crowd.size;
@@ -191,12 +222,13 @@ export function updateCrowdVisual(dt) {
   for (let i = 0; i < crowd.size; i++) {
     let tx, tz, bob;
     if (game.caught) {
-      // Stand in an oval around the bus (it is long, so the oval is stretched along z).
+      // Inner beaters stand close around the bus shaking it; outer crowd forms a tight oval ring.
       const a = (i / crowd.size) * Math.PI * 2;
-      const r = K.ringRadius * (1 + .15 * (i % 3));
-      tx = game.lat + Math.cos(a) * r * .7;
-      tz = Math.sin(a) * r * 1.4;
-      bob = Math.abs(Math.sin(game.time * 4.5 * Math.PI + ph[i])) * .22;
+      const inner = i < 8;
+      const r = inner ? 2.45 : K.ringRadius * (1 + .15 * (i % 3));
+      tx = game.lat + Math.cos(a) * r * .72;
+      tz = Math.sin(a) * r * (inner ? 1.25 : 1.4);
+      bob = Math.abs(Math.sin(game.time * (inner ? 11 : 4.5) * Math.PI + ph[i])) * (inner ? .34 : .22);
       px[i] += (tx - px[i]) * k; pz[i] += (tz - pz[i]) * k;
     } else {
       px[i] += (game.lat * .5 + ox[i] - px[i]) * k;
@@ -209,4 +241,38 @@ export function updateCrowdVisual(dt) {
     heads.setMatrixAt(i, dummy.matrix);
   }
   bodies.instanceMatrix.needsUpdate = heads.instanceMatrix.needsUpdate = true;
+
+  // Dramatic "গণধোলাই / ঘেরাও" cutscene: 4 bystanders filming with flashing phones + police officer arriving!
+  if (game.caught) {
+    caughtElapsed += dt;
+    const angles = [-0.85, -0.3, 0.35, 0.9];
+    for (let i = 0; i < filmers.length; i++) {
+      const f = filmers[i];
+      f.visible = true;
+      const fx = game.lat + Math.sin(angles[i]) * 5.2;
+      const fz = Math.cos(angles[i]) * 6.2;
+      toWorld(fx, fz, 0);
+      f.position.copy(dummy.position);
+      f.rotation.y = dummy.rotation.y + Math.PI + angles[i];
+      // Blink the white smartphone camera flash like paparazzi / Facebook Live!
+      f.userData.flash.visible = Math.floor((game.time + i * 0.19) * 7) % 3 === 0;
+    }
+    if (caughtElapsed >= 1.4) {
+      cutsceneCop.visible = true;
+      const walkProgress = Math.min(1, (caughtElapsed - 1.4) / 1.0);
+      const copLat = game.lat - 4.8 + walkProgress * 2.4;
+      const copBack = -4.2 + walkProgress * 1.8;
+      const copBob = walkProgress < 1 ? Math.abs(Math.sin(game.time * 12)) * 0.16 : 0;
+      toWorld(copLat, copBack, copBob);
+      cutsceneCop.position.copy(dummy.position);
+      cutsceneCop.rotation.y = dummy.rotation.y - Math.PI / 2;
+      if (caughtElapsed >= 2.2 && !whistleBlown) {
+        whistleBlown = true;
+        emit("copWhistle");
+      }
+    }
+  } else {
+    for (const f of filmers) if (f.visible) f.visible = false;
+    if (cutsceneCop.visible) cutsceneCop.visible = false;
+  }
 }
