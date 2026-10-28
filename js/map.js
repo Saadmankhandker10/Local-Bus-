@@ -1,10 +1,10 @@
-// The Dhaka city road network: main MRT-6 Metro Spine + West/East branching avenues.
+// The Dhaka city road network: main boulevards + Left/Right turnable avenues & flyovers.
 // Every leg can have `alts` (Left and Right turnable avenues at the intersection that
-// swing out into their own neighbourhood and rejoin at the next major hub).
+// swing out smoothly around the block and rejoin at the next major intersection).
 // At any intersection:
-//   - Steer Left (A / ←) to take the Left avenue (side = -1)
-//   - Stay near the middle to continue Straight (side = 0, Main Metro Spine)
-//   - Steer Right (D / →) to take the Right avenue (side = +1)
+//   - Steer Left (A / ←) or stay in the left lane to take the Left avenue (side = -1)
+//   - Stay near the middle to continue Straight (side = 0, Main Metro Corridor)
+//   - Steer Right (D / →) or stay in the right lane to take the Right avenue (side = +1)
 import * as THREE from "three";
 
 export const MAP = {
@@ -13,91 +13,91 @@ export const MAP = {
   sample: 2,        // distance between stored points
 
   legs: [
-    // ---- Stage 1: Uttara, Pallabi, Mirpur & Mohammadpur ----
+    // ---- Stage 1: Mohammadpur, Mirpur & Uttara Metro Corridor ----
     {
       id: "uttara-line", stage: 0,
-      path: [["s", 320], ["r", 25, 220], ["s", 340], ["l", 25, 220], ["s", 280]],
-      metro: [0.02, 0.98],
-      junctions: [{ at: 0.48, type: "X" }, { at: 0.98, type: "X" }],
+      path: [["s", 220], ["r", 25, 220], ["s", 240], ["l", 25, 220], ["s", 180]],
+      metro: [0.04, 0.96],
+      junctions: [{ at: 0.48, type: "X" }, { at: 0.96, type: "X" }],
       alts: [
-        { id: "mohammadpur-road", kind: "main", side: 1, width: 12, bulge: 58, chord: 0.25 },
-        { id: "flyover", kind: "flyover", side: -1, width: 10, height: 8, bulge: 14 },
+        { id: "mohammadpur-road", kind: "main", side: 1, width: 12, bulge: 28, chord: 0.5 },
+        { id: "flyover", kind: "flyover", side: -1, width: 10, height: 7.5, bulge: 13 },
       ],
     },
     {
       id: "mirpur-line", stage: 0,
-      path: [["s", 280], ["l", 35, 180], ["s", 320], ["r", 65, 140], ["s", 280]],
-      metro: [0.02, 0.98],
-      junctions: [{ at: 0.5, type: "X" }, { at: 0.98, type: "X" }],
+      path: [["s", 200], ["l", 35, 180], ["s", 220], ["r", 55, 160], ["s", 180]],
+      metro: [0.04, 0.96],
+      junctions: [{ at: 0.5, type: "X" }, { at: 0.96, type: "X" }],
       alts: [
-        { id: "asadgate-road", kind: "main", side: 1, width: 12, bulge: 62, chord: 0.3 },
-        { id: "mirpur-goli", kind: "street", side: -1, width: 9, bulge: 46, chord: 0.4 },
+        { id: "asadgate-road", kind: "main", side: 1, width: 12, bulge: 28, chord: 0.5 },
+        { id: "mirpur-goli", kind: "street", side: -1, width: 9, bulge: 24, chord: 0.5 },
       ],
     },
 
     // ---- Stage 2: Shewrapara, Agargaon, Bijoy Sarani & Dhanmondi ----
     {
       id: "agargaon-line", stage: 1,
-      path: [["s", 300], ["r", 40, 170], ["s", 340], ["l", 30, 190], ["s", 260]],
-      metro: [0.02, 0.98],
-      junctions: [{ at: 0.45, type: "X" }, { at: 0.98, type: "X" }],
+      path: [["s", 220], ["r", 35, 180], ["s", 240], ["l", 30, 190], ["s", 180]],
+      metro: [0.04, 0.96],
+      junctions: [{ at: 0.45, type: "X" }, { at: 0.96, type: "X" }],
       alts: [
-        { id: "dhanmondi-lake-road", kind: "main", side: 1, width: 12, bulge: 64, chord: 0.25 },
-        { id: "manik-mia-ave", kind: "main", side: -1, width: 13, bulge: 56, chord: 0.2 },
+        { id: "dhanmondi-lake-road", kind: "main", side: 1, width: 12, bulge: 30, chord: 0.5 },
+        { id: "manik-mia-ave", kind: "main", side: -1, width: 12, bulge: 28, chord: 0.5 },
       ],
     },
     {
       id: "dhanmondi-mid", stage: 1,
-      path: [["s", 260], ["r", 35, 180], ["s", 320], ["l", 35, 180], ["s", 260]],
-      metro: [0.02, 0.98],
-      junctions: [{ at: 0.52, type: "X" }, { at: 0.98, type: "X" }],
+      path: [["s", 200], ["r", 30, 180], ["s", 220], ["l", 30, 180], ["s", 180]],
+      metro: [0.04, 0.96],
+      junctions: [{ at: 0.52, type: "X" }, { at: 0.96, type: "X" }],
       alts: [
-        { id: "kalabagan-lane", kind: "street", side: -1, width: 9, bulge: 44, chord: 0.5 },
-        { id: "tejgaon-flyover", kind: "flyover", side: 1, width: 10, height: 8, bulge: 14 },
+        { id: "kalabagan-lane", kind: "street", side: -1, width: 9, bulge: 25, chord: 0.6 },
+        { id: "tejgaon-flyover", kind: "flyover", side: 1, width: 10, height: 7.5, bulge: 13 },
       ],
     },
 
     // ---- Stage 3: Farmgate, Karwan Bazar, Science Lab & Shahbagh ----
     {
       id: "science-lab", stage: 2,
-      path: [["l", 65, 90], ["s", 340], ["r", 70, 95], ["s", 300], ["l", 45, 120], ["s", 280]],
-      metro: [0.02, 0.98],
-      junctions: [{ at: 0.04, type: "X" }, { at: 0.52, type: "X" }, { at: 0.98, type: "X" }],
+      path: [["l", 45, 150], ["s", 240], ["r", 50, 150], ["s", 220], ["l", 35, 160], ["s", 180]],
+      metro: [0.04, 0.96],
+      junctions: [{ at: 0.08, type: "X" }, { at: 0.52, type: "X" }, { at: 0.96, type: "X" }],
       alts: [
-        { id: "sciencelab-road", kind: "main", side: 1, width: 12, bulge: 60, chord: 0.3 },
-        { id: "hatirjheel-road", kind: "main", side: -1, width: 11, bulge: 54, chord: 0.25 },
+        { id: "sciencelab-road", kind: "main", side: 1, width: 12, bulge: 28, chord: 0.55 },
+        { id: "hatirjheel-road", kind: "main", side: -1, width: 11, bulge: 26, chord: 0.55 },
       ],
     },
     {
       id: "shahbag-approach", stage: 2,
-      path: [["s", 380], ["r", 30, 200], ["s", 340]],
-      metro: [0.02, 0.98],
-      junctions: [{ at: 0.48, type: "X" }, { at: 0.98, type: "X" }],
+      path: [["s", 280], ["r", 25, 200], ["s", 260]],
+      metro: [0.04, 0.96],
+      junctions: [{ at: 0.48, type: "X" }, { at: 0.96, type: "X" }],
       alts: [
-        { id: "katabon-lane", kind: "street", side: -1, width: 9, bulge: 42, chord: 0.35 },
-        { id: "ramna-road", kind: "main", side: 1, width: 11, bulge: 54, chord: 0.25 },
+        { id: "katabon-lane", kind: "street", side: -1, width: 9, bulge: 24, chord: 0.55 },
+        { id: "ramna-road", kind: "main", side: 1, width: 11, bulge: 26, chord: 0.55 },
       ],
     },
 
     // ---- Stage 4: Dhaka University, Secretariat & Motijheel ----
     {
       id: "du-north", stage: 3,
-      path: [["s", 120], ["r", 75, 65], ["s", 320], ["l", 35, 160], ["s", 280]],
-      metro: [0.02, 0.98],
-      junctions: [{ at: 0.15, type: "X" }, { at: 0.98, type: "X" }],
+      path: [["s", 140], ["r", 45, 150], ["s", 240], ["l", 30, 170], ["s", 200]],
+      metro: [0.04, 0.96],
+      junctions: [{ at: 0.18, type: "X" }, { at: 0.96, type: "X" }],
       alts: [
-        { id: "nilkhet-road", kind: "street", side: -1, width: 10, bulge: 48, chord: 0.3 },
-        { id: "ramna-south", kind: "main", side: 1, width: 11, bulge: 52, chord: 0.25 },
+        { id: "nilkhet-road", kind: "street", side: -1, width: 10, bulge: 25, chord: 0.55 },
+        { id: "ramna-south", kind: "main", side: 1, width: 11, bulge: 26, chord: 0.55 },
       ],
     },
     {
       id: "du-campus", stage: 3,
-      path: [["s", 300], ["r", 40, 170], ["s", 380], ["l", 40, 170], ["s", 300]],
-      metro: [0.02, 0.94],
+      path: [["s", 220], ["r", 35, 170], ["s", 260], ["l", 35, 170], ["s", 220]],
+      metro: [0.04, 0.92],
       junctions: [{ at: 0.48, type: "X" }],
       alts: [
-        { id: "paltan-road", kind: "main", side: -1, width: 11, bulge: 52, chord: 0.25 },
-        { id: "motijheel-flyover", kind: "flyover", side: 1, width: 10, height: 8, bulge: 14 },
+        { id: "paltan-road", kind: "main", side: -1, width: 11, bulge: 26, chord: 0.55 },
+        { id: "motijheel-flyover", kind: "flyover", side: 1, width: 10, height: 7.5, bulge: 13 },
       ],
     },
   ],
@@ -168,27 +168,37 @@ function turnsOf(cmds) {
   return out;
 }
 
-/** A branching avenue or flyover that peels off at an intersection and rejoins at the next hub. */
+/**
+ * A branching avenue or flyover that peels off smoothly at an intersection and rejoins at the next hub.
+ * Uses the chord normal so inner curves never pinch or self-intersect, and keeps the first/last 3%
+ * aligned with the main road so transitions across intersections are completely seamless.
+ */
 function makeAlt(main, alt) {
   const pts = [], m = Math.ceil(main.len / (SAMPLE * 3));
   const ax = main.X[0], az = main.Z[0], bx = main.X[main.n - 1], bz = main.Z[main.n - 1];
+  const dx = bx - ax, dz = bz - az, chordLen = Math.hypot(dx, dz) || 1;
+  // Right-hand unit normal of the chord from start to end of the leg.
+  const crx = -dz / chordLen, crz = dx / chordLen;
+
   for (let i = 0; i <= m; i++) {
     const t = i / m, f = Math.min(main.n - 1, t * (main.n - 1)), idx = Math.round(f);
     let x = main.X[idx], z = main.Z[idx], y = 0;
     const a = main.A[idx], rx = Math.cos(a), rz = -Math.sin(a);
-    let off;
+    const w = smooth(0.03, 0.24, t) * smooth(0.97, 0.76, t);
     if (alt.kind === "flyover") {
-      const top = smooth(.2, .32, t) * smooth(.8, .68, t);
-      off = alt.bulge * smooth(0, .1, t) * smooth(1, .9, t) * (1 - top);
-      y = alt.height * smooth(0, .25, t) * smooth(1, .75, t);
+      const off = alt.bulge * w;
+      y = alt.height * smooth(0.05, 0.28, t) * smooth(0.95, 0.72, t);
+      pts.push(new THREE.Vector3(x + rx * off * alt.side, y, z + rz * off * alt.side));
     } else {
-      const w = smooth(0, .14, t) * smooth(1, .86, t);
-      off = alt.bulge * w;
-      const c = (alt.chord || 0) * w;
-      x += ((ax + (bx - ax) * t) - x) * c;
-      z += ((az + (bz - az) * t) - z) * c;
+      const off = alt.bulge * w;
+      const c = (alt.chord || 0.5) * w;
+      x += ((ax + dx * t) - x) * c;
+      z += ((az + dz * t) - z) * c;
+      // Blend local road normal near the ends with chord normal in the middle for a smooth, twist-free curve.
+      const nx = rx * (1 - c) + crx * c, nz = rz * (1 - c) + crz * c;
+      const nLen = Math.hypot(nx, nz) || 1;
+      pts.push(new THREE.Vector3(x + (nx / nLen) * off * alt.side, 0, z + (nz / nLen) * off * alt.side));
     }
-    pts.push(new THREE.Vector3(x + rx * off * alt.side, y, z + rz * off * alt.side));
   }
   return makeSeg(pts, { id: alt.id, kind: alt.kind, side: alt.side, half: alt.width / 2, stage: main.stage, main: false });
 }
@@ -216,22 +226,20 @@ const MAIN = [];
       if (seg.alt === undefined) seg.alt = SEGS.length;
       seg.alts.push(SEGS.length);
       SEGS.push(a);
-      if (altDef.kind === "flyover" && !leg.metro) {
-        seg.pillarFrom = seg.len * .3; seg.pillarTo = seg.len * .7;
-      }
     }
     if (leg.metro) {
       seg.metro = leg.metro;
-      seg.pillarFrom = seg.len * leg.metro[0] + 14;
-      seg.pillarTo = seg.len * leg.metro[1] - 14;
+    }
+    // Place centre folk-art pillars on the flyover & Shahbagh/DU metro stretches.
+    if (li === 0 || li === 5 || li === 6) {
+      seg.pillarFrom = seg.len * 0.25;
+      seg.pillarTo = seg.len * 0.78;
     }
   }
   // Connect every segment in leg `li` to the main road and all left/right branches of leg `li + 1`.
-  for (let li = 0; li < MAIN.length; li++) {
+  for (let li = 0; li < MAIN.length - 1; li++) {
     const nextMain = MAIN[li + 1];
-    // At the end of the final leg, loop back to leg 0 for endless open-world exploration if needed.
-    const targetLeg = nextMain !== undefined ? nextMain : MAIN[0];
-    const targets = [targetLeg, ...SEGS[targetLeg].alts];
+    const targets = [nextMain, ...SEGS[nextMain].alts];
     SEGS[MAIN[li]].next = targets;
     for (const altIdx of SEGS[MAIN[li]].alts) {
       SEGS[altIdx].next = targets;

@@ -257,37 +257,10 @@ export function updateBus(dt) {
   game.yaw = clamp(game.yaw, -B.maxRelYaw, B.maxRelYaw);
 
   const S = SEGS[here.seg];
-  branchCooldown = Math.max(0, branchCooldown - dt);
   game.vx = speed * Math.sin(game.yaw);
   let x = game.lat + game.vx * dt;
-
-  // Mid-segment X / T junctions: if the player steers hard toward the side road at a junction,
-  // switch smoothly between the main road and the parallel avenue on that side.
-  if (branchCooldown <= 0 && Math.abs(ctl.steer) > 0.45 && Math.abs(x) > S.half - 2.2) {
-    const turnSide = Math.sign(ctl.steer);
-    const f = here.s / S.len;
-    const atJunction = (S.junctions || []).some(j => (j.type === "X" || j.side === turnSide) && Math.abs(j.at - f) < 0.09);
-    if (atJunction && Math.sign(x) === turnSide) {
-      let targetSeg = -1;
-      if (S.main && S.alts?.length) {
-        targetSeg = S.alts.find(a => SEGS[a].side === turnSide) ?? -1;
-      } else if (!S.main) {
-        targetSeg = SEGS.findIndex(m => m.main && m.from === S.from);
-      }
-      if (targetSeg >= 0) {
-        branchCooldown = 2.0;
-        here.prev = here.seg;
-        here.seg = targetSeg;
-        here.s = clamp(f * SEGS[targetSeg].len, 12, SEGS[targetSeg].len - 12);
-        x = -turnSide * (SEGS[targetSeg].half - 2.2);
-        game.yaw *= 0.35;
-      }
-    }
-  }
-
-  const curS = SEGS[here.seg];
   // Road edge: past the edge the kerb pushes the nose back and scrapes off some speed.
-  const edge = curS.half - B.edgeInset, hard = curS.half - B.edgeHardInset;
+  const edge = S.half - B.edgeInset, hard = S.half - B.edgeHardInset;
   const over = Math.abs(x) - edge;
   if (over > 0) {
     game.yaw -= Math.sign(x) * B.edgeYawPush * over * dt;

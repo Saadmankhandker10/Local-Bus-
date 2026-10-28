@@ -437,7 +437,7 @@ for (const [i, st] of ROUTE.stages.entries()) {
       const jitter = lm.every ? rnd(-.3, .3) * lm.every : 0;
       if (S) {
         const sPos = Math.max(8, Math.min(S.len - 8, f * S.len + jitter));
-        placements.push({ at: S.p0 + (sPos / S.len) * S.mainLen, seg: segIdx, s: sPos, prefab: lm.prefab, side, text: lm.text });
+        placements.push({ at: S.p0 + (sPos / S.len) * (S.p1 - S.p0), seg: segIdx, s: sPos, prefab: lm.prefab, side, text: lm.text });
       } else {
         placements.push({ at: start + f * st.length + jitter, prefab: lm.prefab, side, text: lm.text });
       }

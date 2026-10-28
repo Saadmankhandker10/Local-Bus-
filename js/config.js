@@ -267,13 +267,13 @@ export const CFG = {
     gapMin: 600, gapMax: 1000,
     countMin: 4, countMax: 7,
     spacing: 22,          // distance between two pillars
-    deckY: 7.6,           // height of the flyover / metro deck
+    deckY: 10.5,          // height of the flyover / metro deck
     deckWidth: 9,
   },
 
-  // Overhead metro rail (Shahbagh & Dhaka University): runs on a timetable along metro segments.
+  // Overhead metro rail (MRT Line-6): runs on a timetable along metro segments.
   metro: {
-    deckY: 7.6,           // viaduct height above the road
+    deckY: 10.5,          // viaduct height above the road (above footbridges, arches, and flyovers)
     deckWidth: 7.2,       // width of the twin-track viaduct
     speed: 28,            // train speed in world units per second
     interval: 16,         // a train starts a pass every this many seconds
