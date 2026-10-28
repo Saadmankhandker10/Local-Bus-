@@ -101,15 +101,18 @@ function spawnShards(lat, back) {
 }
 
 /**
- * Put `dummy` at a spot given relative to the bus: lat = right of the road centre,
- * back = distance behind the bus along the road (it may be on the previous road piece).
+ * Put `dummy` at a spot relative to the bus:
+ * lat = sideways offset, back = distance behind the bus, up = vertical height.
  */
 function toWorld(lat, back, up) {
-  let seg = here.seg, s = here.s - back;
-  if (s < 0 && here.prev >= 0) { seg = here.prev; s += SEGS[seg].len; }
-  sample(seg, s, rp);
-  dummy.position.set(rp.x + Math.cos(rp.yaw) * lat, rp.y + up, rp.z - Math.sin(rp.yaw) * lat);
-  dummy.rotation.y = rp.yaw;
+  const fwdX = Math.sin(game.yaw), fwdZ = -Math.cos(game.yaw);
+  const rightX = Math.cos(game.yaw), rightZ = Math.sin(game.yaw);
+  dummy.position.set(
+    game.x + rightX * lat - fwdX * back,
+    up,
+    game.z + rightZ * lat - fwdZ * back
+  );
+  dummy.rotation.y = game.yaw;
 }
 
 /** Remove the crowd (new run). */

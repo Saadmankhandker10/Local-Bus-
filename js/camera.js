@@ -31,60 +31,47 @@ const ease = (rate, dt) => 1 - Math.exp(-rate * dt);
 /** Snap the camera behind the bus (new run, checkpoint). */
 export function resetCamera(withIntro = false) {
   camYaw = null;
-  camLat = game.lat * C.followX;
+  camLat = 0;
   introT = withIntro ? C.introSeconds : 0;
   orbitAng = 0;
 }
 
-/** Place the camera for this frame. @returns {number} boost effect strength 0..1 */
+/** Place the camera for this frame in open-world 2D space. @returns {number} boost effect strength 0..1 */
 export function updateCamera(dt) {
   const boosting = game.running && game.boostT > 0;
   boostFx += ((boosting ? 1 : 0) - boostFx) * ease(C.boostFxSmoothing, dt);
 
-  // Lagging behind sideways moves makes the heavy bus visibly swing in the frame.
-  camLat += (game.lat * C.followX - camLat) * ease(C.followSmoothing, dt);
-  sample(here.seg, here.s, p);
-  const targetYaw = p.yaw - game.yaw * C.followYaw;
+  const targetYaw = game.yaw;
   if (camYaw === null) camYaw = targetYaw;
-  camYaw += (targetYaw - camYaw) * ease(C.yawSmoothing, dt);
+  let diff = targetYaw - camYaw;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  camYaw += diff * ease(C.yawSmoothing, dt);
 
-  // Anchor on the road at the bus, then step back and up along the camera's direction.
-  const ax = p.x + Math.cos(p.yaw) * camLat, az = p.z - Math.sin(p.yaw) * camLat;
-  const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw); // forward on the ground
+  // Position behind the bus
   const back = C.distance + boostFx * C.boostPullBack;
   const shake = game.shake * C.shakeScale;
-  let cx = ax - fx * back, cz = az - fz * back;
-
-  // In a bend the camera can swing out over the pavement and into a building. Find the
-  // road point behind the bus and keep the camera within the road's width there.
-  let seg = here.seg, s = here.s - back;
-  if (s < 0 && here.prev >= 0) { seg = here.prev; s += SEGS[seg].len; }
-  sample(seg, s, q);
-  const rx = Math.cos(q.yaw), rz = -Math.sin(q.yaw);
-  const side = (cx - q.x) * rx + (cz - q.z) * rz, limit = SEGS[seg].half + C.roadMargin;
-  if (Math.abs(side) > limit) {
-    const push = side - Math.sign(side) * limit;
-    cx -= rx * push; cz -= rz * push;
-  }
+  let cx = game.x - Math.sin(camYaw) * back;
+  let cz = game.z + Math.cos(camYaw) * back;
 
   // Skippable 1.8 s morning camera sweep from the Mohammadpur Bus Stand side to behind the bus.
   if (introT > 0) {
     if (input.throttle > 0 || input.brake > 0 || Math.abs(input.steer) > .1 || input.boost) introT = 0;
     else introT = Math.max(0, introT - dt);
     const u = introT / C.introSeconds;
-    const sweep = u * u * (3 - 2 * u); // smoothstep 1 -> 0
-    cx += (-rx * 8.5 + fx * 6) * sweep;
-    cz += (-rz * 8.5 + fz * 6) * sweep;
+    const sweep = u * u * (3 - 2 * u);
+    cx += Math.cos(camYaw) * 8.5 * sweep;
+    cz += Math.sin(camYaw) * 8.5 * sweep;
   }
 
   // Dramatic "গণধোলাই / ঘেরাও" cutscene: orbit the camera around the surrounded bus!
   if (game.caught) {
     orbitAng += dt * 0.92;
     const rad = 10.2;
-    const ox = ax + Math.sin(camYaw + orbitAng) * rad;
-    const oz = az + Math.cos(camYaw + orbitAng) * rad;
-    cam.position.set(ox + rnd(-1, 1) * shake, p.y + 3.9 + rnd(-1, 1) * shake, oz);
-    cam.lookAt(ax, p.y + 1.55, az);
+    const ox = game.x + Math.sin(camYaw + orbitAng) * rad;
+    const oz = game.z + Math.cos(camYaw + orbitAng) * rad;
+    cam.position.set(ox + rnd(-1, 1) * shake, 3.9 + rnd(-1, 1) * shake, oz);
+    cam.lookAt(game.x, 1.55, game.z);
     followGround(cam.position.x, cam.position.z);
     return boostFx;
   }
@@ -92,17 +79,16 @@ export function updateCamera(dt) {
   // Menu Autopilot demo camera: gentle cinematic sway behind the cruising bus.
   if (!game.running) {
     const sway = Math.sin(game.time * 0.45) * 3.2;
-    cx += rx * sway;
-    cz += rz * sway;
+    cx += Math.cos(camYaw) * sway;
+    cz += Math.sin(camYaw) * sway;
   }
 
-  cam.position.set(cx + rnd(-1, 1) * shake, p.y + C.height + (game.busY || 0) * 0.45 + rnd(-1, 1) * shake, cz);
-  cam.lookAt(ax + fx * C.lookAhead, p.y + C.lookY + (game.busY || 0) * 0.65, az + fz * C.lookAhead);
+  cam.position.set(cx + rnd(-1, 1) * shake, C.height + (game.busY || 0) * 0.45 + rnd(-1, 1) * shake, cz);
+  cam.lookAt(game.x + Math.sin(camYaw) * C.lookAhead, C.lookY + (game.busY || 0) * 0.65, game.z - Math.cos(camYaw) * C.lookAhead);
   followGround(cam.position.x, cam.position.z);
 
-  const targetFov = C.baseFov + game.speed * C.fovPerSpeed + boostFx * C.boostFovKick;
+  const targetFov = C.baseFov + Math.abs(game.speed) * C.fovPerSpeed + boostFx * C.boostFovKick;
   fov += (targetFov - fov) * ease(C.fovSmoothing, dt);
-  // Rebuilding the projection is not free, so only do it when the change is visible.
   if (Math.abs(cam.fov - fov) > .05) { cam.fov = fov; cam.updateProjectionMatrix(); }
 
   return boostFx;

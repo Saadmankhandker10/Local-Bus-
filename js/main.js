@@ -129,6 +129,23 @@ function doShout() {
   if (s.who === "হেল্পার") { slap(); triggerHelperSlap(); }
 }
 
+let bombT = 0;
+function doBomb() {
+  if (!game.running || game.time < bombT) return;
+  bombT = game.time + 6.0;
+  crashSound(true);
+  game.shake = Math.max(game.shake, 0.95);
+  msg("💥 শব্দবোমা ফাটানো হয়েছে!", 1200);
+  if (crowd.active) {
+    crowd.gap = Math.min(crowd.gap + 22, 55);
+  }
+  const btn = $("tbomb");
+  if (btn) {
+    btn.classList.add("cooling");
+    setTimeout(() => btn.classList.remove("cooling"), 6000);
+  }
+}
+
 function doMute() {
   $("soundbtn").textContent = toggleMute() ? "🔇" : "🔊";
 }
@@ -310,6 +327,7 @@ resetTraffic(0);
 initInput(onPauseInput);
 onAnyInput(unlockAudio);
 onTap("horn", doHorn);
+onTap("bomb", doBomb);
 onTap("shout", doShout);
 onTap("mute", doMute);
 $("soundbtn").textContent = isMuted() ? "🔇" : "🔊";

@@ -9,6 +9,8 @@ export const game = {
   crashT: 0,       // simulation seconds left in that moment
   caught: false,   // true while the crowd surrounds the bus (just before game over)
   time: 0,    // seconds of simulation since the page loaded
+  x: -120,    // 2D world X position
+  z: -120,    // 2D world Z position
   speed: 0,   // forward speed
   vx: 0,      // sideways speed (steering)
   lat: 0,     // how far right of the road centre the bus is
@@ -42,10 +44,12 @@ export function resetGame() {
   game.crashing = false;
   game.crashT = 0;
   game.caught = false;
+  game.x = -120;
+  game.z = -120;
   game.speed = CFG.bus.startSpeed;
   game.vx = 0;
-  game.lat = -2.5; // start in the left (correct) lane of the two-way boulevard
-  game.yaw = 0;
+  game.lat = -2.5;
+  game.yaw = Math.PI / 2; // Eastbound
   game.prog = 0;
   game.accel = 0;
   game.boostT = 0;

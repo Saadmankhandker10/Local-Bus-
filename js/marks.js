@@ -188,7 +188,7 @@ export function updateMarks(dt) {
   for (let i = stops.length - 1; i >= 0; i--) {
     const s = stops[i];
     if (!track(s)) { scene.remove(s.m); stops.splice(i, 1); continue; }
-    const atStop = s.onRoad && Math.abs(bx - s.x) < S.reachX && Math.abs(s.z) < S.reachZ;
+    const atStop = Math.hypot(game.x - s.m.position.x, game.z - s.m.position.z) < 5.2;
     if (atStop && s.people.length) {
       if (game.speed < S.boardMaxSpeed) {
         game.onMark = "stop";
@@ -210,7 +210,7 @@ export function updateMarks(dt) {
     const k = marks[i];
     if (!track(k)) { scene.remove(k.m); marks.splice(i, 1); continue; }
     // "On the mark" means the bus centre is over it, with some room at both ends.
-    const on = k.onRoad && Math.abs(bx - k.x) < M.reachX && Math.abs(k.z) < M.length / 2 - 1;
+    const on = Math.hypot(game.x - k.m.position.x, game.z - k.m.position.z) < 4.8;
     const stopped = game.speed < M.stopSpeed;
 
     if (on && k.kind === "cng") {

@@ -184,6 +184,23 @@ export function showPaper(run, photo) {
   }
   const inappEl = $("inappNote");
   if (inappEl) inappEl.hidden = !isInAppBrowser();
+
+  const npNameIn = $("npNameInput");
+  const npNameBtn = $("npNameBtn");
+  if (npNameIn && npNameBtn) {
+    const savedName = localStorage.getItem("localBus.driverName") || "";
+    npNameIn.value = savedName;
+    npNameBtn.textContent = "সেভ";
+    npNameBtn.onclick = () => {
+      const val = npNameIn.value.trim();
+      if (val) {
+        localStorage.setItem("localBus.driverName", val);
+        npNameBtn.textContent = "✓ সেভড!";
+        setTimeout(() => { if (npNameBtn) npNameBtn.textContent = "সেভ"; }, 2000);
+      }
+    };
+  }
+
   $("pnote").textContent = PAPER.disclaimer;
   $("paper").hidden = false;
 }

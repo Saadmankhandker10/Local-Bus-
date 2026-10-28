@@ -409,8 +409,9 @@ export function updateTraffic(dt) {
       o.m.userData.siren.blue.visible = !redOn;
     }
 
-    if (!o.hit && !game.crashing && !game.caught && onBusRoad(o.seg)) {
-      const hitNow = sweptHit(bx, B.hitHalfWidth, o.x, t.w / 2, zPrev, o.z, B.hitHalfLength + t.l / 2);
+    if (!o.hit && !game.crashing && !game.caught) {
+      const dBus = Math.hypot(game.x - o.m.position.x, game.z - o.m.position.z);
+      const hitNow = dBus < (B.hitHalfLength + (t.l || 3) / 2) * 0.95;
       if (hitNow && game.busY < 1.8) {
         if (t.isRamp) {
           // Wooden stunt ramp: launch the bus into the air!

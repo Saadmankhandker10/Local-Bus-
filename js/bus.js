@@ -2,11 +2,11 @@
 import * as THREE from "three";
 import { CFG } from "./config.js";
 import { clamp, pick, rnd } from "./utils.js";
-import { scene, box, plate } from "./world.js";
+import { scene, box, plate, getNearbyBuildings } from "./world.js";
 import { input } from "./input.js";
 import { game } from "./state.js";
 import { emit } from "./events.js";
-import { SEGS, here, sample, place, fromProgress, progressOf } from "./map.js";
+import { SEGS, here, sample, place, fromProgress, progressOf, nearestIntersection, GRID } from "./map.js";
 import { SLOGANS, COMPANIES, PLATES } from "./data/slogans.bn.js";
 
 const B = CFG.bus;
@@ -168,18 +168,20 @@ scene.add(bus);
 const pos = { x: 0, y: 0, z: 0, yaw: 0, k: 0 }; // reused road sample
 let lastMorKey = "";
 
-/** Put the bus on the main road at a journey progress value, facing along the road. */
+/** Put the bus on the grid road (starting at Mohammadpur Stand), facing along the road. */
 export function resetBus(progress = 0) {
-  fromProgress(progress, here);
-  here.prev = -1;
+  // Default start: Mohammadpur Bus Stand (heading East towards Asadgate & Dhanmondi)
+  game.x = -120;
+  game.z = -120;
   game.lat = -2.5;
-  game.yaw = 0;
+  game.yaw = Math.PI / 2; // facing East
+  game.speed = CFG.bus.startSpeed;
   game.prog = progress;
   game.busY = 0;
   game.busVy = 0;
   game.wrongWay = false;
   lastMorKey = "";
-  if (SEGS[here.seg]?.mor) game.morName = SEGS[here.seg].mor;
+  game.morName = "মোহাম্মদপুর বাসস্ট্যান্ড মোড়";
   body.rotation.set(0, 0, 0);
   body.position.set(0, 0, 0);
   if (companyBoard) { companyBoard.position.set(0, 2.96, 3.35); companyBoard.rotation.set(0, 0, 0); }
@@ -189,9 +191,10 @@ export function resetBus(progress = 0) {
   placeBus();
 }
 
-/** Move the 3D bus to its spot on the road (including airborne height game.busY). */
+/** Move the 3D bus to its 2D world spot (including airborne height game.busY). */
 function placeBus() {
-  place(bus, here.seg, here.s, game.lat, game.busY || 0, -game.yaw);
+  bus.position.set(game.x, (game.busY || 0), game.z);
+  bus.rotation.y = game.yaw;
 }
 
 /**
@@ -202,133 +205,142 @@ function approach(current, target, rate, dt) {
   return current + (target - current) * (1 - Math.exp(-rate * dt));
 }
 
-/** At an intersection (মোড়), take the left or right avenue if steering or positioned on that side. */
+/** At an intersection (মোড়), pick branch if required. */
 export function chooseNext(list) {
-  const wantSide = Math.abs(input.steer) > 0.25 ? Math.sign(input.steer)
-    : Math.abs(game.lat) > CFG.map.forkLat ? Math.sign(game.lat) : 0;
-  if (wantSide !== 0) {
-    for (const n of list) {
-      const S = SEGS[n];
-      if (S.side === wantSide) return n;
-    }
-  }
-  return list[0];
+  return list && list.length ? list[0] : 0;
 }
 
 /** Autopilot demo mode while the title screen is shown behind the menu. */
 export function updateAutopilot(dt) {
-  game.speed = 16;
+  game.speed = 18;
   game.boostT = 0;
   game.accel = 0;
-  const targetLat = -2.6 + Math.sin(game.time * 0.55) * 1.4;
-  game.vx = (targetLat - game.lat) * 2.2;
-  game.lat += game.vx * dt;
-  game.yaw = clamp(game.vx * 0.04, -0.25, 0.25);
+  // Cruise along the main avenue
   const ds = game.speed * dt;
-  here.s += ds;
-  while (here.s > SEGS[here.seg].len) {
-    if (!SEGS[here.seg].next.length) {
-      fromProgress(0, here);
-      break;
-    }
-    here.s -= SEGS[here.seg].len;
-    here.prev = here.seg;
-    here.seg = SEGS[here.seg].next[0];
-  }
-  game.prog = progressOf(here.seg, here.s);
+  game.x += Math.sin(game.yaw) * ds;
+  game.z -= Math.cos(game.yaw) * ds;
+  if (game.x > 180) { game.x = -180; game.z = -120; game.yaw = Math.PI / 2; }
   game.dist += ds;
   placeBus();
 }
 
 /**
- * One physics step for the bus: boost, speed, steering, road edge, fuel, moving along the road.
- * @returns {number} distance travelled this step
+ * 2D Open-World Arcade Bus Physics:
+ * - Direct (x, z, yaw) control across Dhaka city's open-world grid.
+ * - Free steering into any intersection, 90-degree turn, U-turn, or reverse!
+ * - Collision boundaries exist ONLY around buildings, NOT beside roads!
  */
 export function updateBus(dt) {
   const F = CFG.fuel;
-  // After a heavy crash (or when surrounded) the driver has lost control: no steering, full brake.
   const ctl = game.crashing || game.caught ? CRASHED : input;
   const hasFuel = game.fuel > 0;
 
-  // Boost: holding the key keeps the timer full; after release it runs out by itself.
+  // Boost timer
   if (ctl.boost && hasFuel) game.boostT = B.boostHold;
   else game.boostT = Math.max(0, game.boostT - dt);
   const boosting = game.boostT > 0 && hasFuel;
 
-  // While boosting the bus drives itself, so the player only needs to steer.
+  // Throttle, Brake & Reverse Physics
   const throttle = boosting ? 1 : ctl.throttle;
   const top = boosting ? B.boostSpeed : B.maxSpeed;
   const v = game.speed;
-  // Engine pull fades out near top speed, like a real heavy vehicle.
-  const pull = hasFuel ? (B.accel + (boosting ? B.boostAccel : 0)) * throttle * Math.max(0, 1 - (v / top) ** 3) : 0;
+
+  let pull = 0;
+  if (hasFuel && throttle > 0) {
+    pull = (B.accel + (boosting ? B.boostAccel : 0)) * throttle * Math.max(0, 1 - (v / top) ** 3);
+  }
+
   const drag = (hasFuel ? B.rollDrag : B.emptyTankDrag) + B.airDrag * v * v;
-  let speed = Math.max(0, v + (pull - B.brake * ctl.brake - drag) * dt);
-  // After a boost ends, ease back down to normal top speed instead of snapping.
+  let speed = v;
+
+  if (ctl.brake > 0) {
+    if (speed > 1.0) {
+      // Braking forward motion
+      speed = Math.max(0, speed - B.brake * ctl.brake * dt);
+    } else {
+      // Reverse gear: holding brake when stopped backs the bus up!
+      speed = Math.max(-12, speed - 15 * ctl.brake * dt);
+    }
+  } else {
+    // Normal forward acceleration or coasting
+    if (speed >= 0) {
+      speed = Math.max(0, speed + (pull - drag) * dt);
+    } else {
+      // Rolling forward out of reverse
+      speed = Math.min(0, speed + 18 * dt);
+    }
+  }
+
   if (!boosting && speed > B.maxSpeed) speed = Math.max(B.maxSpeed, speed - B.overSpeedDecel * dt);
   game.accel = (speed - v) / dt;
   game.speed = speed;
 
-  // Turning: the bus has a heading (game.yaw, measured from the road's direction).
-  // Steering turns it, faster at speed but with a wider turning circle, like a heavy bus.
-  // When the road bends, the road turns under the bus, so you must steer into the bend.
-  sample(here.seg, here.s, pos);
-  const radius = B.turnRadiusMin + speed * B.turnRadiusPerSpeed;
-  const turnRate = ctl.steer * speed / radius;
-  game.yaw += (turnRate - pos.k * speed * Math.cos(game.yaw)) * dt;
-  // Arcade help: with no steering the bus slowly lines up with the road again.
-  if (Math.abs(ctl.steer) < .1) game.yaw = approach(game.yaw, 0, B.alignRate, dt);
-  game.yaw = clamp(game.yaw, -B.maxRelYaw, B.maxRelYaw);
-
-  const S = SEGS[here.seg];
+  // Steering: turns the bus heading. Natural arcade car steering that turns with speed!
+  const turnRate = 2.4 * Math.max(0.35, Math.min(1.1, Math.abs(speed) / 14));
+  if (ctl.steer !== 0) {
+    // In reverse, steering rotates the tail naturally
+    const steerDir = speed < 0 ? -1 : 1;
+    game.yaw += -ctl.steer * turnRate * steerDir * dt;
+  }
   game.vx = speed * Math.sin(game.yaw);
-  let x = game.lat + game.vx * dt;
-  // Road edge: past the edge the kerb pushes the nose back and scrapes off some speed.
-  const edge = S.half - B.edgeInset, hard = S.half - B.edgeHardInset;
-  const over = Math.abs(x) - edge;
-  if (over > 0) {
-    game.yaw -= Math.sign(x) * B.edgeYawPush * over * dt;
-    game.speed = Math.max(0, game.speed - B.edgeScrapeDrag * dt);
-    game.shake = Math.max(game.shake, B.edgeShake);
-  }
-  if (Math.abs(x) > hard) {
-    x = Math.sign(x) * hard;
-    if (Math.sign(game.yaw) === Math.sign(x)) game.yaw *= .5;
-  }
-  game.lat = x;
 
-  // Move along the road; at the end of a piece, continue on the next one (or the branch we chose).
-  const prevS = here.s;
-  const ds = game.speed * Math.cos(game.yaw) * dt;
-  here.s += ds;
+  // Position displacement in 2D world space
+  const ds = game.speed * dt;
+  game.x += Math.sin(game.yaw) * ds;
+  game.z -= Math.cos(game.yaw) * ds;
+  game.dist += Math.abs(ds);
 
-  // Check if we crossed a named Dhaka crossroad (মোড়) along the current segment.
-  for (const [ji, j] of (S.junctions || []).entries()) {
-    const js = j.at * S.len;
-    const key = `${here.seg}:${ji}`;
-    if (j.name && prevS < js && here.s >= js && lastMorKey !== key) {
-      lastMorKey = key;
-      game.morName = j.name;
-      emit("morPass", { name: j.name });
+  // Collision with Buildings ONLY:
+  // "ধাক্কা ঠেকানোর বাউন্ডারি দিন শুধু বিল্ডিংয়ের চারপাশে, রাস্তার পাশে না"
+  const busR = 1.35, busL = 3.5;
+  for (const b of getNearbyBuildings(game.x, game.z, 20)) {
+    if (game.x + busR > b.x0 && game.x - busR < b.x1 &&
+        game.z + busL > b.z0 && game.z - busL < b.z1) {
+      // Overlap detected: push bus out along minimal penetration axis
+      const penLeft = (game.x + busR) - b.x0;
+      const penRight = b.x1 - (game.x - busR);
+      const penTop = (game.z + busL) - b.z0;
+      const penBottom = b.z1 - (game.z - busL);
+      const minPen = Math.min(penLeft, penRight, penTop, penBottom);
+
+      if (minPen === penLeft) game.x = b.x0 - busR;
+      else if (minPen === penRight) game.x = b.x1 + busR;
+      else if (minPen === penTop) game.z = b.z0 - busL;
+      else game.z = b.z1 + busL;
+
+      if (Math.abs(game.speed) > 3) {
+        const impact = Math.abs(game.speed);
+        game.speed = -game.speed * 0.22;
+        game.damage += Math.round(impact * 75);
+        game.hp = Math.max(0, game.hp - 6);
+        game.shake = Math.max(game.shake, 0.5);
+        emit("buildingCrash", { x: game.x, z: game.z, name: b.name });
+      }
     }
   }
 
-  while (here.s > SEGS[here.seg].len && SEGS[here.seg].next.length) {
-    here.s -= SEGS[here.seg].len;
-    here.prev = here.seg;
-    here.seg = chooseNext(SEGS[here.seg].next);
-    const nextSeg = SEGS[here.seg];
-    if (nextSeg.mor) {
-      game.morName = nextSeg.mor;
-      emit("morPass", { name: nextSeg.mor, turned: nextSeg.side !== 0 });
-    }
+  // Outer Dhaka City Perimeter Boundary Barricades
+  const cityLimit = GRID.N * GRID.BLOCK + GRID.ROAD / 2 + 1; // 206
+  if (Math.abs(game.x) > cityLimit) {
+    game.x = Math.sign(game.x) * cityLimit;
+    game.speed *= -0.3;
+    game.shake = Math.max(game.shake, 0.4);
   }
-  here.s = Math.min(here.s, SEGS[here.seg].len);
-  game.prog = progressOf(here.seg, here.s);
+  if (Math.abs(game.z) > cityLimit) {
+    game.z = Math.sign(game.z) * cityLimit;
+    game.speed *= -0.3;
+    game.shake = Math.max(game.shake, 0.4);
+  }
 
-  // Wrong-way detection: driving on the right side of the median island (oncoming traffic lanes).
-  game.wrongWay = SEGS[here.seg].half >= 6 && game.lat > 0.75;
+  // Dynamic Dhaka Crossroad (মোড়) detection
+  const nearJ = nearestIntersection(game.x, game.z);
+  if (nearJ.dist < 14 && lastMorKey !== nearJ.name) {
+    lastMorKey = nearJ.name;
+    game.morName = nearJ.name;
+    emit("morPass", { name: nearJ.name });
+  }
 
-  // Airborne ramp jump / WASA trench vertical physics.
+  // Airborne ramp jump & WASA trench vertical physics
   if (game.busY > 0 || game.busVy !== 0) {
     game.busVy -= 26 * dt;
     game.busY += game.busVy * dt;
@@ -340,8 +352,10 @@ export function updateBus(dt) {
     }
   }
 
-  game.fuel -= (F.baseDrain + game.speed / F.speedDrainRef * F.speedDrain + (boosting ? F.boostDrain : 0)) * dt;
+  // Fuel consumption
+  game.fuel -= (F.baseDrain + Math.abs(game.speed) / F.speedDrainRef * F.speedDrain + (boosting ? F.boostDrain : 0)) * dt;
   game.fuel = Math.max(0, game.fuel);
+
   placeBus();
   return ds;
 }
