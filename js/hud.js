@@ -181,6 +181,7 @@ export function updateHud(dt, boostFx) {
   }
   $("hpbar").style.width = game.hp + "%";
   $("hpbox").classList.toggle("low", game.hp < CFG.bus.lowHp);
+  $("hpbox").classList.toggle("healing", game.hp < CFG.bus.maxHp && (game.hpHealCooldown || 0) <= 0);
   $("comfortbar").style.width = game.comfort + "%";
   $("comfortbox").classList.toggle("low", game.comfort < CFG.comfort.lowThreshold);
   $("speedlines").style.opacity = (boostFx * CFG.camera.speedLinesOpacity).toFixed(3);

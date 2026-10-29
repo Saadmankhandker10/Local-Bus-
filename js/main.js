@@ -139,6 +139,7 @@ on("crash", () => {
   if (game.combo > 1) comboSound(game.combo);
   game.shake = CFG.hit.shake;
   game.hp = Math.max(0, game.hp - CFG.bus.crashHpLoss);
+  game.hpHealCooldown = CFG.bus.autoHealDelay;
   game.comfort = Math.max(0, game.comfort - CFG.comfort.crashDrop);
   if (navigator.vibrate) navigator.vibrate(CFG.hit.vibrateMs);
 });
@@ -149,6 +150,7 @@ on("projectileHit", () => {
   glassHit();
   game.shake = Math.max(game.shake, 0.45);
   game.hp = Math.max(0, game.hp - CFG.bus.projectileHpLoss);
+  game.hpHealCooldown = CFG.bus.autoHealDelay;
   game.comfort = Math.max(0, game.comfort - 6);
   say("যাত্রী", lineFrom("projectileHit"));
 });
@@ -251,6 +253,16 @@ function step(dt) {
 
   updateWorld();
   updateLandmarks();
+  // Auto health restore: after clean driving without crashes/hits for a few seconds,
+  // bus body & window HP smoothly regenerates back to full!
+  if (game.hp < CFG.bus.maxHp && !game.crashing && !game.caught) {
+    if (game.hpHealCooldown > 0) {
+      game.hpHealCooldown -= dt;
+    } else {
+      game.hp = Math.min(CFG.bus.maxHp, game.hp + CFG.bus.autoHealRate * dt);
+    }
+  }
+
   updateJourney();
   if (!game.running) return; // the journey just finished
 

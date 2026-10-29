@@ -46,6 +46,8 @@ export const CFG = {
     projectileHpLoss: 14,// HP lost when a thrown brick/sandal/cup hits the bus
     stageHpRepair: 20,   // HP patched up by the helper at each stage checkpoint
     lowHp: 35,           // below this the HP bar pulses gently
+    autoHealDelay: 3.0,  // seconds of clean driving (no crashes/hits) before bus health begins auto-restoring
+    autoHealRate: 15,    // HP recovered per second once auto-restore begins (smooth refill to 100)
   },
 
   fuel: {

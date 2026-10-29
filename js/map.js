@@ -25,8 +25,6 @@ export const MAP = {
       ] },
     { id: "mohammadpur-flyover", mor: "শ্যামলী — লালমাটিয়া মোড়", stage: 0,
       path: [["s", 200], ["r", 10, 450], ["s", 420], ["l", 10, 450], ["s", 200]],
-      alt: { id: "mohammadpur-lane", mor: "তাজমহল রোড — রিং রোড মোড়", kind: "street", side: 1, width: 10, bulge: 30, chord: 0 },
-      alt2: { id: "shyamoli-ring-road", mor: "শ্যামলী — কল্যাণপুর মোড়", kind: "street", side: -1, width: 10, bulge: 30, chord: 0 },
       junctions: [
         { at: 0.5, type: "X", name: "লালমাটিয়া আড়ং মোড়" },
       ] },
@@ -44,8 +42,6 @@ export const MAP = {
       ] },
     { id: "dhanmondi-mid", mor: "কলাবাগান — ধানমন্ডি ১৫ মোড়", stage: 1,
       path: [["s", 260], ["r", 18, 280], ["s", 320], ["l", 18, 280], ["s", 260]],
-      alt: { id: "kalabagan-lane", mor: "কলাবাগান — গ্রিন রোড মোড়", kind: "street", side: -1, width: 10, bulge: 30, chord: 0 },
-      alt2: { id: "satmasjid-road", mor: "সাতমসজিদ রোড — জিগাতলা মোড়", kind: "street", side: 1, width: 10, bulge: 30, chord: 0 },
       junctions: [
         { at: 0.5, type: "X", name: "কলাবাগান মাঠ মোড়" },
       ] },
@@ -64,8 +60,6 @@ export const MAP = {
       ] },
     { id: "shahbag-approach", mor: "শাহবাগ মোড়", stage: 2,
       path: [["s", 420], ["l", 6, 600], ["s", 320]],
-      alt: { id: "katabon-lane", mor: "কাঁটাবন — বাংলামোটর মোড়", kind: "street", side: -1, width: 10, bulge: 30, chord: 0 },
-      alt2: { id: "nilkhet-palashi", mor: "নীলক্ষেত — পলাশী মোড়", kind: "street", side: 1, width: 10, bulge: 30, chord: 0 },
       junctions: [
         { at: 0.88, type: "X", name: "শাহবাগ জাতীয় জাদুঘর মোড়" },
       ] },

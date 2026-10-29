@@ -14,7 +14,7 @@ canvas{display:block}
 .box b{font-size:14px;color:#ffd54f;font-variant-numeric:tabular-nums}
 .bar{width:46px;height:7px;background:#333;border-radius:4px;overflow:hidden;border:1px solid rgba(255,255,255,.15)}
 .bar i{display:block;height:100%;width:100%;transition:width .12s linear}
-#hpbar{background:#26a69a}#hpbox.low{animation:lowfuel 1s ease-in-out infinite alternate}#comfortbar{background:#43a047}#comfortbox.low #comfortbar{background:#ff7043}
+#hpbar{background:#26a69a}#hpbox.low{animation:lowfuel 1s ease-in-out infinite alternate}#hpbox.healing #hpbar{background:#00e676;box-shadow:0 0 8px rgba(0,230,118,.85)}#comfortbar{background:#43a047}#comfortbox.low #comfortbar{background:#ff7043}
 
 /* Top-centre red chasing crowd pill & yellow Wrong-Way multiplier pill */
 #crowdbox{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:linear-gradient(180deg,#d32f2f,#9a1b1b);border:2px solid #ffcdd2;color:#fff;padding:6px 22px;border-radius:22px;font-size:17px;font-weight:800;box-shadow:0 4px 14px rgba(0,0,0,.6);pointer-events:none;z-index:19}

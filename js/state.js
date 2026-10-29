@@ -20,6 +20,7 @@ export const game = {
   warn: false,// a heavy hazard is close ahead in our path
   fuel: CFG.fuel.max,
   hp: CFG.bus.maxHp,     // bus body & window health (0..100)
+  hpHealCooldown: 0,     // countdown in seconds until auto health restoration kicks in
   comfort: CFG.comfort.max, // passenger comfort / patience (0..100)
   fare: 0,
   damage: 0,  // Damage score from crashes
@@ -53,6 +54,7 @@ export function resetGame() {
   game.warn = false;
   game.fuel = CFG.fuel.max;
   game.hp = CFG.bus.maxHp;
+  game.hpHealCooldown = 0;
   game.comfort = CFG.comfort.max;
   game.fare = 0;
   game.pass = 0;
