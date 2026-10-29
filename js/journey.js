@@ -52,6 +52,14 @@ export function flyoverAllowed(dist) {
 export function sceneryAt(dist, side) {
   const i = stageAt(dist), st = ROUTE.stages[i], p = stageFrac(dist, i);
   let hidden = (st.zones || []).some(z => (z.side === undefined || z.side === side) && p >= z.from && p <= z.to);
+  // Stage spawn clearance: keep buildings away for 30 units around each stage spawn point
+  // so the bus and camera start in a completely clear, wide-open view without clipping!
+  if (!hidden) {
+    for (let si = 0; si < ROUTE.stages.length; si++) {
+      const spawnDist = (STAGE_START[si] || 0) + (SAFE_STAGE_OFFSET[si] || 0);
+      if (Math.abs(dist - spawnDist) < 30) { hidden = true; break; }
+    }
+  }
   if (!hidden) {
     for (const lm of st.landmarks) {
       // Single landmarks on one side keep buildings away (default 25 units) so they can be seen.

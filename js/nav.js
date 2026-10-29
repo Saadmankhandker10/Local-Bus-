@@ -8,7 +8,7 @@ import { $, clamp } from "./utils.js";
 import { game } from "./state.js";
 import { emit } from "./events.js";
 import { bus, chooseNext } from "./bus.js";
-import { SEGS, here, sample, walk, fromProgress, GRID, GRID_ROADS } from "./map.js";
+import { SEGS, here, sample, walk, fromProgress } from "./map.js";
 import { ROUTE, TOTAL, STAGE_START } from "./route.js";
 import { journey, progress } from "./journey.js";
 import { eachMark } from "./marks.js";
@@ -267,38 +267,15 @@ function drawMap(tod) {
     ctx.stroke();
   }
 
-  // Open-World Grid Roads (BLOCK = 40, ROAD = 10, N = 5)
+  // Ground & Flyover roads + perpendicular cross-road grid (চৌরাস্তা).
   ctx.beginPath();
-  for (const r of GRID_ROADS || []) {
-    if (r.dir === "Z") {
-      if (Math.abs(r.x - bx) > reach) continue;
-      ctx.moveTo(r.x, Math.max(bz - reach, r.z0));
-      ctx.lineTo(r.x, Math.min(bz + reach, r.z1));
-    } else {
-      if (Math.abs(r.z - bz) > reach) continue;
-      ctx.moveTo(Math.max(bx - reach, r.x0), r.z);
-      ctx.lineTo(Math.min(bx + reach, r.x1), r.z);
-    }
+  for (const cr of CROSS_ROADS) {
+    if (Math.abs(cr.cx - bx) > reach || Math.abs(cr.cz - bz) > reach) continue;
+    ctx.moveTo(cr.x0, cr.z0);
+    ctx.lineTo(cr.x1, cr.z1);
   }
-  ctx.lineWidth = (GRID?.ROAD || 10) * N.mapRoadScale * 1.1;
-  ctx.strokeStyle = "#4e565e";
-  ctx.stroke();
-
-  // White center divider lines
-  ctx.beginPath();
-  for (const r of GRID_ROADS || []) {
-    if (r.dir === "Z") {
-      if (Math.abs(r.x - bx) > reach) continue;
-      ctx.moveTo(r.x, Math.max(bz - reach, r.z0));
-      ctx.lineTo(r.x, Math.min(bz + reach, r.z1));
-    } else {
-      if (Math.abs(r.z - bz) > reach) continue;
-      ctx.moveTo(Math.max(bx - reach, r.x0), r.z);
-      ctx.lineTo(Math.min(bx + reach, r.x1), r.z);
-    }
-  }
-  ctx.lineWidth = 1.6;
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+  ctx.lineWidth = 14 * N.mapRoadScale;
+  ctx.strokeStyle = "#6d747b";
   ctx.stroke();
 
   for (const kind of ["street", "main", "flyover"]) {
