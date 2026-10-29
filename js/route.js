@@ -27,6 +27,7 @@ export const ROUTE = {
         { prefab: "busStand", at: 0.03, side: -1, clear: 40 },
         { prefab: "wires", every: 70, from: 0, to: 1 },
         { prefab: "teaShop", every: 160, from: 0.05, to: 0.6 },
+        { prefab: "civicMichil", at: 0.80, clear: 24 },
         { prefab: "gateArch", at: 0.82, text: "আসাদগেট" },
       ],
     },

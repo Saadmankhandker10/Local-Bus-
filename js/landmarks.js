@@ -9,7 +9,7 @@ import { makeVehicle } from "./vehicles.js";
 import { game } from "./state.js";
 import { SEGS, ahead, sample, place, fromProgress, hitsAnyRoad } from "./map.js";
 import { metroPass } from "./audio.js";
-import { BANNERS } from "./data/banners.bn.js";
+import { BANNERS, CIVIC_BANNERS } from "./data/banners.bn.js";
 
 const R = CFG.world.roadHalfWidth, J = CFG.journey, M = CFG.metro;
 
@@ -303,6 +303,106 @@ const PREFABS = {
     return g;
   },
 
+  civicMichil: () => {
+    // Asad Gate civic resident & trader procession: completely blocks the left lane (x = -R .. -0.3).
+    // Features red/white bamboo barricades, battery megaphone loudspeaker on tripod, tea stall on pavement,
+    // overhead flyover pillar accent, and local residents & shopkeepers in lungis/kurtas holding civic placards.
+    const g = new THREE.Group(), minX = -R + .6, maxX = -.3, cx = (minX + maxX) / 2, w = maxX - minX;
+    const marchers = [];
+
+    // Overhead Asad Gate flyover concrete pillar accent on the median divider.
+    const pillarMat = new THREE.MeshLambertMaterial({ color: 0x8a9296 });
+    const flyPillar = new THREE.Mesh(discGeo, pillarMat);
+    flyPillar.scale.set(1.1, 7.5, 1.1);
+    flyPillar.position.set(0, 3.75, 0);
+    g.add(flyPillar);
+    // Overhead flyover horizontal deck spanning across the road high above the scene
+    g.add(box(16, 1.3, 8.5, 0x78909c, 0, 8.1, 0));
+    for (const s of [-8, 8]) g.add(box(.2, .9, 8.5, 0x37474f, s, 9.1, 0)); // parapet walls
+
+    // Front and rear bamboo & painted barricade rails blocking the left lane.
+    for (const z of [-6.2, 6.2]) {
+      g.add(box(w, .18, .18, 0xb8322a, cx, 1.05, z)); // red rail
+      g.add(box(w, .16, .16, 0xffffff, cx, .6, z));   // white rail
+      for (let x = minX + .4; x <= maxX - .3; x += 2.2) {
+        g.add(box(.16, 1.35, .16, 0x5d4037, x, .68, z)); // wooden post
+      }
+    }
+
+    // Main front cloth banner: deep royal blue banner with gold/white civic slogan.
+    for (const dx of [-w / 2 + .5, w / 2 - .5]) g.add(box(.14, 3.6, .14, POLE, cx + dx, 1.8, 5.8));
+    const mainBanner = sign(CIVIC_BANNERS[0], 6.2, 1.15, "#1565c0", "#fff8e1");
+    mainBanner.position.set(cx, 2.75, 5.9);
+    g.add(mainBanner);
+
+    // Glowing yellow diversion sign at the median opening guiding drivers to swerve into the opposite lane.
+    const detourSign = sign("উল্টা লেনে কাটেন ►", 3.4, .88, "#ffc21a", "#1a1d1f");
+    detourSign.position.set(0.6, 1.85, 6.4);
+    g.add(detourSign);
+    for (let z = -7; z <= 7; z += 2.8) {
+      g.add(box(.45, .65, .45, 0xff6d00, 0.45, .33, z)); // orange traffic cones along the median gap
+    }
+
+    // Battery megaphone loudspeaker on high bamboo tripod stand.
+    const spkX = minX + 0.6, spkZ = 5.2;
+    g.add(box(.12, 3.2, .12, 0x6d4c41, spkX, 1.6, spkZ)); // tripod main pole
+    g.add(box(.1, 2.4, .1, 0x6d4c41, spkX - .35, 1.2, spkZ - .3));
+    g.add(box(.1, 2.4, .1, 0x6d4c41, spkX + .35, 1.2, spkZ - .3));
+    g.add(box(.55, .55, .75, 0xd4e157, spkX, 3.3, spkZ)); // speaker horn body
+    g.add(box(.75, .75, .15, 0x9e9d24, spkX, 3.3, spkZ + .4)); // flared horn mouth
+
+    // Roadside tea stall ("টং দোকান") on left sidewalk with onlookers.
+    const stallX = -R - 3.4, stallZ = 0.5;
+    g.add(box(3.2, 1.1, 1.8, 0x6d4c41, stallX, .55, stallZ)); // wooden counter
+    g.add(box(3.6, .08, 2.4, 0x546e7a, stallX, 2.4, stallZ));  // corrugated tin roof
+    g.add(box(.1, 1.4, .1, 0x37474f, stallX - 1.5, 1.7, stallZ - .9)); // roof poles
+    g.add(box(.1, 1.4, .1, 0x37474f, stallX + 1.5, 1.7, stallZ - .9));
+    g.add(box(.6, .45, .4, 0xb0bec5, stallX, 1.3, stallZ));    // silver tea kettle
+    for (const ox of [-0.9, 0.9]) {
+      const onlooker = new THREE.Group();
+      onlooker.position.set(stallX + ox, 0, stallZ + 1.4);
+      onlooker.add(box(.45, .88, .3, 0x2e7d32, 0, .94, 0));
+      onlooker.add(box(.4, .55, .26, 0x1565c0, 0, .28, 0));
+      onlooker.add(mesh(crownGeo, creamMat, 0, 1.6, 0, .22, .22, .22));
+      g.add(onlooker);
+    }
+
+    // 18 Marchers in lungis, kurtas, and polo shirts holding hand-painted civic placards.
+    const clothes = [
+      { shirt: 0x1565c0, pants: 0x2e7d32 }, // blue kurta, green lungi
+      { shirt: 0xd32f2f, pants: 0x37474f }, // red shirt, dark trousers
+      { shirt: 0xfff8e1, pants: 0x1a237e }, // white punjabi, blue lungi
+      { shirt: 0xf57c00, pants: 0x4e342e }, // orange polo, brown pants
+      { shirt: 0x388e3c, pants: 0x212121 }, // green kurta, black lungi
+      { shirt: 0x7b1fa2, pants: 0x455a64 }, // purple shirt, grey trousers
+    ];
+    for (let i = 0; i < 18; i++) {
+      const m = new THREE.Group();
+      const col = i % 4, row = Math.floor(i / 4);
+      const sx = minX + .7 + col * ((w - 1.4) / 3) + rnd(-.25, .25);
+      const sz = -4.5 + row * 2.8 + rnd(-.3, .3);
+      m.position.set(sx, 0, sz);
+      const dress = clothes[i % clothes.length];
+      m.add(box(.46, .88, .3, dress.shirt, 0, .94, 0));     // shirt / kurta
+      m.add(box(.42, .58, .28, dress.pants, 0, .29, 0));     // lungi / trousers
+      m.add(mesh(crownGeo, creamMat, 0, 1.6, 0, .23, .23, .23)); // head
+      if (i % 2 === 0 || i === 5 || i === 11) {
+        const slogan = CIVIC_BANNERS[(i + 1) % CIVIC_BANNERS.length];
+        const bg = pick(["#fff8e1", "#ffc21a", "#e1f5fe", "#e8f5e9"]);
+        const fg = bg === "#ffc21a" ? "#1a1d1f" : "#0d47a1";
+        m.add(box(.08, 1.85, .08, 0x5d4037, .22, 1.95, 0)); // placard stick
+        const placard = sign(slogan, 3.2, .75, bg, fg);
+        placard.position.set(.22, 2.75, .06);
+        m.add(placard);
+      }
+      m.userData.phase = i * .65;
+      g.add(m);
+      marchers.push(m);
+    }
+    g.userData.students = marchers;
+    return g;
+  },
+
   banyan: ({ side }) => {
     // Wide, low banyan trees with a thick trunk and hanging roots.
     const g = new THREE.Group(), x = side * rnd(R + 4, R + 7);
@@ -392,7 +492,7 @@ const PREFABS = {
 // These stretch across the road, so they get one placement and no side.
 const ACROSS = new Set([
   "stageGate", "wires", "gateArch", "marketSign",
-  "footbridge", "metroStation", "crossing", "junctionFlyover", "studentDemo", "finishBanner",
+  "footbridge", "metroStation", "crossing", "junctionFlyover", "studentDemo", "civicMichil", "finishBanner",
 ]);
 
 /* ====== Overhead Metro Train (4 carriages that bend along the viaduct spline) ====== */

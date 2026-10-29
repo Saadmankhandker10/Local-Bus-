@@ -105,7 +105,8 @@ const LAKE_PTS = [];
 // Key Dhaka landmarks pinned on the 4D map with 3D labels.
 const MAP_PINS = [
   { progFrac: 0.01, side: -1, icon: "🚏", name: "মোহাম্মদপুর বাসস্ট্যান্ড" },
-  { progFrac: 0.22, side: 0,  icon: "⛩", name: "আসাদগেট" },
+  { progFrac: 0.21, side: 0,  icon: "📢", name: "আসাদ গেট মিছিল" },
+  { progFrac: 0.23, side: 0,  icon: "⛩", name: "আসাদগেট" },
   { progFrac: 0.36, side: 1,  icon: "🌊", name: "ধানমন্ডি লেক" },
   { progFrac: 0.56, side: 0,  icon: "🌉", name: "সায়েন্সল্যাব মোড়" },
   { progFrac: 0.69, side: 0,  icon: "✊", name: "শাহবাগ মিছিল" },
@@ -627,6 +628,9 @@ function init4DMapModal() {
   if ($("mapZoomIn")) $("mapZoomIn").onclick = () => { bigZoom = clamp(bigZoom * 1.3, 0.45, 4.5); drawBig4DMap(timeOfDayInfo(progress(game.prog))); };
   if ($("mapZoomOut")) $("mapZoomOut").onclick = () => { bigZoom = clamp(bigZoom / 1.3, 0.45, 4.5); drawBig4DMap(timeOfDayInfo(progress(game.prog))); };
   if ($("mapResetView")) $("mapResetView").onclick = () => { bigPanX = 0; bigPanZ = 0; bigZoom = 1.0; drawBig4DMap(timeOfDayInfo(progress(game.prog))); };
+
+  const urlParams = typeof window !== "undefined" && window.location ? new URLSearchParams(window.location.search) : null;
+  if (urlParams && urlParams.get("map") === "1") setTimeout(() => toggleModal(true), 400);
 
   addEventListener("keydown", e => {
     if (e.code === "Tab") {

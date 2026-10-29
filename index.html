@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/tokens.css">
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css?v=2.2">
 <!-- The import map lets every module write `import * as THREE from "three"`.
      The version is pinned so a Three.js update can never break the game by surprise. -->
 <script type="importmap">
@@ -160,6 +160,14 @@
         <option value="2">২ — কড়া রাস্তার বুলি (Louder banter)</option>
       </select>
     </label>
+    <label class="srow"><span>সাবটাইটেল স্টাইল (Subtitles)</span>
+      <select id="setSubtitles">
+        <option value="bottom" selected>স্ক্রিনের নিচে (ক্লিন ও পরিষ্কার)</option>
+        <option value="compact">ছোট ও দ্রুত অদৃশ্য</option>
+        <option value="bubble">মাঝের স্পিচ বাবল সহ</option>
+        <option value="off">বন্ধ (No Subtitles)</option>
+      </select>
+    </label>
     <label class="srow"><span>গ্রাফিক্স মান (Graphics)</span>
       <select id="setQuality">
         <option value="auto" selected>অটো (Auto FPS)</option>
@@ -197,6 +205,7 @@
       <span>🟢 সিএনজি/রিকশা</span>
       <span>⛽ সিএনজি স্টেশন</span>
       <span>👮 পুলিশ</span>
+      <span>📢 আসাদ গেট মিছিল</span>
       <span>✊ শাহবাগ মিছিল</span>
     </div>
     <div class="btns">
@@ -217,7 +226,7 @@
   <div><button id="tb">■</button><button id="tboost">⚡</button><button id="tg">▲</button></div>
 </div>
 
-<script type="module" src="js/main.js"></script>
+<script type="module" src="js/main.js?v=2.2"></script>
 <script>
   // Boot guard: if ES modules or WebGL fail to load within 6 seconds, show a helpful message.
   setTimeout(function () {

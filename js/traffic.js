@@ -13,6 +13,7 @@ import { sweptHit, sideGap } from "./physics.js";
 import { makeVehicle, makeStall, makePillar, makeManhole, makeTrench, makeRamp, beaconMat } from "./vehicles.js";
 import { currentStage } from "./journey.js";
 import { SEGS, here, ahead, walk, place, lanesOf } from "./map.js";
+import { PROCESSION_EVENTS } from "./data/events.js";
 
 const T = CFG.traffic, B = CFG.bus, I = CFG.impact, W = CFG.warning, J = CFG.jam, PED = CFG.pedestrians, HZ = CFG.hazards;
 const LIGHT = T.types.filter(t => !t.heavy);
@@ -20,7 +21,13 @@ const TRENCH_DEF = { name: "trench", w: 2.6, l: 4.8, h: 1.2, mass: 0.8, damage: 
 const MANHOLE_DEF = { name: "manhole", w: 1.35, l: 1.35, h: 0.3, mass: 0.2, damage: 15, hazard: true };
 const RAMP_DEF = { name: "ramp", w: 3.2, l: 6.2, h: 1.35, mass: 0, damage: HZ.rampBonus, isRamp: true };
 const jamSeg = SEGS.findIndex(s => s.id === J.segId);
+const PROC_MAP = new Map();
+for (const ev of PROCESSION_EVENTS) {
+  const idx = SEGS.findIndex(s => s.id === ev.segId);
+  if (idx >= 0) PROC_MAP.set(idx, { ...ev, segIdx: idx });
+}
 let jamHornT = 0, demoWarnT = 0, pedWarnT = 0;
+const procPassedSet = new Set();
 
 const objs = [];      // everything currently on the road
 const peds = [];      // crossing pedestrians + ejected angry drivers
@@ -65,6 +72,7 @@ export function resetTraffic(fromDist = 0) {
   nextManhole = fromDist + rnd(85, HZ.manholeGapMax);
   nextRamp = fromDist + rnd(140, HZ.rampGapMax);
   jamHornT = demoWarnT = pedWarnT = 0;
+  procPassedSet.clear();
   pillarsDone.clear();
 }
 
@@ -231,6 +239,13 @@ function spawn(dt) {
 function drive(o, dt) {
   if (o.dir < 0) {
     // Oncoming vehicles stay in the right-hand lanes and cruise steadily towards the bus.
+    const proc = PROC_MAP.get(o.seg);
+    if (proc && proc.openCorridor === "wrong-way") {
+      const S = SEGS[proc.segIdx], f = o.s / S.len;
+      if (f >= proc.fromFrac && f <= proc.toFrac) {
+        o.targetX = 5.0; // Near Asad Gate procession, oncoming traffic hugs outer shoulder leaving inner lane open
+      }
+    }
     const rLanes = [2.5, 5];
     o.targetX = clamp(o.targetX, rLanes[0], rLanes[1]);
     o.x += (o.targetX - o.x) * ease(T.laneResponse, dt);
@@ -256,14 +271,17 @@ function drive(o, dt) {
   if (t.laneChange && Math.random() < t.laneChange * dt) {
     o.targetX = clamp(o.targetX + pick([-1, 1]) * T.laneWidth, lmin, lmax); // CNGs love cutting lanes
   }
-  // Shahbagh student demonstration jam: traffic slows to a crawl and merges into the open left lane.
-  if (o.seg === jamSeg) {
-    const S = SEGS[jamSeg], f = o.s / S.len, barS = S.len * J.barricadeAt;
-    if (f >= J.from && f <= J.to) {
-      targetV = Math.min(targetV, J.maxTrafficSpeed);
-      if (o.s < barS + J.barricadeHalfLen && o.targetX > J.barricadeMinX - t.w / 2 - .3) {
+  // Procession & demonstration jam: traffic slows to a crawl and merges into open lane / wrong lane.
+  const proc = PROC_MAP.get(o.seg);
+  if (proc) {
+    const S = SEGS[proc.segIdx], f = o.s / S.len, barS = S.len * proc.barricadeAt;
+    if (f >= proc.fromFrac && f <= proc.toFrac) {
+      targetV = Math.min(targetV, proc.maxTrafficSpeed);
+      if (proc.openCorridor === "left-lane" && o.s < barS + proc.barricadeHalfLen && o.targetX > proc.barricadeMinX - t.w / 2 - .3) {
         o.targetX = lmin;
-        if (o.s > barS - J.barricadeHalfLen - 4 && o.x > J.barricadeMinX - .4) targetV = 0;
+        if (o.s > barS - proc.barricadeHalfLen - 4 && o.x > proc.barricadeMinX - .4) targetV = 0;
+      } else if (proc.openCorridor === "wrong-way" && o.targetX < 0) {
+        if (o.s > barS - proc.barricadeHalfLen - 6 && o.s < barS + proc.barricadeHalfLen) targetV = 0;
       }
     }
   }
@@ -361,27 +379,47 @@ export function updateTraffic(dt) {
   spawn(dt);
   game.invulnT = Math.max(0, game.invulnT - dt);
 
-  // Shahbagh student demonstration barricade: solid, non-crashable moving roadblock + traffic jam horns.
-  if (here.seg === jamSeg && !game.crashing && !game.caught) {
-    const S = SEGS[jamSeg], f = here.s / S.len, barS = S.len * J.barricadeAt;
-    if (f >= J.from && f <= J.to && game.time > jamHornT) {
-      jamHornT = game.time + J.hornInterval * rnd(.7, 1.3);
+  // Shahbagh / Asad Gate procession barricades: solid, non-crashable moving roadblock + traffic jam horns.
+  const activeProc = PROC_MAP.get(here.seg);
+  if (activeProc && !game.crashing && !game.caught) {
+    const S = SEGS[activeProc.segIdx], f = here.s / S.len, barS = S.len * activeProc.barricadeAt;
+    if (f >= activeProc.fromFrac && f <= activeProc.toFrac && game.time > jamHornT) {
+      jamHornT = game.time + activeProc.hornInterval * rnd(.7, 1.3);
       emit("jamHorn");
     }
-    const halfSpan = J.barricadeHalfLen + B.hitHalfLength;
-    if (Math.abs(here.s - barS) < halfSpan && game.lat + B.hitHalfWidth > J.barricadeMinX) {
-      if (here.s < barS - J.barricadeHalfLen + 1.5 && game.lat + B.hitHalfWidth > J.barricadeMinX + .35) {
+    const halfSpan = activeProc.barricadeHalfLen + B.hitHalfLength;
+    const minX = activeProc.barricadeMinX;
+    const maxX = activeProc.barricadeMaxX !== null ? activeProc.barricadeMaxX : S.half;
+    const busLeft = game.lat - B.hitHalfWidth;
+    const busRight = game.lat + B.hitHalfWidth;
+    const hitBlockade = busRight > minX && busLeft < maxX;
+
+    if (Math.abs(here.s - barS) < halfSpan && hitBlockade) {
+      if (here.s < barS - activeProc.barricadeHalfLen + 1.5) {
         game.speed = 0;
         game.boostT = 0;
         here.s = Math.min(here.s, barS - halfSpan + .2);
-        game.lat -= 2.2 * dt; // gently guide the nose towards the open left lane
+        if (activeProc.openCorridor === "wrong-way") {
+          game.lat += 2.6 * dt; // gently guide right through median opening into opposite lane!
+        } else {
+          game.lat -= 2.2 * dt; // gently guide left towards open left lane (Shahbagh)
+        }
       } else {
-        game.lat = Math.min(game.lat, J.barricadeMinX - B.hitHalfWidth);
+        if (activeProc.openCorridor === "wrong-way") {
+          game.lat = Math.max(game.lat, maxX + B.hitHalfWidth);
+        } else {
+          game.lat = Math.min(game.lat, minX - B.hitHalfWidth);
+        }
       }
       if (game.time > demoWarnT) {
         demoWarnT = game.time + 3.5;
-        emit("demoBlocked");
+        emit("processionBlocked", { event: activeProc });
+        if (activeProc.id === "shahbag-demo") emit("demoBlocked");
       }
+    }
+    if (here.s > barS + activeProc.barricadeHalfLen + 1 && here.s < barS + activeProc.barricadeHalfLen + 30 && !procPassedSet.has(activeProc.id)) {
+      procPassedSet.add(activeProc.id);
+      emit("processionPassed", { event: activeProc });
     }
   }
 

@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { CFG } from "./config.js";
 import { rnd, pick } from "./utils.js";
 import { SEGS, here, sample, place, ahead, progressOf, hitsAnyRoad } from "./map.js";
+import { getProcessionBySegId } from "./data/events.js";
 
 const W = CFG.world;
 
@@ -216,6 +217,12 @@ function buildRoads() {
         if (d < 14 || d > S.len - 14) return true;
         for (const j of S.junctions || []) {
           if (Math.abs(d - j.at * S.len) < 12) return true;
+        }
+        const proc = getProcessionBySegId(S.id);
+        if (proc) {
+          if (proc.entryMedianGap && Math.abs(d - proc.entryMedianGap * S.len) < 14) return true;
+          if (proc.exitMedianGap && Math.abs(d - proc.exitMedianGap * S.len) < 14) return true;
+          if (Math.abs(d - proc.barricadeAt * S.len) < proc.barricadeHalfLen + 4) return true;
         }
         return (d % 80) > 68;
       };

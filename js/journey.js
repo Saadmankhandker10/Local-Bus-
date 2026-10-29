@@ -90,12 +90,26 @@ export function resetJourney(fromCheckpoint) {
     game.pass = cp.pass;
     game.journeyT = cp.time;
   } else {
-    autoRotateIdx = (autoRotateIdx + 1) % 3;
-    const startSt = game.startStage >= 0 ? game.startStage : autoRotateIdx;
-    journey.stage = startSt;
-    journey.cp = null;
-    game.dist = game.prog = (STAGE_START[startSt] || 0) + (SAFE_STAGE_OFFSET[startSt] || 0);
-    game.journeyT = 0;
+    const urlParams = typeof window !== "undefined" && window.location ? new URLSearchParams(window.location.search) : null;
+    const startParam = urlParams ? urlParams.get("start") : null;
+    if (startParam === "shahbag") {
+      journey.stage = 2;
+      journey.cp = null;
+      game.dist = game.prog = (STAGE_START[2] || 0) + (ROUTE.stages[2].length * 0.65);
+      game.journeyT = 0;
+    } else if (startParam === "asadgate" || game.startStage === "asadgate") {
+      journey.stage = 0;
+      journey.cp = null;
+      game.dist = game.prog = 2205;
+      game.journeyT = 0;
+    } else {
+      autoRotateIdx = (autoRotateIdx + 1) % 3;
+      const startSt = game.startStage >= 0 ? game.startStage : autoRotateIdx;
+      journey.stage = startSt;
+      journey.cp = null;
+      game.dist = game.prog = (STAGE_START[startSt] || 0) + (SAFE_STAGE_OFFSET[startSt] || 0);
+      game.journeyT = 0;
+    }
   }
   journey.stageStartDamage = game.damage;
   journey.stageStartFare = game.fare;

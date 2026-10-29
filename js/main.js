@@ -60,7 +60,12 @@ function start(fromCheckpoint) {
   setPaused(false);
   hideScreen();
   startRunVideo(renderer.domElement);
-  helperSays(lineFrom("helperStop", currentStage().id));
+  const urlParams = typeof window !== "undefined" && window.location ? new URLSearchParams(window.location.search) : null;
+  if (game.startStage === "asadgate" || (urlParams && urlParams.get("start") === "asadgate")) {
+    helperSays("ওস্তাদ, সামনে আসাদ গেটে মিছিল! আস্তে!");
+  } else {
+    helperSays(lineFrom("helperStop", currentStage().id));
+  }
 }
 
 const startMain = () => start(lastEnd === "fail");
@@ -156,7 +161,20 @@ on("projectileHit", () => {
 });
 
 // Shahbagh student demonstration barricade, crossing pedestrians, boarding, refueling, jam horns, mirrors, ramps, and cutscene whistle.
+on("processionBlocked", e => {
+  const ev = e?.event;
+  if (ev?.dialogueKey) helperSays(lineFrom(ev.dialogueKey));
+  else helperSays(lineFrom("demoBlock"));
+});
 on("demoBlocked", () => helperSays(lineFrom("demoBlock")));
+on("processionPassed", e => {
+  const ev = e?.event;
+  if (ev?.id === "asadgate-michil") {
+    helperSays("মিছিল পার হইছে ওস্তাদ! এবার নিজের লেনে ফিরে আসেন!");
+  } else {
+    helperSays("বাঁচলাম ওস্তাদ, আর একটু হইলে জ্যামে মরতাম!");
+  }
+});
 on("pedScared", () => helperSays(lineFrom("pedScared")));
 on("board", () => boardDing());
 on("refuel", () => refuelSound());
@@ -333,6 +351,10 @@ document.addEventListener("visibilitychange", () => { if (document.hidden) setPa
 
 // Mark the engine as booted for the index.html boot guard and register the PWA service worker.
 window.__localBusBooted = true;
+const devUrlParams = typeof window !== "undefined" && window.location ? new URLSearchParams(window.location.search) : null;
+if (devUrlParams && (devUrlParams.get("start") || devUrlParams.get("autostart"))) {
+  setTimeout(() => startFresh(), 150);
+}
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
   navigator.serviceWorker.register("./sw.js").catch(() => {});
 }

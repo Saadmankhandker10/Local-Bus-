@@ -146,7 +146,12 @@ on("morPass", e => {
 on("chaseStart", () => msg("পাবলিক দৌড়াচ্ছে! পালান! 🏃", 1400));
 on("crowdGaveUp", () => msg("পাবলিক হাল ছেড়ে দিল 😅", 1400));
 on("refuel", () => msg("সিএনজি ভরা হচ্ছে… ⛽", 900));
+on("processionBlocked", e => {
+  const ev = e?.event;
+  msg(ev?.alertMsg || "✊ ছাত্রদের মিছিল — বাম লেন বা কাঁটাবনের গলি ধরেন!", 1800);
+});
 on("demoBlocked", () => msg("✊ ছাত্রদের মিছিল — বাম লেন বা কাঁটাবনের গলি ধরেন!", 1800));
+on("processionPassed", () => msg("✅ মিছিল পার হইছেন! এবার সোজা টানেন!", 1600));
 on("projectileHit", e => msg(`💥 পাবলিকের ${e.item} লাগছে! ডানে-বামে কাটিয়ে পালান!`, 1100));
 on("pedScared", () => msg("🚶 পথচারী পার হচ্ছে — হর্ন (H) দিন!", 1200));
 
@@ -233,6 +238,7 @@ export function onStartPressed(main, fromStart) {
   if ($("startPlaceBtn")) {
     const spots = [
       { idx: 0,  label: "মোহাম্মদপুর বাসস্ট্যান্ড (শুরু থেকে)" },
+      { idx: "asadgate", label: "আসাদ গেট মিছিল (সরাসরি সমাবেশ)" },
       { idx: 1,  label: "ধানমন্ডি ২৭ — লেকপাড়" },
       { idx: 2,  label: "সায়েন্সল্যাব — শাহবাগ মোড়" },
       { idx: 3,  label: "ঢাকা বিশ্ববিদ্যালয় — টিএসসি" },
@@ -288,6 +294,13 @@ function initModalsAndPwa() {
   }
   if ($("setRude")) {
     $("setRude").onchange = e => { CFG.speech.rudeness = Number(e.target.value); };
+  }
+  if ($("setSubtitles")) {
+    const savedSub = localStorage.getItem("lb_subtitles") || "bottom";
+    $("setSubtitles").value = savedSub;
+    $("setSubtitles").onchange = e => {
+      localStorage.setItem("lb_subtitles", e.target.value);
+    };
   }
   if ($("setQuality")) {
     $("setQuality").onchange = e => {

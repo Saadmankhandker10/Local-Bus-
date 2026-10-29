@@ -32,13 +32,21 @@ export function lineFrom(situation, key) {
  */
 export function say(who, text, seconds = S.subtitleSeconds, onBus = false) {
   if (!text) return;
+  const mode = $("setSubtitles")?.value || (typeof localStorage !== "undefined" ? localStorage.getItem("lb_subtitles") : null) || "bottom";
+  if (mode === "off") {
+    $("subtitle").hidden = true;
+    $("bubble").hidden = true;
+    return;
+  }
   $("subtitle").textContent = `${who}: ${text}`;
   $("subtitle").hidden = false;
-  subT = seconds;
-  if (onBus) {
+  subT = mode === "compact" ? Math.min(1.4, seconds * 0.65) : Math.min(1.9, seconds);
+  if (onBus && mode === "bubble") {
     $("bubble").textContent = text;
     $("bubble").hidden = false;
-    bubbleT = seconds;
+    bubbleT = subT;
+  } else {
+    $("bubble").hidden = true;
   }
 }
 
