@@ -1,4 +1,4 @@
-﻿// The player's bus: its 3D model, arcade driving physics, and fuel use.
+// The player's bus: its 3D model, arcade driving physics, and fuel use.
 import * as THREE from "three";
 import { CFG } from "./config.js";
 import { clamp, pick, rnd } from "./utils.js";

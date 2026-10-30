@@ -41,7 +41,7 @@ for (const st of ROUTE.stages) {
   seg.className = "seg";
   seg.style.flexGrow = st.length;
   seg.textContent = st.name;
-  $("ptrack").appendChild(seg);
+  if ($("ptrack")) $("ptrack").appendChild(seg);
 }
 if ($("tickerTrack")) {
   $("tickerTrack").textContent = TICKER.join("   ✦   ") + "   ✦   " + TICKER.join("   ✦   ");

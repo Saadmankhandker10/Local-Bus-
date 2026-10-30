@@ -1,4 +1,4 @@
-﻿// Entry point: starts input, runs the game loop, and handles starting, pausing, and ending a run.
+// Entry point: starts input, runs the game loop, and handles starting, pausing, and ending a run.
 import { CFG } from "./config.js";
 import { game, resetGame } from "./state.js";
 import { on, emit } from "./events.js";
@@ -43,30 +43,36 @@ let hornT = 0, shoutBtnT = 0; // earliest time the next horn / shout may play
  * @param {boolean} fromCheckpoint
  */
 function start(fromCheckpoint) {
-  resetGame();
-  resetScore();
-  resetJourney(fromCheckpoint && !!journey.cp);
-  resetTraffic(game.dist);
-  resetMarks(game.dist);
-  resetLandmarks(game.prog);
-  resetWorld();
-  resetCrowd();
-  resetNav();
-  clearSpeech();
-  resetBus(game.prog);
-  resetCamera(!(fromCheckpoint && !!journey.cp));
-  updateWorld();
-  updateLandmarks();
-  game.running = true;
-  game.autopilot = false;
-  setPaused(false);
-  hideScreen();
-  startRunVideo(renderer.domElement);
-  const urlParams = typeof window !== "undefined" && window.location ? new URLSearchParams(window.location.search) : null;
-  if (game.startStage === "asadgate" || (urlParams && urlParams.get("start") === "asadgate")) {
-    helperSays("ওস্তাদ, সামনে আসাদ গেটে মিছিল! আস্তে!");
-  } else {
-    helperSays(lineFrom("helperStop", currentStage().id));
+  try {
+    resetGame();
+    resetScore();
+    resetJourney(fromCheckpoint && !!journey.cp);
+    resetTraffic(game.dist);
+    resetMarks(game.dist);
+    resetLandmarks(game.prog);
+    resetWorld();
+    resetCrowd();
+    resetNav();
+    clearSpeech();
+    resetBus(game.prog);
+    resetCamera(!(fromCheckpoint && !!journey.cp));
+    updateWorld();
+    updateLandmarks();
+    game.running = true;
+    game.autopilot = false;
+    setPaused(false);
+    hideScreen();
+    startRunVideo(renderer.domElement);
+    const urlParams = typeof window !== "undefined" && window.location ? new URLSearchParams(window.location.search) : null;
+    if (game.startStage === "asadgate" || (urlParams && urlParams.get("start") === "asadgate")) {
+      helperSays("ওস্তাদ, সামনে আসাদ গেটে মিছিল! আস্তে!");
+    } else {
+      helperSays(lineFrom("helperStop", currentStage().id));
+    }
+  } catch (err) {
+    console.error("Game start error:", err);
+    hideScreen();
+    game.running = true;
   }
 }
 
@@ -331,29 +337,38 @@ function render(dt) {
   drawNav(dt);
 }
 
-initWorld(sceneryAt);
-// Behind the title screen: the bus stand at Mohammadpur, early morning.
-resetBus(0);
-resetCamera();
-updateWorld();
-resetLandmarks(0);
-updateLandmarks();
-resetTraffic(0);
-
-initInput(onPauseInput);
-onAnyInput(unlockAudio);
-onTap("horn", doHorn);
-onTap("shout", doShout);
-onTap("mute", doMute);
-$("soundbtn").textContent = isMuted() ? "🔇" : "🔊";
-$("soundbtn").onclick = () => { unlockAudio(); doMute(); };
-onStartPressed(startMain, startFresh);
-onPauseButton(() => setPaused(!game.paused));
-// Switching to another tab pauses the run, so nobody crashes while away.
-document.addEventListener("visibilitychange", () => { if (document.hidden) setPaused(true); });
-
-// Mark the engine as booted for the index.html boot guard and register the PWA service worker.
+// Mark the engine as loaded and bind start buttons immediately
 window.__localBusBooted = true;
+onStartPressed(startMain, startFresh);
+
+try {
+  initWorld(sceneryAt);
+  // Behind the title screen: the bus stand at Mohammadpur, early morning.
+  resetBus(0);
+  resetCamera();
+  updateWorld();
+  resetLandmarks(0);
+  updateLandmarks();
+  resetTraffic(0);
+} catch (err) {
+  console.warn("Initial scene layout warning:", err);
+}
+
+try {
+  initInput(onPauseInput);
+  onAnyInput(unlockAudio);
+  onTap("horn", doHorn);
+  onTap("shout", doShout);
+  onTap("mute", doMute);
+  if ($("soundbtn")) {
+    $("soundbtn").textContent = isMuted() ? "🔇" : "🔊";
+    $("soundbtn").onclick = () => { unlockAudio(); doMute(); };
+  }
+  onPauseButton(() => setPaused(!game.paused));
+  document.addEventListener("visibilitychange", () => { if (document.hidden) setPaused(true); });
+} catch (err) {
+  console.error("Input setup warning:", err);
+}
 const devUrlParams = typeof window !== "undefined" && window.location ? new URLSearchParams(window.location.search) : null;
 if (devUrlParams && (devUrlParams.get("start") || devUrlParams.get("autostart"))) {
   setTimeout(() => startFresh(), 150);

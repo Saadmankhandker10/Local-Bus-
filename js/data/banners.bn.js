@@ -1,4 +1,4 @@
-﻿// Light-hearted, neutral student slogans for the Shahbagh demonstration banners.
+// Light-hearted, neutral student slogans for the Shahbagh demonstration banners.
 // Keep every line playful, everyday campus humour — no real politics, parties, or people.
 
 export const BANNERS = [

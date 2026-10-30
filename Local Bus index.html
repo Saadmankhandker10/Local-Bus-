@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/tokens.css">
-<link rel="stylesheet" href="css/style.css?v=2.2">
+<link rel="stylesheet" href="css/style.css?v=2.4">
 <!-- The import map lets every module write `import * as THREE from "three"`.
      The version is pinned so a Three.js update can never break the game by surprise. -->
 <script type="importmap">
@@ -226,13 +226,15 @@
   <div><button id="tb">■</button><button id="tboost">⚡</button><button id="tg">▲</button></div>
 </div>
 
-<script type="module" src="js/main.js?v=2.2"></script>
+<script type="module" src="js/main.js?v=2.4"></script>
 <script>
-  // Boot guard: if ES modules or WebGL fail to load within 6 seconds, show a helpful message.
+  // Boot guard: if ES modules or WebGL fail to load within 6 seconds, show a helpful message and force-reload button.
   setTimeout(function () {
     if (!window.__localBusBooted) {
       var s = document.getElementById("sub");
-      if (s) s.innerHTML = "⚠ গেমটির 3D ইঞ্জিন লোড হতে সমস্যা হচ্ছে। ইন্টারনেট সংযোগ বা ব্রাউজার চেক করে পেজটি রিলোড করুন।";
+      if (s) {
+        s.innerHTML = "⚠ গেমটির 3D ইঞ্জিন লোড হতে সমস্যা হচ্ছে।<br><button type='button' onclick='if (\"serviceWorker\" in navigator) { navigator.serviceWorker.getRegistrations().then(function(r){ for(var i=0;i<r.length;i++) r[i].unregister(); location.reload(true); }); } else { location.reload(true); }' style='margin-top:10px;padding:8px 16px;background:#e53935;color:#fff;border:none;border-radius:6px;font-size:14px;font-weight:bold;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.4);'>🔄 ক্যাশ ক্লিয়ার করে রিলোড করুন</button>";
+      }
     }
   }, 6000);
 </script>

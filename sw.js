@@ -1,14 +1,18 @@
 // Service worker: a small background script that saves a copy of the game's files in the
 // browser, so the game can open as an installed app and still work when the internet drops.
-const CACHE = "localbus-v2";
+const CACHE = "localbus-v2.4";
 
 self.addEventListener("install", e => {
   self.skipWaiting();
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(["./", "./index.html", "./css/tokens.css", "./css/style.css"])));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(["./", "./index.html", "./css/tokens.css", "./css/style.css?v=2.4"])));
 });
 
 self.addEventListener("activate", e => {
-  e.waitUntil(self.clients.claim());
+  e.waitUntil(
+    caches.keys().then(keys => Promise.all(
+      keys.filter(k => k !== CACHE).map(k => caches.delete(k))
+    )).then(() => self.clients.claim())
+  );
 });
 
 // Network-first strategy: always fetches your latest Live Server edits first, falling back to cache offline.

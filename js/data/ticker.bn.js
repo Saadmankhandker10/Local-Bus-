@@ -1,4 +1,4 @@
-﻿// Satirical Dhaka traffic news lines for the bottom LED marquee ticker.
+// Satirical Dhaka traffic news lines for the bottom LED marquee ticker.
 // Keep every item light-hearted, fictional everyday street humour.
 
 export const TICKER = [
