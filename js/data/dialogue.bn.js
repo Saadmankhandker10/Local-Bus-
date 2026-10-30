@@ -1,4 +1,4 @@
-// Bangla lines, grouped by situation and rudeness level.
+﻿// Bangla lines, grouped by situation and rudeness level.
 // Level 0 = no insults, 1 = mild Dhaka banter (default), 2 = louder street banter.
 // A setting of N uses every line from level 0 up to N.
 // Hard limits at every level: no slurs, nothing about religion, ethnicity, gender, region,

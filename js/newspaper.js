@@ -1,4 +1,4 @@
-// The fake newspaper front page shown at the end of every run, and its "save as image".
+﻿// The fake newspaper front page shown at the end of every run, and its "save as image".
 import { CFG } from "./config.js";
 import { $, pick } from "./utils.js";
 import { PAPER, HEADLINES, STORIES } from "./data/headlines.bn.js";

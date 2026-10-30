@@ -58,7 +58,6 @@ function onBusRoad(seg) {
 }
 
 /** Remove everything and restart all spawn counters from this odometer distance. */
-/**Remove everything and restart all spawn counters from this odometer distance. */
 export function resetTraffic(fromDist = 0) {
   for (const o of objs) scene.remove(o.m);
   for (const p of peds) scene.remove(p.m);
@@ -164,6 +163,14 @@ function spawn(dt) {
     // Under a flyover the middle lane belongs to the pillars.
     let lanes = lanesOf(spot.seg, T.lanes);
     if (underFlyover(spot.seg, spot.s)) lanes = lanes.filter(l => l !== 0);
+    const proc = PROC_MAP.get(spot.seg);
+    if (proc && proc.openCorridor === "wrong-way") {
+      const pf = spot.s / S.len;
+      if (pf >= proc.fromFrac && pf <= proc.toFrac) {
+        // Keep inner bypass lane clear so oncoming vehicles do not spawn directly in front of bypassing bus
+        lanes = lanes.filter(l => l <= 0 || l > 3.5);
+      }
+    }
     const x = pick(lanes) + rnd(-T.laneJitter, T.laneJitter);
     if (ahead(spot.seg, spot.s) > T.spawnAhead * .5 && !spawnBlocked(spot.seg, spot.s, x)) add(t, makeVehicle(t), spot.seg, spot.s, x, false);
   }

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1f6b3a">
+<title>লোকাল বাস — ঢাকা রুট | Local Bus: Dhaka Route</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/style.css?v=2.2">
+<!-- The import map lets every module write `import * as THREE from "three"`.
+     The version is pinned so a Three.js update can never break the game by surprise. -->
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+<div id="speedlines"></div>
+<div id="vignette"></div>
+<div id="crowdcue"></div>
+<div id="progress" hidden><div id="ptrack"></div><div id="pbus">🚌</div></div>
+
+<!-- Top-left big Bangla damage/score counter + compact bus stats -->
+<div id="hud">
+  <div id="scoreHero">
+    <span class="hero-tag" data-i18n="lblDamage">রাস্তার ড্যামেজ</span>
+    <div id="bigScoreRow"><b id="damage">৳০</b> <span id="combo"></span></div>
+  </div>
+  <div id="hudPills">
+    <div class="box"><span data-i18n="lblFare">ভাড়া</span> <b id="fare">৳০</b></div>
+    <div class="box"><span data-i18n="lblPass">যাত্রী</span> <b id="pass">০</b></div>
+    <div class="box"><span data-i18n="lblSpd">গতি</span> <b id="spd">০</b></div>
+    <div class="box"><span data-i18n="lblDist">দূরত্ব</span> <b id="dist">০.০</b> <small>কিমি</small></div>
+    <div class="box" id="hpbox"><span data-i18n="lblHp">🚌 বডি</span><div class="bar"><i id="hpbar"></i></div></div>
+    <div class="box" id="comfortbox"><span data-i18n="lblComfort">😊 স্বস্তি</span><div class="bar"><i id="comfortbar"></i></div></div>
+  </div>
+  <div id="placeCard"><span class="live-dot"></span><span id="placeText">সরাসরি · মোহাম্মদপুর মোড়</span></div>
+</div>
+
+<!-- Top-centre red pill when the public is chasing behind the bus + yellow Wrong-Way multiplier pill -->
+<div id="crowdbox" hidden>
+  <span id="crowdText">পাবলিক পিছে! ৬ জন!</span>
+  <div class="bar" hidden><i id="crowdbar"></i></div>
+</div>
+<div id="wrongWay" hidden>⚠ উল্টো পথ · ক্ষতি ×১.৫</div>
+<div id="floaters"></div>
+<div id="meme" hidden>🚀 ঠেলায় চড়ে উড়ন্ত লোকাল বাস! +৳১,০০০</div>
+
+<!-- Top-right fuel card + circular street-radar minimap + upcoming mark pill -->
+<div id="nav" hidden>
+  <div id="fuelbox">
+    <div id="fuelLabel"><span data-i18n="lblFuel">তেল</span> <b id="fuelPct">১০০%</b></div>
+    <div id="fuelTrack"><i id="fuelbar"></i></div>
+  </div>
+  <div id="mapWrap" title="ম্যাপ বড় করে দেখতে ক্লিক করুন (Tab)">
+    <canvas id="minimap"></canvas>
+  </div>
+  <div id="markPill">
+    <span id="cngHint"></span>
+    <div id="gps">
+      <div id="gpsTo"><svg id="gpsArrow" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1 L18 18 L10 13 L2 18 Z"/></svg><span id="gpsDest"></span></div>
+      <div id="gpsNext" hidden></div>
+    </div>
+  </div>
+</div>
+
+<div id="msg"></div>
+<div id="dmgPop"></div>
+<div id="warn" hidden>⚠ সামনে বিপদ!</div>
+<div id="subtitle" hidden></div>
+<div id="stagecard" hidden><div id="cardTitle"></div><div id="cardBody"></div></div>
+<div id="screen">
+  <div id="titleblock">
+    <div class="tinboard">
+      <div class="tinplate">ঢাকা মেট্রো-ব ১১-৪২০৭ · রুট নং ৭</div>
+      <h1 id="title" data-i18n="title">লোকাল বাস — ঢাকা রুট</h1>
+      <div id="route">মোহাম্মদপুর → ধানমন্ডি → সায়েন্সল্যাব → শাহবাগ → ঢাকা বিশ্ববিদ্যালয়</div>
+    </div>
+    <div id="dareBanner" hidden></div>
+    <div id="bestBanner" hidden></div>
+    <div style="margin-bottom:8px">
+      <button type="button" id="startPlaceBtn" class="start-spot-pill">📍 শুরুর এলাকা: মোহাম্মদপুর বাসস্ট্যান্ড (ক্লিক করে বদলান)</button>
+    </div>
+    <div id="sub">
+      রিকশা, বাইক, সিএনজি, গাড়ি, <b>ভিআইপি গাড়ি</b> আর দোকানে ধাক্কা দিলে <b>ড্যামেজ</b> বাড়ে, পরপর দিলে কম্বো!<br>
+      ডিভাইডারের গ্যাপ দিয়ে ডান লেনে ঢুকলে <b>উল্টো পথ · ক্ষতি ×১.৫</b> বোনাস! যেকোনো <b>চৌরাস্তায় (মোড়ে)</b> বামে বা ডানে ঘুরুন!<br>
+      কাঠের র‍্যাম্পে উঠলে <b>বাস আকাশে উড়বে 🚀</b> · গাড়ির পাশ ঘেঁষে গেলে <b>সাইড মিরর</b> ভেঙে বোনাস!<br>
+      হলুদ <b>⛽ সিএনজি</b> দাগে থেমে তেল নিন। গোলাপি <b>👮 পুলিশ</b> দাগে থেমে জরিমানা দিলে পাবলিক চলে যায়।<br><br>
+      <b>W/↑</b> চালান &nbsp; <b>S/↓</b> ব্রেক &nbsp; <b>A D / ← →</b> মোড়ে ঘুরান &nbsp; <b>Shift/Space</b> বুস্ট<br>
+      <b>H</b> হর্ন &nbsp; <b>G</b> ওস্তাদের হাঁক &nbsp; <b>M</b> সাউন্ড &nbsp; <b>P/Esc</b> বিরতি &nbsp; <b>Tab</b> বড় ম্যাপ
+    </div>
+    <div id="wantedBox">
+      <div class="wanted-head">🚨 মোস্ট ওয়ান্টেড ওস্তাদ তালিকা <small>· ধরিয়ে দিলে পুরস্কার: এক কাপ চা</small></div>
+      <div id="wantedList"></div>
+    </div>
+    <div class="fiction">এটি একটি কাল্পনিক, ব্যঙ্গাত্মক গেম। বাস্তবে নিরাপদে চালান।</div>
+  </div>
+  <div id="paper" hidden>
+    <div id="pstamp"></div>
+    <div id="pname"></div>
+    <div id="ptag"></div>
+    <div class="pline"><span id="pdate"></span><span id="pprice"></span></div>
+    <div id="pkicker"></div>
+    <h2 id="phead"></h2>
+    <div class="pbody">
+      <figure><img id="pphoto" alt=""><figcaption id="pcap"></figcaption></figure>
+      <div>
+        <p id="pstory"></p>
+        <div id="pstats"></div>
+        <div id="ledger"></div>
+        <div id="npPriceBox"></div>
+      </div>
+    </div>
+    <div id="npDare" hidden></div>
+    <div id="inappNote" hidden>💡 ফেসবুক/মেসেঞ্জার ব্রাউজারে ছবি ডাউনলোড না হলে ওপরে ⋮ চেপে "Open in Browser"-এ খুলুন অথবা "স্কোর কপি" চাপুন।</div>
+    <div id="pnote"></div>
+  </div>
+  <div class="btns">
+    <button id="go" class="ticket-btn" data-i18n="goStart">🎫 যাত্রা শুরু</button>
+    <button id="title4dMapBtn" type="button">🗺 পুরো ঢাকা ম্যাপ</button>
+    <button id="restart" hidden data-i18n="restartBtn">শুরু থেকে</button>
+    <button id="share" hidden data-i18n="shareBtn">📰 ছবি সেভ / শেয়ার</button>
+    <button id="clipBtn" hidden type="button">🎬 ভিডিও সেভ / শেয়ার</button>
+    <button id="dareBtn" hidden type="button">🔥 চ্যালেঞ্জ লিংক কপি</button>
+    <button id="copyBtn" hidden data-i18n="copyBtn">📋 স্কোর কপি</button>
+    <button id="installBtn" hidden>📲 অ্যাপ ইনস্টল</button>
+  </div>
+  <div class="footer-links">
+    <button type="button" class="linkbtn" data-info="howto">কীভাবে খেলবেন</button> ·
+    <button type="button" class="linkbtn" data-info="about">গেম সম্পর্কে</button> ·
+    <button type="button" class="linkbtn" data-info="disclaimer">সতর্কবার্তা</button> ·
+    <button type="button" class="linkbtn" data-info="privacy">গোপনীয়তা</button>
+  </div>
+</div>
+
+<!-- Bottom TV-style breaking news bar ("সর্বশেষ") -->
+<div id="ticker">
+  <div id="tickerBadge">• সর্বশেষ</div>
+  <div id="tickerWrap"><div id="tickerTrack"></div></div>
+</div>
+
+<div id="pause" hidden>
+  <h1 data-i18n="pauseTitle">বিরতি</h1>
+  <div class="btns">
+    <button id="resume" data-i18n="resumeBtn">চালিয়ে যান</button>
+    <button id="pauseSettings" data-i18n="settingsTitle">⚙ সেটিংস</button>
+  </div>
+</div>
+<div id="settingsModal" class="modal" hidden>
+  <div class="modal-card">
+    <h2 data-i18n="settingsTitle">⚙ সেটিংস</h2>
+    <label class="srow"><span>ভাষা / Language</span>
+      <select id="setLang"><option value="bn">বাংলা</option><option value="en">English</option></select>
+    </label>
+    <label class="srow"><span>ডায়ালগ মাত্রা (Street Banter)</span>
+      <select id="setRude">
+        <option value="0">০ — শান্ত (No insults)</option>
+        <option value="1" selected>১ — হালকা ঢাকার ভাষা (Default)</option>
+        <option value="2">২ — কড়া রাস্তার বুলি (Louder banter)</option>
+      </select>
+    </label>
+    <label class="srow"><span>সাবটাইটেল স্টাইল (Subtitles)</span>
+      <select id="setSubtitles">
+        <option value="bottom" selected>স্ক্রিনের নিচে (ক্লিন ও পরিষ্কার)</option>
+        <option value="compact">ছোট ও দ্রুত অদৃশ্য</option>
+        <option value="bubble">মাঝের স্পিচ বাবল সহ</option>
+        <option value="off">বন্ধ (No Subtitles)</option>
+      </select>
+    </label>
+    <label class="srow"><span>গ্রাফিক্স মান (Graphics)</span>
+      <select id="setQuality">
+        <option value="auto" selected>অটো (Auto FPS)</option>
+        <option value="high">উচ্চ (High)</option>
+        <option value="low">হালকা (Low-end Phone)</option>
+      </select>
+    </label>
+    <label class="srow"><span>ক্যামেরা কাঁপুনি (Camera Shake)</span>
+      <input type="checkbox" id="setShake" checked>
+    </label>
+    <div class="srow"><span>ফুলস্ক্রিন (Fullscreen)</span>
+      <button type="button" id="btnFullscreen" class="sm-btn">⛶ ফুলস্ক্রিন</button>
+    </div>
+    <div class="btns"><button type="button" id="closeSettings">ঠিক আছে</button></div>
+  </div>
+</div>
+<div id="infoModal" class="modal" hidden>
+  <div class="modal-card">
+    <h2 id="infoTitle"></h2>
+    <div id="infoBody"></div>
+    <div class="btns"><button type="button" id="closeInfo">বন্ধ করুন</button></div>
+  </div>
+</div>
+<div id="mapModal" class="modal" hidden>
+  <div class="modal-card map4d-card">
+    <div class="map4d-head">
+      <h2>🗺 ঢাকা সিটি রুট ম্যাপ (মোহাম্মদপুর → ঢাকা বিশ্ববিদ্যালয়)</h2>
+      <div id="bigMapClock" class="map4d-pill">☀ সকাল ৬:৩০</div>
+    </div>
+    <canvas id="bigmap"></canvas>
+    <div class="map4d-legend">
+      <span>🚌 আপনার বাস</span>
+      <span>🚇 চলন্ত মেট্রোরেল</span>
+      <span>🔴 ট্রাক/বাস</span>
+      <span>🟢 সিএনজি/রিকশা</span>
+      <span>⛽ সিএনজি স্টেশন</span>
+      <span>👮 পুলিশ</span>
+      <span>📢 আসাদ গেট মিছিল</span>
+      <span>✊ শাহবাগ মিছিল</span>
+    </div>
+    <div class="btns">
+      <button type="button" id="mapZoomIn" class="sm-btn">➕ জুম ইন</button>
+      <button type="button" id="mapZoomOut" class="sm-btn">➖ জুম আউট</button>
+      <button type="button" id="mapResetView" class="sm-btn">🎯 বাসে ফোকাস</button>
+      <button type="button" id="close4dMap">বন্ধ করুন (Tab)</button>
+    </div>
+  </div>
+</div>
+<button id="settingsbtn" aria-label="সেটিংস">⚙</button>
+<button id="soundbtn" aria-label="সাউন্ড">🔊</button>
+<button id="pausebtn" hidden aria-label="বিরতি">❚❚</button>
+<div id="bubble" hidden></div>
+<div id="touch">
+  <div><button id="tl">◀</button><button id="tr">▶</button></div>
+  <div class="mid"><button id="thorn">📯</button><button id="tshout">📣</button></div>
+  <div><button id="tb">■</button><button id="tboost">⚡</button><button id="tg">▲</button></div>
+</div>
+
+<script type="module" src="js/main.js?v=2.2"></script>
+<script>
+  // Boot guard: if ES modules or WebGL fail to load within 6 seconds, show a helpful message.
+  setTimeout(function () {
+    if (!window.__localBusBooted) {
+      var s = document.getElementById("sub");
+      if (s) s.innerHTML = "⚠ গেমটির 3D ইঞ্জিন লোড হতে সমস্যা হচ্ছে। ইন্টারনেট সংযোগ বা ব্রাউজার চেক করে পেজটি রিলোড করুন।";
+    }
+  }, 6000);
+</script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-// Fake front-page headlines for "দৈনিক জ্যামবার্তা", picked from how the run ended.
+﻿// Fake front-page headlines for "দৈনিক জ্যামবার্তা", picked from how the run ended.
 // Placeholders are filled in by the game:
 //   {stage} area name ({stageIn} "in the area", {stageOf} "of the area")   {damage} Damage score   {combo} best combo   {km} km driven
 //   {time} journey time {crashes} number of crashes  {fines} taka paid to the sergeant

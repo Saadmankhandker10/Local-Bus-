@@ -1,4 +1,4 @@
-// Entry point: starts input, runs the game loop, and handles starting, pausing, and ending a run.
+﻿// Entry point: starts input, runs the game loop, and handles starting, pausing, and ending a run.
 import { CFG } from "./config.js";
 import { game, resetGame } from "./state.js";
 import { on, emit } from "./events.js";
@@ -19,6 +19,8 @@ import {
   unlockAudio, toggleMute, isMuted, horn, slap, glassHit,
   updateAudio, crashSound, comboSound, boardDing, refuelSound, warnBeep,
   mirrorSnap, carAlarmSound, rampFanfare, whistleSound,
+  playMasud, playKhelaHobe, playKajThikHoyni, playKiPagolami, playRagKorla,
+  playNoNeed, playRallyCrowd, playStuntYooo, playHelperLaugh
 } from "./audio.js";
 import { startRunVideo, stopRunVideo } from "./newspaper.js";
 import { ROUTE, TOTAL } from "./route.js";
@@ -166,8 +168,9 @@ on("processionBlocked", e => {
   if (ev?.dialogueKey) helperSays(lineFrom(ev.dialogueKey));
   else helperSays(lineFrom("demoBlock"));
 });
-on("demoBlocked", () => helperSays(lineFrom("demoBlock")));
+on("demoBlocked", () => { helperSays(lineFrom("demoBlock")); playMasud(); });
 on("processionPassed", e => {
+  playRallyCrowd();
   const ev = e?.event;
   if (ev?.id === "asadgate-michil") {
     helperSays("মিছিল পার হইছে ওস্তাদ! এবার নিজের লেনে ফিরে আসেন!");
@@ -175,11 +178,11 @@ on("processionPassed", e => {
     helperSays("বাঁচলাম ওস্তাদ, আর একটু হইলে জ্যামে মরতাম!");
   }
 });
-on("pedScared", () => helperSays(lineFrom("pedScared")));
+on("pedScared", () => { helperSays(lineFrom("pedScared")); if (Math.random() < 0.35) playKiPagolami(); });
 on("board", () => boardDing());
 on("refuel", () => refuelSound());
 on("jamHorn", () => horn());
-on("mirrorHit", () => mirrorSnap());
+on("mirrorHit", () => { mirrorSnap(); if (Math.random() < 0.4) playKajThikHoyni(); });
 on("carAlarm", () => carAlarmSound());
 on("rampJump", () => {
   rampFanfare();

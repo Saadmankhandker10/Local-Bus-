@@ -1,4 +1,4 @@
-// The player's bus: its 3D model, arcade driving physics, and fuel use.
+﻿// The player's bus: its 3D model, arcade driving physics, and fuel use.
 import * as THREE from "three";
 import { CFG } from "./config.js";
 import { clamp, pick, rnd } from "./utils.js";
@@ -8,6 +8,7 @@ import { game } from "./state.js";
 import { emit } from "./events.js";
 import { SEGS, here, sample, place, fromProgress, progressOf } from "./map.js";
 import { SLOGANS, COMPANIES, PLATES } from "./data/slogans.bn.js";
+import { playKhelaHobe } from "./audio.js";
 
 const B = CFG.bus;
 
@@ -251,7 +252,7 @@ export function updateBus(dt) {
   const hasFuel = game.fuel > 0;
 
   // Boost: holding the key keeps the timer full; after release it runs out by itself.
-  if (ctl.boost && hasFuel) game.boostT = B.boostHold;
+  if (ctl.boost && hasFuel) { if (game.boostT <= 0 && Math.random() < 0.3) playKhelaHobe(); game.boostT = B.boostHold; }
   else game.boostT = Math.max(0, game.boostT - dt);
   const boosting = game.boostT > 0 && hasFuel;
 

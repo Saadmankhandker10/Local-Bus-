@@ -220,9 +220,14 @@ function buildRoads() {
         }
         const proc = getProcessionBySegId(S.id);
         if (proc) {
-          if (proc.entryMedianGap && Math.abs(d - proc.entryMedianGap * S.len) < 14) return true;
-          if (proc.exitMedianGap && Math.abs(d - proc.exitMedianGap * S.len) < 14) return true;
-          if (Math.abs(d - proc.barricadeAt * S.len) < proc.barricadeHalfLen + 4) return true;
+          if (proc.openCorridor === "wrong-way") {
+            // Smooth open median corridor covering entry, barricade bypass, and exit back to normal lane
+            if (Math.abs(d - proc.barricadeAt * S.len) < (proc.medianGapSpan || 32)) return true;
+          } else {
+            if (proc.entryMedianGap && Math.abs(d - proc.entryMedianGap * S.len) < 14) return true;
+            if (proc.exitMedianGap && Math.abs(d - proc.exitMedianGap * S.len) < 14) return true;
+            if (Math.abs(d - proc.barricadeAt * S.len) < proc.barricadeHalfLen + 4) return true;
+          }
         }
         return (d % 80) > 68;
       };

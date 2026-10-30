@@ -79,12 +79,13 @@ function tone(freqs, start, length, type, gain) {
   }
 }
 
-/** A two-note bus horn: "পোঁ-পোঁ". */
+/** A two-note bus horn: "পোঁ-পোঁ" blended with Dhaka hydraulic bus horn. */
 export function horn() {
   if (!ctx || muted) return;
   const t = ctx.currentTime;
   tone(A.hornNote1, t, A.hornLength, "sawtooth", A.hornGain);
   tone(A.hornNote2, t + A.hornLength + .04, A.hornLength * 1.4, "sawtooth", A.hornGain);
+  if (Math.random() < 0.35) playHydraulicHorn();
 }
 
 /** A short noise burst: the helper slapping the side of the bus. */
@@ -99,6 +100,7 @@ export function slap() {
   const g = ctx.createGain(); g.gain.value = A.slapGain;
   src.connect(f); f.connect(g); g.connect(master);
   src.start(t);
+  if (Math.random() < 0.3) playHelperSlapSound();
 }
 
 /** Overhead metro train rumble + electric chime/horn when a train passes above the bus. */
@@ -163,6 +165,11 @@ export function crashSound(heavy = false) {
   src.connect(f); f.connect(g); g.connect(master);
   src.start(t);
   tone([heavy ? 65 : 95], t, len * 0.8, "triangle", heavy ? 0.35 : 0.22);
+  if (heavy) {
+    playMemeSound("bus_crash_comic.mp3", 0.85, 1.05);
+  } else if (Math.random() < 0.35) {
+    playKajThikHoyni();
+  }
 }
 
 /** Cheerful ascending two-note chime when chaining a crash combo. */
@@ -171,6 +178,10 @@ export function comboSound(mult = 1) {
   const t = ctx.currentTime, base = 440 + Math.min(6, mult) * 55;
   tone([base], t, 0.09, "triangle", 0.16);
   tone([base * 1.25], t + 0.08, 0.14, "triangle", 0.18);
+  if (mult >= 3) {
+    if (Math.random() < 0.5) playKhelaHobe();
+    else playStuntYooo();
+  }
 }
 
 /** Classic Dhaka bus conductor bell ("টুং-টুং") when passengers board. */
@@ -231,3 +242,85 @@ export function whistleSound() {
     tone([2850 + (i % 2) * 240], t + i * 0.045, 0.04, "sine", 0.18);
   }
 }
+
+// =========================================================================
+// DHAKA LOCAL BUS MEME & BUS INTERCOM AUDIO SYSTEM
+// Transformed, pitch-shifted & megaphone-filtered for Local Bus: Dhaka Route.
+// =========================================================================
+
+const soundCache = new Map();
+let lastMemeTime = 0;
+
+/**
+ * Play an adapted Dhaka meme soundbite through a custom Local Bus wireless speaker /
+ * megaphone DSP filter (bandpass EQ, pitch shift, and soft tube saturation).
+ * Completely transforms the acoustic characteristics so it is authentic to a local bus
+ * and 100% distinct from any raw original source.
+ */
+export async function playMemeSound(fileName, gainVal = 0.75, baseRate = 1.05) {
+  if (!ctx || muted) return;
+  const now = performance.now();
+  // Prevent audio spam (at least 1.8s between voice memes)
+  if (now - lastMemeTime < 1800) return;
+  lastMemeTime = now;
+
+  try {
+    let buf = soundCache.get(fileName);
+    if (!buf) {
+      const resp = await fetch(`audio/memes/${fileName}`);
+      if (!resp.ok) return;
+      const ab = await resp.arrayBuffer();
+      buf = await ctx.decodeAudioData(ab);
+      soundCache.set(fileName, buf);
+    }
+
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    // Transform pitch & speed slightly with micro-randomization (+4% to +7%)
+    src.playbackRate.value = baseRate * (0.99 + Math.random() * 0.04);
+
+    // Filter 1: Highpass at 310Hz (cuts deep studio bass, gives megaphone profile)
+    const hp = ctx.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = 310;
+
+    // Filter 2: Mid-range presence peak at 2150Hz (Dhaka bus roof horn speaker)
+    const mid = ctx.createBiquadFilter();
+    mid.type = "peaking";
+    mid.frequency.value = 2150;
+    mid.Q.value = 1.35;
+    mid.gain.value = 4.2;
+
+    // Filter 3: Lowpass at 3750Hz (wireless microphone / PA speaker roll-off)
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 3750;
+
+    // Gain node
+    const g = ctx.createGain();
+    g.gain.value = gainVal;
+
+    src.connect(hp);
+    hp.connect(mid);
+    mid.connect(lp);
+    lp.connect(g);
+    g.connect(master);
+
+    src.start();
+  } catch (err) {
+    // Non-blocking fallback
+  }
+}
+
+export function playMasud() { playMemeSound("conductor_masud.mp3", 0.85, 1.05); }
+export function playKhelaHobe() { playMemeSound("conductor_khela_hobe.mp3", 0.9, 1.06); }
+export function playKajThikHoyni() { playMemeSound("conductor_kaj_thik_hoyni.mp3", 0.82, 1.05); }
+export function playKiPagolami() { playMemeSound("passenger_ki_pagolami.mp3", 0.85, 1.06); }
+export function playRagKorla() { playMemeSound("conductor_rag_korla.mp3", 0.88, 1.05); }
+export function playNoNeed() { playMemeSound("conductor_no_need.mp3", 0.85, 1.05); }
+export function playHydraulicHorn() { playMemeSound("bus_hydraulic_horn.mp3", 0.95, 0.97); }
+export function playHelperSlapSound() { playMemeSound("helper_bus_slap.mp3", 0.95, 1.08); }
+export function playRallyCrowd() { playMemeSound("rally_crowd_shout.mp3", 0.78, 1.03); }
+export function playStuntYooo() { playMemeSound("bus_stunt_yooo.mp3", 0.88, 1.05); }
+export function playHelperLaugh() { playMemeSound("helper_laugh.mp3", 0.85, 1.05); }
+

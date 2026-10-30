@@ -59,8 +59,9 @@ export const PROCESSION_EVENTS = [
     barricadeHalfLen: 8.5,     // half-length of the barrier along the road
     openCorridor: "wrong-way", // must swerve into oncoming/wrong lane (x > +0.5)
     openLaneX: 2.8,
-    entryMedianGap: 0.17,      // pre-barrier median gap (near s = 126)
-    exitMedianGap: 0.32,       // post-barrier median gap (near s = 238)
+    medianGapSpan: 32,         // continuous open median corridor (32m before to 32m after barricade)
+    entryMedianGap: 0.17,      // pre-barrier reference
+    exitMedianGap: 0.32,       // post-barrier reference
     maxTrafficSpeed: 3.0,      // vehicles inside jam crawl at most this fast
     hornInterval: 2.0,         // seconds between ambient traffic horns
 

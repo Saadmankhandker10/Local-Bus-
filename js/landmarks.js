@@ -24,6 +24,8 @@ const lakeGeo = new THREE.BoxGeometry(30, .1, 40);
 const creamMat = new THREE.MeshLambertMaterial({ color: 0xf3e5c8 }), brickMat = new THREE.MeshLambertMaterial({ color: 0xb5543c });
 const tscWallMat = new THREE.MeshLambertMaterial({ color: 0xe0d6c2 }), tscRoofMat = new THREE.MeshLambertMaterial({ color: 0x8d6e63 });
 const statueMat = new THREE.MeshLambertMaterial({ color: 0x9e9e9e });
+const flyPillarMat = new THREE.MeshLambertMaterial({ color: 0x8a9296 });
+const sunMat = new THREE.MeshLambertMaterial({ color: 0xc62828 });
 // Roadside signs turn partly towards the oncoming bus so they can be read while driving.
 const FACE = Math.PI / 2 * .65;
 const BRICK = 0xb5543c, CREAM = 0xf3e5c8, STONE = 0xd8cfc0, DARK = 0x37474f, POLE = 0x555555;
@@ -135,7 +137,7 @@ const PREFABS = {
     const g = new THREE.Group(), x = side * (R + 6), h = rnd(5, 9), c = pick([0xffcc80, 0xef9a9a, 0xce93d8, 0x80cbc4, 0xfff59d, 0xbcaaa4]);
     g.add(box(7, h, 26, c, x, h / 2, 0));
     g.add(box(1.2, .15, 24, pick([0xe53935, 0x1e88e5, 0x43a047, 0xffb300]), x - side * 4, 3, 0)); // awning
-    const text = pick(["বই ঘর", "জুতার দোকান", "কাপড় বিতান", "মোবাইল সার্ভিসিং", "ঈদ কালেকশন", "চশমা ঘর", "ইলেকট্রনিক্স"]);
+    const text = pick(["বই ঘর", "জুতার দোকান", "কাপড় বিতান", "মোবাইল সার্ভিসিং", "মবিলে ভাজা সিঙ্গারা", "বাবার দোয়া হার্ডওয়্যার", "মায়ের দোয়া স্টোর", "ভাই ভাই ট্রেডার্স", "বিসমিল্লাহ হোটেল", "বাকি চাহিয়া লজ্জা দিবেন না", "সাময়িক অসুবিধার জন্য দুঃখিত", "ঈদ কালেকশন", "চশমা ঘর"]);
     const p = sign(text, 8, 1.2, pick(["#fff59d", "#ffffff", "#ffe0b2"]), "#b71c1c");
     p.position.set(x - side * 3.55, 4, 0); p.rotation.y = -side * FACE; g.add(p);
     return g;
@@ -311,8 +313,7 @@ const PREFABS = {
     const marchers = [];
 
     // Overhead Asad Gate flyover concrete pillar accent on the median divider.
-    const pillarMat = new THREE.MeshLambertMaterial({ color: 0x8a9296 });
-    const flyPillar = new THREE.Mesh(discGeo, pillarMat);
+    const flyPillar = new THREE.Mesh(discGeo, flyPillarMat);
     flyPillar.scale.set(1.1, 7.5, 1.1);
     flyPillar.position.set(0, 3.75, 0);
     g.add(flyPillar);
