@@ -1,4 +1,4 @@
-﻿// Picks lines from the dialogue data and shows them: a subtitle strip at the bottom,
+// Picks lines from the dialogue data and shows them: a subtitle strip at the bottom,
 // and for people on the bus a speech bubble that follows the bus door on screen.
 import * as THREE from "three";
 import { CFG } from "./config.js";
@@ -39,15 +39,16 @@ export function say(who, text, seconds = S.subtitleSeconds, onBus = false) {
     $("bubble").hidden = true;
     return;
   }
-  subtitle.textContent = ${who}: ;
+  $("subtitle").textContent = `${who}: ${text}`;
 
   // Harmonized voice soundbite playback with bus megaphone DSP filter
-  if (text.includes("à¦®à¦¾à¦›à§à¦¦") || text.includes("à¦­à¦¾à¦²à§‹ à¦¹à¦¬à¦¾")) playMasud();
-  else if (text.includes("à¦ªà¦¾à¦—à¦²à¦¾à¦®à¦¿")) playKiPagolami();
-  else if (text.includes("à¦°à¦¾à¦— à¦•à¦°à¦²à¦¾")) playRagKorla();
-  else if (text.includes("à¦•à¦¾à¦œ à¦ à¦¿à¦•")) playKajThikHoyni();
-  else if (text.includes("à¦à¦•à§à¦¸à¦ªà§à¦²à¦¾à¦¨à§‡à¦¶à¦¨")) playNoNeed();
-  else if (text.includes("à¦–à§‡à¦²à¦¾ à¦¹à¦¬à§‡")) playKhelaHobe();
+  if (text.includes("মাছুদ") || text.includes("ভালো হবা")) playMasud();
+  else if (text.includes("পাগলামি")) playKiPagolami();
+  else if (text.includes("রাগ করলা")) playRagKorla();
+  else if (text.includes("কাজ ঠিক")) playKajThikHoyni();
+  else if (text.includes("এক্সপ্লানেশন")) playNoNeed();
+  else if (text.includes("খেলা হবে")) playKhelaHobe();
+
   $("subtitle").hidden = false;
   subT = mode === "compact" ? Math.min(1.4, seconds * 0.65) : Math.min(1.9, seconds);
   if (onBus && mode === "bubble") {
