@@ -20,17 +20,23 @@ import { attachBlackoutShader, disposeHierarchy, applyPolygonOffset, blackoutSta
 
 const W = CFG.world;
 
+export const isMobile = typeof navigator !== "undefined" && (
+  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+  (typeof window !== "undefined" && ('ontouchstart' in window || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0)) && window.innerWidth < 900)
+);
+
 /* ====== Renderer, scene, lights, cinematic ACES tonemapping & soft shadows ====== */
 export const renderer = new THREE.WebGLRenderer({
-  antialias: true,
+  antialias: !isMobile,
   powerPreference: "high-performance"
 });
 renderer.setSize(innerWidth, innerHeight);
-renderer.setPixelRatio(Math.min(devicePixelRatio || 1, CFG.render.maxPixelRatio));
+const defaultMaxPr = isMobile ? 1.5 : CFG.render.maxPixelRatio;
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, defaultMaxPr));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.1;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = isMobile ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 document.body.prepend(renderer.domElement);
 
 export const scene = new THREE.Scene();
@@ -42,7 +48,8 @@ scene.add(hemi);
 export const sun = new THREE.DirectionalLight(0xfff2cc, 1.8);
 sun.position.set(20, 60, 20);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+const defaultShadowRes = isMobile ? 1024 : 2048;
+sun.shadow.mapSize.set(defaultShadowRes, defaultShadowRes);
 const sc = sun.shadow.camera;
 sc.left = -45;
 sc.right = 45;
@@ -107,11 +114,18 @@ scene.add(skyMesh);
 export function setRenderQuality(qualityMode) {
   const isLow = qualityMode === "low";
   const isHigh = qualityMode === "high";
-  const pr = isLow ? 1 : isHigh ? Math.min(devicePixelRatio || 1, 2) : Math.min(devicePixelRatio || 1, 1.5);
+  let pr = 1.0;
+  if (isHigh) {
+    pr = isMobile ? Math.min(devicePixelRatio || 1, 1.75) : Math.min(devicePixelRatio || 1, 2);
+  } else if (!isLow) {
+    pr = isMobile ? Math.min(devicePixelRatio || 1, 1.25) : Math.min(devicePixelRatio || 1, 1.5);
+  }
   renderer.setPixelRatio(pr);
   const enableShadows = (qualityMode !== "low");
   renderer.shadowMap.enabled = enableShadows;
   sun.castShadow = enableShadows;
+  const shadowRes = (isMobile || !isHigh) ? 1024 : 2048;
+  sun.shadow.mapSize.set(shadowRes, shadowRes);
 }
 
 addEventListener("resize", () => renderer.setSize(innerWidth, innerHeight));

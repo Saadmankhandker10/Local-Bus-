@@ -485,6 +485,7 @@ export function hideScreen() {
   if ($("dareBtn")) $("dareBtn").hidden = true;
   if ($("copyBtn")) $("copyBtn").hidden = true;
   $("screen").style.display = "none";
+  document.body.classList.add("in-game");
   $("pausebtn").hidden = false;
   $("msg").textContent = "";
   $("stagecard").hidden = true;
@@ -497,12 +498,15 @@ export function hideScreen() {
 /** Show or hide the pause overlay. */
 export function showPause(on) {
   $("pause").hidden = !on;
+  if (on) document.body.classList.remove("in-game");
+  else document.body.classList.add("in-game");
   if (!on) document.activeElement?.blur();
 }
 
 /** Hide the HUD extras that should not sit on top of a menu screen. */
 function clearOverlays() {
   $("screen").style.display = "flex";
+  document.body.classList.remove("in-game");
   if ($("titleblock")) $("titleblock").hidden = false;
   if ($("startInfo")) $("startInfo").hidden = false;
   $("pausebtn").hidden = true;

@@ -206,10 +206,12 @@ on("mirrorHit", pos => { mirrorSnap(pos); if (Math.random() < 0.4) playKajThikHo
 on("carAlarm", pos => carAlarmSound(pos));
 on("rampJump", () => {
   rampFanfare();
+  if (navigator.vibrate) navigator.vibrate([40, 30, 60]);
   helperSays("ওস্তাদ! বাস তো রকেট বানায়া ফেলছেন! 🚀");
 });
 on("copWhistle", () => {
   whistleSound();
+  if (navigator.vibrate) navigator.vibrate(50);
   say("পুলিশ", "ওই থামেন! গরীব মানুষ, ছাইড়া দেন! গাড়ি থানায় নেন!", 2.4);
 });
 
@@ -232,6 +234,7 @@ on("caught", () => {
   game.caught = true;
   game.boostT = 0;
   caughtT = CFG.crowd.caughtSeconds;
+  if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 150]);
   say("পাবলিক", line("crowdCaught"));
 });
 

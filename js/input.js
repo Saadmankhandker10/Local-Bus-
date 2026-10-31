@@ -39,13 +39,22 @@ const tapHandlers = {};   // action name -> function
 const PAD_TAP = { horn: false, shout: false }; // reused every frame (no new objects)
 let onFirstInput = () => {};
 
+/** Trigger gentle haptic vibration feedback on mobile touch screens if supported. */
+export function vibrate(pattern = 25) {
+  if (typeof navigator !== "undefined" && navigator.vibrate) {
+    try { navigator.vibrate(pattern); } catch {}
+  }
+}
+
 /**
  * Start listening to keyboard and on-screen buttons.
  * @param {(fromPad: boolean) => void} pauseHandler called when P / Esc / pad Start is pressed
  */
 export function initInput(pauseHandler) {
   // Any first key or tap unlocks audio (browsers block sound until the player interacts).
-  for (const ev of ["keydown", "pointerdown"]) addEventListener(ev, () => onFirstInput(), { capture: true });
+  for (const ev of ["keydown", "pointerdown", "touchstart"]) {
+    addEventListener(ev, () => onFirstInput(), { capture: true, passive: true });
+  }
   onPause = pauseHandler;
 
   addEventListener("keydown", e => {
@@ -62,15 +71,29 @@ export function initInput(pauseHandler) {
   const touchActionByEl = new Map();
   for (const [id, action] of TOUCH_MAP) {
     const el = $(id);
+    if (!el) continue;
     touchActionByEl.set(el, action);
     el.addEventListener("pointerdown", e => {
       if (el.releasePointerCapture) { try { el.releasePointerCapture(e.pointerId); } catch {} }
       held[action] = true;
+      el.classList.add("active");
+      vibrate(action === "boost" ? [25, 15, 25] : 12);
       e.preventDefault();
     });
-    el.addEventListener("pointerenter", e => { if (e.buttons > 0) held[action] = true; });
-    for (const ev of ["pointerup", "pointerleave", "pointercancel"]) el.addEventListener(ev, () => held[action] = false);
+    el.addEventListener("pointerenter", e => {
+      if (e.buttons > 0) {
+        held[action] = true;
+        el.classList.add("active");
+      }
+    });
+    for (const ev of ["pointerup", "pointerleave", "pointercancel"]) {
+      el.addEventListener(ev, () => {
+        held[action] = false;
+        el.classList.remove("active");
+      });
+    }
   }
+
   // Support sliding a thumb between adjacent touch buttons on mobile screens.
   addEventListener("pointermove", e => {
     if (e.pointerType !== "touch") return;
@@ -79,10 +102,30 @@ export function initInput(pauseHandler) {
     if (activeAction === "left" || activeAction === "right") {
       held.left = activeAction === "left";
       held.right = activeAction === "right";
+      $("tl")?.classList.toggle("active", held.left);
+      $("tr")?.classList.toggle("active", held.right);
+    } else if (activeAction === "up" || activeAction === "down" || activeAction === "boost") {
+      held.up = activeAction === "up";
+      held.down = activeAction === "down";
+      held.boost = activeAction === "boost";
+      $("tg")?.classList.toggle("active", held.up);
+      $("tb")?.classList.toggle("active", held.down);
+      $("tboost")?.classList.toggle("active", held.boost);
     }
   });
+
   for (const [id, action] of TAP_TOUCH) {
-    $(id).addEventListener("pointerdown", e => { e.preventDefault(); tapHandlers[action]?.(); });
+    const el = $(id);
+    if (!el) continue;
+    el.addEventListener("pointerdown", e => {
+      e.preventDefault();
+      el.classList.add("active");
+      vibrate(action === "horn" ? 35 : 20);
+      tapHandlers[action]?.();
+    });
+    for (const ev of ["pointerup", "pointerleave", "pointercancel"]) {
+      el.addEventListener(ev, () => el.classList.remove("active"));
+    }
   }
 }
 

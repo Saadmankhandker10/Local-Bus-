@@ -51,7 +51,9 @@ export function updateCamera(dt) {
   // Anchor on the road at the bus, then step back and up along the camera's direction.
   const ax = p.x + Math.cos(p.yaw) * camLat, az = p.z - Math.sin(p.yaw) * camLat;
   const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw); // forward on the ground
-  const back = C.distance + boostFx * C.boostPullBack;
+  // Pull camera back slightly in portrait mode (aspect < 1) so mobile players see the full 3-lane road
+  const portraitBack = cam.aspect < 1.0 ? Math.min(3.2, (1.0 - cam.aspect) * 4.5) : 0;
+  const back = C.distance + portraitBack + boostFx * C.boostPullBack;
   const trauma = game.shake;
   const shake = Math.min(1.2, trauma * trauma * 1.1) * C.shakeScale;
   let cx = ax - fx * back, cz = az - fz * back;
@@ -109,7 +111,9 @@ export function updateCamera(dt) {
   cam.lookAt(ax + fx * C.lookAhead, p.y + C.lookY + (game.busY || 0) * 0.65, az + fz * C.lookAhead);
   followGround(cam.position.x, cam.position.z);
 
-  const targetFov = C.baseFov + game.speed * C.fovPerSpeed + boostFx * C.boostFovKick;
+  // Expand vertical FOV in portrait mode to keep the horizontal field of view wide on phones
+  const portraitFovBoost = cam.aspect < 1.0 ? Math.min(20, (1.0 - cam.aspect) * 32) : 0;
+  const targetFov = C.baseFov + portraitFovBoost + game.speed * C.fovPerSpeed + boostFx * C.boostFovKick;
   fov += (targetFov - fov) * ease(C.fovSmoothing, dt);
   // Rebuilding the projection is not free, so only do it when the change is visible.
   if (Math.abs(cam.fov - fov) > .05) { cam.fov = fov; cam.updateProjectionMatrix(); }

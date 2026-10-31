@@ -2,21 +2,27 @@
 <html lang="bn">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#1f6b3a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="লোকাল বাস">
+<meta name="format-detection" content="telephone=no">
 <title>লোকাল বাস — ঢাকা রুট | Local Bus: Dhaka Route</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon.svg">
 <link rel="stylesheet" href="https://fonts.maateen.me/kalpurush/font.css">
 <link rel="stylesheet" href="css/tokens.css">
-<link rel="stylesheet" href="css/style.css?v=3.5">
+<link rel="stylesheet" href="css/style.css?v=3.6">
 <script>
   if (location.protocol === "file:") {
     window.__isFileProtocol = true;
   }
   // Auto-purge any stale service workers or caches during local updates
   (function() {
-    var v = "3.5";
+    var v = "3.6";
     var isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
     if (isLocal || localStorage.getItem("lb_sw_v") !== v) {
       localStorage.setItem("lb_sw_v", v);
@@ -314,9 +320,19 @@
 <button id="pausebtn" hidden aria-label="বিরতি">❚❚</button>
 <div id="bubble" hidden></div>
 <div id="touch">
-  <div><button id="tl">◀</button><button id="tr">▶</button></div>
-  <div class="mid"><button id="thorn">📯</button><button id="tshout">📣</button></div>
-  <div><button id="tb">■</button><button id="tboost">⚡</button><button id="tg">▲</button></div>
+  <div class="touch-cluster left-cluster">
+    <button id="tl" class="touch-btn" aria-label="বামে ঘুরান">◀</button>
+    <button id="tr" class="touch-btn" aria-label="ডানে ঘুরান">▶</button>
+  </div>
+  <div class="touch-cluster mid-cluster">
+    <button id="thorn" class="touch-btn sm-touch" aria-label="হর্ন">📯</button>
+    <button id="tshout" class="touch-btn sm-touch" aria-label="ওস্তাদের হাঁক">📣</button>
+  </div>
+  <div class="touch-cluster right-cluster">
+    <button id="tb" class="touch-btn btn-brake" aria-label="ব্রেক">■</button>
+    <button id="tboost" class="touch-btn btn-boost" aria-label="বুস্ট">⚡</button>
+    <button id="tg" class="touch-btn btn-gas" aria-label="টানুন">▲</button>
+  </div>
 </div>
 
 <script>
@@ -348,7 +364,7 @@
     });
   };
 </script>
-<script type="module" src="js/main.js?v=3.5" onerror="window.__bootErrors.push({ msg: 'main.js লোড হতে পারেনি (CORS বা নেটওয়ার্ক ব্লক)' })"></script>
+<script type="module" src="js/main.js?v=3.6" onerror="window.__bootErrors.push({ msg: 'main.js লোড হতে পারেনি (CORS বা নেটওয়ার্ক ব্লক)' })"></script>
 <script>
   // Boot guard: if ES modules or WebGL fail to load within 6 seconds, show a helpful message and force-reload button.
   setTimeout(function () {

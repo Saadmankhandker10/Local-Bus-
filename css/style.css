@@ -1,6 +1,6 @@
 *, *::before, *::after { box-sizing: border-box; }
-html,body{margin:0;height:100%;overflow:hidden;background:var(--asphalt-dark,#1a1d1f);font-family:'Kalpurush',var(--font-bn);color:#fff;-webkit-text-size-adjust:100%}
-canvas{display:block}
+html,body{margin:0;height:100%;height:100dvh;overflow:hidden;background:var(--asphalt-dark,#1a1d1f);font-family:'Kalpurush',var(--font-bn);color:#fff;-webkit-text-size-adjust:100%;overscroll-behavior:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+canvas{display:block;touch-action:none}
 [hidden]{display:none!important}
 
 /* Top-left big Bangla damage/score hero counter + compact pills */
@@ -153,10 +153,33 @@ button:active{transform:translateY(1px)}
 #dmgPop.pop{animation:pop .9s ease-out}
 #crowdcue{position:fixed;left:0;right:0;bottom:0;height:35%;pointer-events:none;opacity:0;background:linear-gradient(to top,rgba(255,120,0,.75),transparent)}
 
-#touch{position:fixed;bottom:42px;left:0;right:0;display:none;justify-content:space-between;padding:0 14px;touch-action:none;z-index:20}
-#touch div{display:flex;gap:10px}
-#touch button{width:68px;height:68px;font-size:25px;padding:0;opacity:.8;user-select:none}
-@media(pointer:coarse){#touch{display:flex}}
+/* Touch Controls for Mobile */
+#touch{position:fixed;bottom:max(14px,env(safe-area-inset-bottom,14px));left:0;right:0;display:none;justify-content:space-between;align-items:flex-end;padding:0 max(12px,env(safe-area-inset-right,12px)) 0 max(12px,env(safe-area-inset-left,12px));touch-action:none;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;pointer-events:none;z-index:20}
+@media(pointer:coarse),(max-width:900px){body.in-game #touch{display:flex}}
+#touch .touch-cluster{display:flex;gap:10px;align-items:center;pointer-events:auto}
+#touch .touch-btn{width:58px;height:58px;border-radius:50%;font-size:24px;padding:0;display:flex;align-items:center;justify-content:center;background:rgba(18,26,21,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:#fff;border:2px solid rgba(255,213,79,.55);box-shadow:0 4px 14px rgba(0,0,0,.55),inset 0 1px 2px rgba(255,255,255,.2);transition:transform .08s ease,background .08s ease,border-color .08s ease;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;touch-action:none}
+#touch .touch-btn:active,#touch .touch-btn.active{transform:scale(.90);background:rgba(255,213,79,.35);border-color:#ffd54f;box-shadow:0 2px 6px rgba(0,0,0,.7),inset 0 0 10px rgba(255,213,79,.5)}
+#tl,#tr{font-size:22px;color:#fffde7}
+#tg{width:66px;height:66px;font-size:28px;border-color:#00e676;color:#00e676;background:rgba(10,36,20,.78);box-shadow:0 4px 16px rgba(0,230,118,.35),inset 0 1px 2px rgba(255,255,255,.25)}
+#tg:active,#tg.active{background:rgba(0,230,118,.4);border-color:#69f0ae}
+#tb{width:52px;height:52px;font-size:20px;border-color:#ff5252;color:#ff5252;background:rgba(40,15,18,.75)}
+#tb:active,#tb.active{background:rgba(255,82,82,.4);border-color:#ff8a80}
+#tboost{width:54px;height:54px;font-size:24px;border-color:#ffd600;color:#ffd600;background:rgba(40,32,10,.78);box-shadow:0 4px 12px rgba(255,214,0,.3)}
+#tboost:active,#tboost.active{background:rgba(255,214,0,.4);transform:scale(.92)}
+#touch .mid-cluster{gap:8px;margin-bottom:4px}
+#touch .sm-touch{width:44px;height:44px;font-size:19px;background:rgba(20,28,24,.65);border-color:rgba(255,255,255,.4)}
+#thorn{border-color:#ffb300}
+#tshout{border-color:#40c4ff}
+
+@media(max-width:420px){
+  #touch{padding:0 8px;bottom:max(10px,env(safe-area-inset-bottom,10px))}
+  #touch .touch-btn{width:50px;height:50px;font-size:20px}
+  #tg{width:58px;height:58px;font-size:24px}
+  #tb,#tboost{width:46px;height:46px;font-size:18px}
+  #touch .sm-touch{width:38px;height:38px;font-size:16px}
+  #touch .mid-cluster{gap:5px}
+  #touch .touch-cluster{gap:6px}
+}
 
 #stagecard{position:fixed;top:23%;left:50%;transform:translateX(-50%);min-width:280px;max-width:92%;text-align:center;padding:12px 20px;border-radius:16px;background:var(--bus-green,#1f6b3a);border:5px double var(--signal-yellow,#ffc21a);box-shadow:0 0 0 4px #e91e63,0 0 0 8px #00bcd4,0 8px 24px rgba(0,0,0,.5);pointer-events:none;z-index:19;word-break:break-word}
 #stagecard.pop{animation:cardin .5s ease-out}
@@ -221,6 +244,17 @@ button:active{transform:translateY(1px)}
 
 #bubble{position:fixed;transform:translate(-50%,-100%);max-width:260px;background:#fff;color:#1a1a1a;padding:8px 12px;border-radius:14px;font-size:15px;font-weight:700;pointer-events:none;box-shadow:0 3px 10px rgba(0,0,0,.4)}
 #bubble:after{content:"";position:absolute;left:50%;bottom:-10px;border:10px solid transparent;border-top-color:#fff;border-bottom:0;margin-left:-10px}
-#touch .mid{align-self:flex-end}
-#touch .mid button{width:56px;height:56px;font-size:23px}
-@media(max-width:600px){#minimap{width:106px;height:106px}#nav{width:116px}#soundbtn{top:220px}#settingsbtn{top:266px}#pausebtn{top:312px}}
+@media(max-width:600px){
+  #soundbtn,#pausebtn,#settingsbtn{width:38px;height:38px;font-size:15px;right:10px}
+  #soundbtn{top:190px}
+  #settingsbtn{top:234px}
+  #pausebtn{top:278px}
+  #nav{width:105px;top:8px;right:8px}
+  #minimap{width:92px;height:92px}
+  #hud{top:8px;left:8px}
+  #hudPills{max-width:210px;gap:4px}
+  .box{padding:2px 6px;font-size:11px}
+  .box b{font-size:12px}
+  #damage{font-size:clamp(22px,6vw,30px)}
+  #subtitle{bottom:115px;max-width:92vw;font-size:13.5px;padding:5px 14px}
+}
