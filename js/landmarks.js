@@ -33,6 +33,8 @@ const BRICK = 0xb5543c, CREAM = 0xf3e5c8, STONE = 0xd8cfc0, DARK = 0x37474f, POL
 function mesh(geo, mat, x, y, z, sx = 1, sy = 1, sz = 1) {
   const m = new THREE.Mesh(geo, mat);
   m.position.set(x, y, z); m.scale.set(sx, sy, sz);
+  m.castShadow = true;
+  m.receiveShadow = true;
   return m;
 }
 

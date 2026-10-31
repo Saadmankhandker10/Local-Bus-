@@ -95,13 +95,53 @@ export const ROUTE = {
   ],
 
   // Time of day along the whole journey (p = 0 at the start, 1 at the end).
-  // Warm Dhaka golden-afternoon / sunset boulevard atmosphere fading into dusk.
+  // Rich atmospheric Dhaka presets: Dawn -> Morning -> High Noon -> Golden Sunset -> City Night
   sky: [
-    { p: 0.00, sky: 0xd99672, fog: 0xe3ab84, fogFar: 175, sun: 0xffc680, sunI: 1.25, hemiI: 0.95, ground: 0x6d5e4e, sunPos: [25, 22, -40] },
-    { p: 0.28, sky: 0xe8b282, fog: 0xedc093, fogFar: 185, sun: 0xffd699, sunI: 1.3,  hemiI: 1.0,  ground: 0x6e6452, sunPos: [10, 35, -30] },
-    { p: 0.55, sky: 0xd68a6c, fog: 0xde9878, fogFar: 175, sun: 0xffa766, sunI: 1.15, hemiI: 0.9,  ground: 0x635548, sunPos: [-20, 18, -35] },
-    { p: 0.80, sky: 0xb56565, fog: 0xbf736b, fogFar: 165, sun: 0xff8052, sunI: 0.85, hemiI: 0.8,  ground: 0x4f443c, sunPos: [-40, 12, -30] },
-    { p: 1.00, sky: 0x2c2238, fog: 0x382a42, fogFar: 155, sun: 0x99aaff, sunI: 0.45, hemiI: 0.6,  ground: 0x2e2a28, sunPos: [-20, 28, 10] },
+    {
+      p: 0.00, // Mohammadpur Bus Stand: crisp golden dawn
+      skyTop: 0x3b6d9e, skyHor: 0xe8ad84,
+      sunCol: 0xffd285, sunI: 1.85,
+      hemiSky: 0xffeedd, hemiGround: 0x6e5848, hemiI: 1.05,
+      fogNear: 55, fogFar: 180,
+      exposure: 1.12, ground: 0x6d5e4e,
+      sunPos: [25, 42, -35]
+    },
+    {
+      p: 0.28, // Dhanmondi / Mirpur Road: clear tropical noon
+      skyTop: 0x226bb8, skyHor: 0x86c2e2,
+      sunCol: 0xfff6ea, sunI: 2.15,
+      hemiSky: 0xffffff, hemiGround: 0x586b58, hemiI: 1.15,
+      fogNear: 60, fogFar: 190,
+      exposure: 1.05, ground: 0x6e6856,
+      sunPos: [15, 68, -25]
+    },
+    {
+      p: 0.55, // Science Lab / New Market: golden afternoon
+      skyTop: 0x3d6494, skyHor: 0xeb8b52,
+      sunCol: 0xffa84d, sunI: 1.9,
+      hemiSky: 0xffcca6, hemiGround: 0x563e2e, hemiI: 1.05,
+      fogNear: 52, fogFar: 180,
+      exposure: 1.1, ground: 0x624e40,
+      sunPos: [-35, 34, -35]
+    },
+    {
+      p: 0.80, // Shahbagh / Asad Gate: dramatic crimson sunset
+      skyTop: 0x242a54, skyHor: 0xc45645,
+      sunCol: 0xff5e3d, sunI: 1.35,
+      hemiSky: 0x8e5c6a, hemiGround: 0x3a242d, hemiI: 0.9,
+      fogNear: 48, fogFar: 168,
+      exposure: 1.16, ground: 0x483a34,
+      sunPos: [-55, 18, -30]
+    },
+    {
+      p: 1.00, // Curzon Hall / Dhaka University: atmospheric night with neon/streetlight glow
+      skyTop: 0x080d1a, skyHor: 0x1a1f33,
+      sunCol: 0x90b0f8, sunI: 0.6,
+      hemiSky: 0x283254, hemiGround: 0x161522, hemiI: 0.72,
+      fogNear: 42, fogFar: 155,
+      exposure: 1.3, ground: 0x262326,
+      sunPos: [-20, 42, 10]
+    },
   ],
 };
 

@@ -9,21 +9,99 @@ import { getProcessionBySegId } from "./data/events.js";
 
 const W = CFG.world;
 
-/* ====== Renderer, scene, lights (the camera lives in camera.js) ====== */
-export const renderer = new THREE.WebGLRenderer({ antialias: true });
+/* ====== Renderer, scene, lights, cinematic ACES tonemapping & soft shadows ====== */
+export const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  powerPreference: "high-performance"
+});
 renderer.setSize(innerWidth, innerHeight);
-renderer.setPixelRatio(Math.min(devicePixelRatio, CFG.render.maxPixelRatio));
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, CFG.render.maxPixelRatio));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.prepend(renderer.domElement);
 
 export const scene = new THREE.Scene();
-scene.background = new THREE.Color(W.skyColor);
 scene.fog = new THREE.Fog(W.skyColor, W.fogNear, W.fogFar);
 
-export const hemi = new THREE.HemisphereLight(0xffffff, 0x556655, 1.0);
+export const hemi = new THREE.HemisphereLight(0xffeedd, 0x556655, 1.1);
 scene.add(hemi);
-export const sun = new THREE.DirectionalLight(0xfff2cc, 1.2);
-sun.position.set(20, 40, 10);
+
+export const sun = new THREE.DirectionalLight(0xfff2cc, 1.8);
+sun.position.set(20, 60, 20);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+const sc = sun.shadow.camera;
+sc.left = -45;
+sc.right = 45;
+sc.top = 45;
+sc.bottom = -45;
+sc.near = 1;
+sc.far = 180;
+sun.shadow.bias = -0.0006;
+sun.shadow.normalBias = 0.03;
 scene.add(sun);
+scene.add(sun.target);
+
+/* ====== Custom Atmospheric Sky Dome Shader with Sun Disk & Horizon Haze ====== */
+export const skyUniforms = {
+  top: { value: new THREE.Color(0x3b6d9e) },
+  hor: { value: new THREE.Color(0xe8ad84) },
+  sunCol: { value: new THREE.Color(0xffd285) },
+  sunDir: { value: new THREE.Vector3(0.3, 0.7, -0.4).normalize() },
+};
+
+const skyMat = new THREE.ShaderMaterial({
+  uniforms: skyUniforms,
+  vertexShader: `
+    varying vec3 vDir;
+    void main() {
+      vDir = position;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform vec3 top;
+    uniform vec3 hor;
+    uniform vec3 sunCol;
+    uniform vec3 sunDir;
+    varying vec3 vDir;
+
+    void main() {
+      vec3 d = normalize(vDir);
+      float h = clamp(d.y, 0.0, 1.0);
+      vec3 c = mix(hor, top, pow(h, 0.5));
+      float s = max(dot(d, normalize(sunDir)), 0.0);
+      // Intense solar core disc + broad atmospheric corona
+      c += sunCol * (pow(s, 700.0) * 1.6 + pow(s, 10.0) * 0.35);
+      // Soft haze blend matching the horizon fog
+      c = mix(c, hor, smoothstep(0.25, 0.0, d.y) * 0.6);
+      gl_FragColor = vec4(c, 1.0);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+    }
+  `,
+  side: THREE.BackSide,
+  depthWrite: false,
+});
+
+const skyGeo = new THREE.SphereGeometry(520, 24, 16);
+export const skyMesh = new THREE.Mesh(skyGeo, skyMat);
+skyMesh.frustumCulled = false;
+skyMesh.renderOrder = -1;
+scene.add(skyMesh);
+
+/** Dynamically toggle soft shadows and tune pixel ratio based on quality setting. */
+export function setRenderQuality(qualityMode) {
+  const isLow = qualityMode === "low";
+  const isHigh = qualityMode === "high";
+  const pr = isLow ? 1 : isHigh ? Math.min(devicePixelRatio || 1, 2) : Math.min(devicePixelRatio || 1, 1.5);
+  renderer.setPixelRatio(pr);
+  const enableShadows = (qualityMode !== "low");
+  renderer.shadowMap.enabled = enableShadows;
+  sun.castShadow = enableShadows;
+}
 
 addEventListener("resize", () => renderer.setSize(innerWidth, innerHeight));
 
@@ -34,12 +112,14 @@ addEventListener("resize", () => renderer.setSize(innerWidth, innerHeight));
 const UNIT = new THREE.BoxGeometry(1, 1, 1);
 const matCache = new Map();
 
-/** A coloured box mesh of size w×h×d at (x, y, z). All boxes share GPU data. */
+/** A coloured box mesh of size w×h×d at (x, y, z). All boxes share GPU data and cast/receive soft shadows. */
 export function box(w, h, d, color, x = 0, y = 0, z = 0) {
   if (!matCache.has(color)) matCache.set(color, new THREE.MeshLambertMaterial({ color }));
   const m = new THREE.Mesh(UNIT, matCache.get(color));
   m.scale.set(w, h, d);
   m.position.set(x, y, z);
+  m.castShadow = true;
+  m.receiveShadow = true;
   return m;
 }
 
@@ -56,8 +136,14 @@ export function person(shirt, y = 0, cap) {
   const g = new THREE.Group();
   const b = new THREE.Mesh(bodyGeo, lambert(shirt)); b.position.y = y + .45;
   const h = new THREE.Mesh(headGeo, lambert(0xc68642)); h.position.y = y + 1.12;
+  b.castShadow = true; b.receiveShadow = true;
+  h.castShadow = true;
   g.add(b, h);
-  if (cap) g.add(box(.48, .12, .48, cap, 0, y + 1.32, 0));
+  if (cap) {
+    const c = box(.48, .12, .48, cap, 0, y + 1.32, 0);
+    c.castShadow = true;
+    g.add(c);
+  }
   return g;
 }
 
@@ -85,6 +171,7 @@ export function plate(text, w, h, bg, fg) {
 export const groundMat = new THREE.MeshLambertMaterial({ color: 0x6d6a61 });
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(900, 900).rotateX(-Math.PI / 2), groundMat);
 ground.position.y = -.2;
+ground.receiveShadow = true;
 scene.add(ground);
 
 /** Keep the ground under the camera (the fog hides its edges). */
@@ -294,6 +381,7 @@ function buildRoads() {
     g.computeVertexNormals();
     const m = new THREE.Mesh(g, mat);
     m.frustumCulled = false;
+    m.receiveShadow = true;
     scene.add(m);
   }
 }
@@ -366,6 +454,8 @@ function makePooledBuilding(idx) {
   const g = new THREE.Group();
   // Main apartment/commercial building block (unit cube scaled per placement).
   const bldg = new THREE.Mesh(UNIT, BLDG_MATS[idx % BLDG_MATS.length]);
+  bldg.castShadow = true;
+  bldg.receiveShadow = true;
   g.add(bldg);
 
   // 1st-floor Bangla shop signboard facing the road (local -x faces road when placed on right, flipped via side).
@@ -379,6 +469,8 @@ function makePooledBuilding(idx) {
   awning.scale.set(2.4, 0.14, 7.6);
   awning.position.set(0, 2.55, 0);
   awning.rotation.z = 0.12;
+  awning.castShadow = true;
+  awning.receiveShadow = true;
   hawker.add(awning);
   for (const dz of [-3.4, 0, 3.4]) {
     hawker.add(box(0.08, 2.5, 0.08, 0x78583a, -1.0, 1.25, dz));

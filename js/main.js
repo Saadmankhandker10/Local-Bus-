@@ -2,7 +2,7 @@
 import { CFG } from "./config.js";
 import { game, resetGame } from "./state.js";
 import { on, emit } from "./events.js";
-import { renderer, scene, initWorld, resetWorld, updateWorld } from "./world.js";
+import { renderer, scene, initWorld, resetWorld, updateWorld, setRenderQuality, sun } from "./world.js";
 import { initInput, pollInput, onTap, onAnyInput } from "./input.js";
 import { resetBus, updateBus, updateAutopilot, updateBusVisual, triggerHelperSlap } from "./bus.js";
 import { cam, updateCamera, resetCamera } from "./camera.js";
@@ -340,6 +340,10 @@ function render(dt) {
 // Mark the engine as loaded and bind start buttons immediately
 window.__localBusBooted = true;
 onStartPressed(startMain, startFresh);
+try {
+  const savedQ = $("setQuality")?.value || (typeof localStorage !== "undefined" ? localStorage.getItem("lb_quality") : null) || "auto";
+  setRenderQuality(savedQ);
+} catch {}
 
 try {
   initWorld(sceneryAt);
@@ -388,10 +392,14 @@ let slowFrameAcc = 0;
   // Cap the frame time so a long freeze can't trigger hundreds of catch-up steps.
   const frameDt = Math.min(CFG.loop.maxFrameDt, Math.max(0, now - last) / 1000);
   last = now;
-  // Auto-quality watchdog: if a phone struggles below ~28 FPS for 3 s, step down pixel ratio to 1.
-  if (game.running && !game.paused && $("setQuality")?.value === "auto" && renderer.getPixelRatio() > 1) {
+  // Auto-quality watchdog: if a phone struggles below ~28 FPS for 3 s, step down pixel ratio to 1 and disable shadows.
+  if (game.running && !game.paused && $("setQuality")?.value === "auto" && (renderer.getPixelRatio() > 1 || renderer.shadowMap.enabled)) {
     slowFrameAcc = frameDt > 0.036 ? slowFrameAcc + frameDt : Math.max(0, slowFrameAcc - frameDt * .5);
-    if (slowFrameAcc > 3) renderer.setPixelRatio(1);
+    if (slowFrameAcc > 3) {
+      renderer.setPixelRatio(1);
+      renderer.shadowMap.enabled = false;
+      sun.castShadow = false;
+    }
   }
   pollInput();
   if (game.paused) acc = 0;

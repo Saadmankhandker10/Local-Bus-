@@ -13,7 +13,7 @@ import { NAMES, bnNum, clock, getLang, setLang, applyLangDOM } from "./i18n.js";
 import { showPaper, hidePaper, savePaperImage, copyRunSummary, saveRunVideo, copyDareLink } from "./newspaper.js";
 import { TICKER } from "./data/ticker.bn.js";
 import { nearestCng } from "./marks.js";
-import { renderer } from "./world.js";
+import { renderer, setRenderQuality } from "./world.js";
 import { cam } from "./camera.js";
 
 let msgT = 0;   // seconds left before the current message disappears
@@ -303,10 +303,13 @@ function initModalsAndPwa() {
     };
   }
   if ($("setQuality")) {
+    const savedQuality = (typeof localStorage !== "undefined" ? localStorage.getItem("lb_quality") : null) || "auto";
+    $("setQuality").value = savedQuality;
+    setRenderQuality(savedQuality);
     $("setQuality").onchange = e => {
       const v = e.target.value;
-      const pr = v === "low" ? 1 : Math.min(devicePixelRatio || 1, CFG.render.maxPixelRatio);
-      renderer.setPixelRatio(pr);
+      if (typeof localStorage !== "undefined") localStorage.setItem("lb_quality", v);
+      setRenderQuality(v);
     };
   }
   if ($("setShake")) {
