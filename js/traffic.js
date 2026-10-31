@@ -7,13 +7,21 @@
 import * as THREE from "three";
 import { CFG } from "./config.js";
 import { rnd, pick, clamp } from "./utils.js";
-import { scene, box, person } from "./world.js";
+import { scene, box, person, animatePerson } from "./world.js";
 import { game } from "./state.js";
 import { emit, on } from "./events.js";
 import { sweptHit, sideGap } from "./physics.js";
-import { makeVehicle, makeStall, makePillar, makeManhole, makeTrench, makeRamp, beaconMat, dangerRingMat } from "./vehicles.js";
+import { makeVehicle, makeStall, makeThela, makeFishStall, makePillar, makeManhole, makeTrench, makeRamp, beaconMat, dangerRingMat } from "./vehicles.js";
 import { disposeHierarchy, sparkMat } from "./shaders.js";
-import { spawnCrashEffects, spawnScrapeSparks, spawnDizzyStars } from "./effects.js";
+import {
+  spawnCrashEffects,
+  spawnScrapeSparks,
+  spawnDizzyStars,
+  spawnDustPuffs,
+  spawnLooseItems,
+  spawnComicWord,
+  spawnGroundSplat
+} from "./effects.js";
 import { currentStage } from "./journey.js";
 import { SEGS, here, ahead, walk, place, lanesOf } from "./map.js";
 import { PROCESSION_EVENTS } from "./data/events.js";
@@ -152,7 +160,12 @@ function ejectDriver(seg, s, x) {
     m, seg, s,
     x: x + side * 1.1,
     targetX: side * (SEGS[seg].half + 1.2),
+    state: "impatient",
+    animTime: rnd(0, 5),
+    timer: 0,
     scared: true, angry: true, ph: rnd(0, 6),
+    vx: 0, vy: 0, vz: 0,
+    rotX: 0, rotZ: 0, spinVx: 0, spinVz: 0
   });
   place(m, seg, s, x + side * 1.1);
   spawnDizzyStars(m, 2.8);
@@ -226,7 +239,12 @@ function spawn(dt) {
       peds.push({
         m, seg: spot.seg, s: spot.s,
         x: startX, targetX: -startX,
-        scared: false, ph: rnd(0, 6),
+        state: "walk",
+        animTime: rnd(0, 10),
+        timer: 0,
+        scared: false, angry: false, ph: rnd(0, 6),
+        vx: 0, vy: 0, vz: 0,
+        rotX: 0, rotZ: 0, spinVx: 0, spinVz: 0
       });
       place(m, spot.seg, spot.s, startX);
     }
@@ -370,6 +388,15 @@ function launch(o) {
 
   // Stalls come apart: every part gets its own little launch.
   if (o.t === CFG.stall || o.t.name === "trench") {
+    const isThela = o.m.userData.stallType === "thela";
+    const isFish = o.m.userData.stallType === "fish";
+    if (isThela) {
+      spawnLooseItems(o.m.position.x, 1.1, o.m.position.z, 6);
+      spawnComicWord(o.m.position.x, 2.2, o.m.position.z);
+    } else if (isFish) {
+      spawnLooseItems(o.m.position.x, 0.9, o.m.position.z, 6);
+      spawnComicWord(o.m.position.x, 2.2, o.m.position.z);
+    }
     for (const part of o.m.children) {
       part.userData.vel = [side * rnd(2, 8), rnd(3, 8), -rnd(2, 10)];
       part.userData.spin = rnd(-8, 8);
@@ -622,37 +649,148 @@ export function updateTraffic(dt) {
     sp.m.scale.setScalar(Math.max(0.1, (1.0 - sp.t / sp.maxT) * 1.5));
   }
 
-  // Update crossing pedestrians: walk across, hesitate/jump back when the bus approaches, never crashable.
+  // Update pedestrians: authentic state machine, knockdown physics, getting up, and limb animation.
   for (let i = peds.length - 1; i >= 0; i--) {
     const p = peds[i], S = SEGS[p.seg], a = ahead(p.seg, p.s);
     if (Number.isNaN(a) || a < -T.despawnBehind || a > -T.despawnAhead) {
       scene.remove(p.m); peds.splice(i, 1);
       continue;
     }
-    if (!p.scared && onBusRoad(p.seg) && a > 0 && a < PED.scareDist && Math.abs(p.x - bx) < PED.scareWidth && game.speed > 4) {
-      p.scared = true;
-      // Scramble to whichever pavement side is safer away from the bus.
-      const safeSide = (p.x >= bx ? 1 : -1);
-      p.targetX = safeSide * (S.half + 1.2);
+
+    p.animTime = (p.animTime || 0) + dt;
+
+    // 1. Tumble State: Mid-air physical spin and trajectory upon being hit by bus
+    if (p.state === "tumble") {
+      p.vy -= 18.0 * dt;
+      p.y = (p.y || 0) + p.vy * dt;
+      p.x += p.vx * dt;
+      p.s += p.vz * dt;
+      p.rotX = (p.rotX || 0) + p.spinVx * dt;
+      p.rotZ = (p.rotZ || 0) + p.spinVz * dt;
+
+      animatePerson(p.m, "tumble", p.animTime, dt);
+      place(p.m, p.seg, clamp(p.s, 0, S.len), p.x, Math.max(0.08, p.y));
+      p.m.rotation.x = p.rotX;
+      p.m.rotation.z = p.rotZ;
+
+      // Road impact
+      if (p.y <= 0.08 && p.vy < 0) {
+        p.y = 0.08;
+        p.vy = 0;
+        p.vx *= 0.25;
+        p.vz *= 0.25;
+        p.state = "down";
+        p.timer = 1.4; // lies flat on asphalt for 1.4 seconds
+        spawnDustPuffs(p.m.position.x, 0.1, p.m.position.z, 5);
+        spawnGroundSplat(p.m.position.x, p.m.position.z, "dust");
+      }
+      continue;
     }
-    if (onBusRoad(p.seg) && a > -2 && a < 6 && Math.abs(p.x - bx) < B.hitHalfWidth + .75) {
-      // Last-moment leap aside so a pedestrian is never hit, while the driver taps the brakes.
-      const safeSide = (p.x >= bx ? 1 : -1);
-      p.x = bx + safeSide * (B.hitHalfWidth + 1.35);
-      p.targetX = safeSide * (S.half + 1.2);
-      p.scared = true;
-      game.speed *= 0.9;
-      if (game.time > pedWarnT) {
-        pedWarnT = game.time + 3.2;
-        emit("pedScared");
+
+    // 2. Down State: Lying flat on the road
+    if (p.state === "down") {
+      p.timer -= dt;
+      animatePerson(p.m, "down", p.animTime, dt);
+      place(p.m, p.seg, clamp(p.s, 0, S.len), p.x, 0.08, p.rotZ || 0);
+      p.m.rotation.x = Math.PI / 2;
+
+      if (p.timer <= 0) {
+        p.state = "stunned";
+        p.timer = 1.3;
+        spawnDizzyStars(p.m, 1.3);
+      }
+      continue;
+    }
+
+    // 3. Stunned State: Sitting up dizzily holding head with rotating cartoon stars
+    if (p.state === "stunned") {
+      p.timer -= dt;
+      animatePerson(p.m, "stunned", p.animTime, dt);
+      place(p.m, p.seg, clamp(p.s, 0, S.len), p.x, 0.15);
+      p.m.rotation.x = Math.PI / 4;
+
+      if (p.timer <= 0) {
+        p.state = "getUp";
+        p.timer = 1.1;
+      }
+      continue;
+    }
+
+    // 4. Get Up State: Slowly standing back up from the road
+    if (p.state === "getUp") {
+      p.timer -= dt;
+      const tProgress = Math.max(0, p.timer / 1.1);
+      animatePerson(p.m, "getUp", p.animTime, dt);
+      place(p.m, p.seg, clamp(p.s, 0, S.len), p.x, 0);
+      p.m.rotation.x = tProgress * (Math.PI / 4);
+
+      if (p.timer <= 0) {
+        p.m.rotation.set(0, 0, 0);
+        p.state = "impatient";
+        p.scared = true;
+        p.targetX = (p.x >= 0 ? 1 : -1) * (S.half + 1.2);
+      }
+      continue;
+    }
+
+    // 5. Collision with Bus: High-speed knock or low-speed leap
+    if (onBusRoad(p.seg) && a > -2.2 && a < 5.4 && Math.abs(p.x - bx) < B.hitHalfWidth + 0.65) {
+      if (game.speed > 7.5) {
+        // High speed impact: Launches pedestrian into tumbling knockdown physics!
+        p.state = "tumble";
+        const side = p.x >= bx ? 1 : -1;
+        p.vx = side * (rnd(5.5, 9.5) + game.speed * 0.16);
+        p.vy = rnd(5.5, 9.2);
+        p.vz = rnd(-2, 3) - game.speed * 0.22;
+        p.spinVx = rnd(9, 15);
+        p.spinVz = side * rnd(7, 12);
+        p.rotX = 0;
+        p.rotZ = 0;
+        p.y = 0.2;
+
+        spawnLooseItems(p.m.position.x, 0.6, p.m.position.z, 2);
+        spawnComicWord(p.m.position.x, 2.0, p.m.position.z);
+        game.speed *= 0.88;
+        if (game.time > pedWarnT) {
+          pedWarnT = game.time + 3.0;
+          emit("pedScared");
+        }
+        continue;
+      } else {
+        // Slow-speed leap aside
+        const safeSide = (p.x >= bx ? 1 : -1);
+        p.x = bx + safeSide * (B.hitHalfWidth + 1.35);
+        p.targetX = safeSide * (S.half + 1.2);
+        p.scared = true;
+        p.state = "impatient";
+        game.speed *= 0.9;
+        if (game.time > pedWarnT) {
+          pedWarnT = game.time + 3.2;
+          emit("pedScared");
+        }
       }
     }
-    const spd = p.scared ? PED.dodgeSpeed : PED.walkSpeed;
+
+    // Oncoming bus scare detection
+    if (!p.scared && onBusRoad(p.seg) && a > 0 && a < PED.scareDist && Math.abs(p.x - bx) < PED.scareWidth && game.speed > 4) {
+      p.scared = true;
+      const safeSide = (p.x >= bx ? 1 : -1);
+      p.targetX = safeSide * (S.half + 1.2);
+    }
+
+    // Move towards targetX across road
     const dx = p.targetX - p.x;
-    if (Math.abs(dx) > .08) p.x += Math.sign(dx) * Math.min(Math.abs(dx), spd * dt);
-    const bob = Math.abs(dx) > .1 ? Math.abs(Math.sin(game.time * (p.scared ? 14 : 7) + p.ph)) * .16 : 0;
+    if (Math.abs(dx) > 0.12) {
+      p.state = p.scared ? "chase" : "walk";
+      const spd = p.scared ? PED.dodgeSpeed : PED.walkSpeed;
+      p.x += Math.sign(dx) * Math.min(Math.abs(dx), spd * dt);
+    } else {
+      p.state = p.angry ? (Math.random() < 0.4 ? "punch" : "impatient") : "calm";
+    }
+
+    animatePerson(p.m, p.state, p.animTime, dt);
     const faceYaw = dx >= 0 ? Math.PI / 2 : -Math.PI / 2;
-    place(p.m, p.seg, p.s, p.x, bob, faceYaw);
+    place(p.m, p.seg, p.s, p.x, 0, faceYaw);
   }
 
   game.warn = warn;

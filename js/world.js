@@ -12,7 +12,9 @@ import {
   createBuildingMaterials,
   DHAKA_SHOP_DATA,
   createPlaidTex,
-  createGamchhaTex
+  createGamchhaTex,
+  createSareeTex,
+  createGenjiTex
 } from "./textures.js";
 import { attachBlackoutShader, disposeHierarchy, applyPolygonOffset, blackoutState } from "./shaders.js";
 
@@ -147,35 +149,328 @@ export function lambert(color) {
   return matCache.get(color);
 }
 
-const bodyGeo = new THREE.CylinderGeometry(.22, .27, .9, 8);
-const headGeo = new THREE.SphereGeometry(.21, 8, 8);
-const lungiGeo = new THREE.CylinderGeometry(.25, .29, .5, 8);
+/* ====== Human Characters, Diverse Bangladeshi Outfits & Articulated Limbs ====== */
+const headGeo = new THREE.SphereGeometry(0.18, 8, 8);
+const torsoGeo = new THREE.CylinderGeometry(0.19, 0.22, 0.46, 8);
+const armGeo = new THREE.CylinderGeometry(0.052, 0.044, 0.40, 6).translate(0, -0.20, 0);
+const legGeo = new THREE.CylinderGeometry(0.065, 0.052, 0.48, 6).translate(0, -0.24, 0);
+const lungiGeo = new THREE.CylinderGeometry(0.24, 0.28, 0.50, 8);
+const sareeSkirtGeo = new THREE.CylinderGeometry(0.23, 0.32, 0.52, 8);
+const sareeAnchalGeo = new THREE.BoxGeometry(0.24, 0.54, 0.05);
+const hairBunGeo = new THREE.SphereGeometry(0.09, 6, 6);
+const sandalGeo = new THREE.BoxGeometry(0.12, 0.04, 0.24);
+const tupiGeo = new THREE.CylinderGeometry(0.18, 0.19, 0.09, 8);
+const gamchhaRingGeo = new THREE.TorusGeometry(0.19, 0.045, 6, 12);
+
+// Mark shared geometries to prevent unintended disposal
+[headGeo, torsoGeo, armGeo, legGeo, lungiGeo, sareeSkirtGeo, sareeAnchalGeo, hairBunGeo, sandalGeo, tupiGeo, gamchhaRingGeo].forEach(g => {
+  g.userData = { isShared: true };
+});
+
 const lungiMat1 = new THREE.MeshLambertMaterial({ map: createPlaidTex("#1a365d", "#e2e8f0", "#2b6cb0") });
 const lungiMat2 = new THREE.MeshLambertMaterial({ map: createPlaidTex("#1b4332", "#d8f3dc", "#2d6a4f") });
+const lungiMat3 = new THREE.MeshLambertMaterial({ map: createPlaidTex("#5c1d1d", "#f5e6e6", "#8b2525") });
 const gamchhaMat = new THREE.MeshLambertMaterial({ map: createGamchhaTex() });
-const LUNGI_MATS = [lungiMat1, lungiMat2, gamchhaMat];
+const genjiMat = new THREE.MeshLambertMaterial({ map: createGenjiTex() });
 
-/** A simple person (body + head, optional cap and authentic lungi/gamchha) standing at height y. Shares GPU data. */
-export function person(shirt, y = 0, cap, wearsLungi = false) {
+const sareeMatCrimson = new THREE.MeshLambertMaterial({ map: createSareeTex("#b71c1c", "#ffd700") });
+const sareeMatTeal = new THREE.MeshLambertMaterial({ map: createSareeTex("#00695c", "#ffca28") });
+const sareeMatMagenta = new THREE.MeshLambertMaterial({ map: createSareeTex("#880e4f", "#ffe082") });
+const sareeMatYellow = new THREE.MeshLambertMaterial({ map: createSareeTex("#f57f17", "#ff6f00") });
+const SAREE_MATS = [sareeMatCrimson, sareeMatTeal, sareeMatMagenta, sareeMatYellow];
+
+const LUNGI_MATS = [lungiMat1, lungiMat2, lungiMat3];
+const PANT_COLORS = [0x1a237e, 0x263238, 0x8d6e63, 0x212121, 0x37474f];
+const SHIRT_COLORS = [0xe53935, 0x1e88e5, 0x43a047, 0xfb8c00, 0x8e24aa, 0x00897b, 0xfdd835, 0xffffff, 0x546e7a];
+
+[lungiMat1, lungiMat2, lungiMat3, gamchhaMat, genjiMat, ...SAREE_MATS].forEach(m => {
+  m.userData = { isShared: true };
+});
+
+/** A detailed person with authentic Bangladeshi outfits (lungi, saree, pants, genji, salwar) and articulated limbs. */
+export function person(shirt, y = 0, cap, wearsLungi = false, opts = {}) {
   const g = new THREE.Group();
-  const b = new THREE.Mesh(bodyGeo, lambert(shirt)); b.position.y = y + .45;
-  const h = new THREE.Mesh(headGeo, lambert(0xc68642)); h.position.y = y + 1.12;
-  b.castShadow = true; b.receiveShadow = true;
-  h.castShadow = true;
-  g.add(b, h);
-  if (wearsLungi || Math.random() < 0.45) {
-    const l = new THREE.Mesh(lungiGeo, pick(LUNGI_MATS));
-    l.position.y = y + .26;
-    l.castShadow = true;
-    l.receiveShadow = true;
-    g.add(l);
+  g.userData.baseY = y;
+
+  // Resolve outfit type
+  let outfit = opts.outfit;
+  const isCop = cap === 0x1a237e || shirt === 0xf5f5f5 && cap;
+  if (isCop) {
+    outfit = "police";
+  } else if (!outfit) {
+    if (wearsLungi) {
+      outfit = "lungi";
+    } else {
+      const r = Math.random();
+      if (r < 0.32) outfit = "lungi";
+      else if (r < 0.58) outfit = "pants";
+      else if (r < 0.74) outfit = "saree";
+      else if (r < 0.88) outfit = "genji";
+      else outfit = "salwar";
+    }
   }
-  if (cap) {
-    const c = box(.48, .12, .48, cap, 0, y + 1.32, 0);
-    c.castShadow = true;
-    g.add(c);
+  g.userData.outfit = outfit;
+
+  // Resolve shirt / torso material
+  let shirtColor = typeof shirt === "number" ? shirt : pick(SHIRT_COLORS);
+  let torsoMat = lambert(shirtColor);
+  let skinMat = lambert(0xc68642);
+  let hairMat = lambert(0x1a1a1a);
+  let sandalMat = lambert(pick([0x1565c0, 0x4e342e, 0x212121]));
+
+  if (outfit === "genji") {
+    torsoMat = genjiMat;
+  } else if (outfit === "saree") {
+    torsoMat = pick(SAREE_MATS);
+  } else if (outfit === "police") {
+    torsoMat = lambert(0xf5f5f5);
   }
+
+  // 1. Torso Group
+  const torso = new THREE.Group();
+  torso.position.y = y + 0.48;
+  const torsoMesh = new THREE.Mesh(torsoGeo, torsoMat);
+  torsoMesh.position.y = 0.23;
+  torsoMesh.castShadow = true;
+  torsoMesh.receiveShadow = true;
+  torso.add(torsoMesh);
+
+  // 2. Head Group
+  const head = new THREE.Group();
+  head.position.set(0, 0.46, 0);
+  const headMesh = new THREE.Mesh(headGeo, skinMat);
+  headMesh.position.y = 0.18;
+  headMesh.castShadow = true;
+  head.add(headMesh);
+
+  // Headwear / Hair / Accessories
+  if (outfit === "saree" || outfit === "salwar") {
+    // Female hair bun (খোপা) at back of head
+    const bun = new THREE.Mesh(hairBunGeo, hairMat);
+    bun.position.set(0, 0.18, -0.18);
+    // Red bindi on forehead
+    const bindi = box(0.04, 0.04, 0.02, 0xd50000, 0, 0.20, 0.18);
+    head.add(bun, bindi);
+  } else if (outfit === "police") {
+    // Police navy cap
+    const pCap = box(0.44, 0.10, 0.44, 0x1a237e, 0, 0.35, 0);
+    pCap.castShadow = true;
+    head.add(pCap);
+  } else if (cap) {
+    const cMesh = box(0.44, 0.10, 0.44, cap, 0, 0.35, 0);
+    cMesh.castShadow = true;
+    head.add(cMesh);
+  } else {
+    // Male: prayer tupi or neat hair
+    if (Math.random() < 0.35) {
+      const tupi = new THREE.Mesh(tupiGeo, lambert(0xf5f5f5));
+      tupi.position.y = 0.33;
+      tupi.castShadow = true;
+      head.add(tupi);
+    } else {
+      const hair = box(0.38, 0.08, 0.38, 0x1a1a1a, 0, 0.34, 0);
+      head.add(hair);
+    }
+  }
+  torso.add(head);
+
+  // 3. Articulated Arms (Pivoted at shoulders)
+  const leftArm = new THREE.Group();
+  leftArm.position.set(-0.25, 0.38, 0);
+  const leftArmMesh = new THREE.Mesh(armGeo, outfit === "genji" ? skinMat : torsoMat);
+  leftArmMesh.castShadow = true;
+  leftArm.add(leftArmMesh);
+  torso.add(leftArm);
+
+  const rightArm = new THREE.Group();
+  rightArm.position.set(0.25, 0.38, 0);
+  const rightArmMesh = new THREE.Mesh(armGeo, outfit === "genji" ? skinMat : torsoMat);
+  rightArmMesh.castShadow = true;
+  rightArm.add(rightArmMesh);
+  torso.add(rightArm);
+
+  g.add(torso);
+
+  // 4. Articulated Legs (Pivoted at hips)
+  const pantColor = outfit === "police" ? 0x1a237e : pick(PANT_COLORS);
+  const legMat = (outfit === "pants" || outfit === "police" || outfit === "salwar") ? lambert(pantColor) : skinMat;
+
+  const leftLeg = new THREE.Group();
+  leftLeg.position.set(-0.11, y + 0.48, 0);
+  const leftLegMesh = new THREE.Mesh(legGeo, legMat);
+  leftLegMesh.castShadow = true;
+  leftLegMesh.receiveShadow = true;
+  const leftSandal = new THREE.Mesh(sandalGeo, sandalMat);
+  leftSandal.position.set(0, -0.46, 0.03);
+  leftLeg.add(leftLegMesh, leftSandal);
+  g.add(leftLeg);
+
+  const rightLeg = new THREE.Group();
+  rightLeg.position.set(0.11, y + 0.48, 0);
+  const rightLegMesh = new THREE.Mesh(legGeo, legMat);
+  rightLegMesh.castShadow = true;
+  rightLegMesh.receiveShadow = true;
+  const rightSandal = new THREE.Mesh(sandalGeo, sandalMat);
+  rightSandal.position.set(0, -0.46, 0.03);
+  rightLeg.add(rightLegMesh, rightSandal);
+  g.add(rightLeg);
+
+  // 5. Lower Garments: Lungi / Saree Skirt & Anchal
+  if (outfit === "lungi" || outfit === "genji") {
+    const lungiMat = pick(LUNGI_MATS);
+    const lungiMesh = new THREE.Mesh(lungiGeo, lungiMat);
+    lungiMesh.position.y = y + 0.25;
+    lungiMesh.castShadow = true;
+    lungiMesh.receiveShadow = true;
+    g.add(lungiMesh);
+
+    // Gamchha over shoulder or around neck
+    if (Math.random() < 0.65) {
+      const gamchha = new THREE.Mesh(gamchhaRingGeo, gamchhaMat);
+      gamchha.rotation.x = Math.PI / 2;
+      gamchha.position.set(0, 0.42, 0);
+      torso.add(gamchha);
+    }
+  } else if (outfit === "saree") {
+    const sareeSkirt = new THREE.Mesh(sareeSkirtGeo, torsoMat);
+    sareeSkirt.position.y = y + 0.26;
+    sareeSkirt.castShadow = true;
+    sareeSkirt.receiveShadow = true;
+    g.add(sareeSkirt);
+
+    // Anchal drape across chest to shoulder
+    const anchal = new THREE.Mesh(sareeAnchalGeo, torsoMat);
+    anchal.rotation.z = -0.35;
+    anchal.position.set(-0.06, 0.24, 0.12);
+    torso.add(anchal);
+  }
+
+  // Store limb references on userData for runtime animation
+  g.userData.torso = torso;
+  g.userData.head = head;
+  g.userData.leftArm = leftArm;
+  g.userData.rightArm = rightArm;
+  g.userData.leftLeg = leftLeg;
+  g.userData.rightLeg = rightLeg;
+
   return g;
+}
+
+/** Animates a character's articulated limbs based on their current state machine action. */
+export function animatePerson(g, state = "walk", animTime = 0, dt = 0.016) {
+  const u = g.userData;
+  if (!u || !u.leftArm || !u.rightArm || !u.leftLeg || !u.rightLeg) return;
+  const la = u.leftArm, ra = u.rightArm, ll = u.leftLeg, rl = u.rightLeg;
+  const torso = u.torso, head = u.head;
+
+  // Reset base pose before applying state
+  la.rotation.set(0, 0, 0);
+  ra.rotation.set(0, 0, 0);
+  ll.rotation.set(0, 0, 0);
+  rl.rotation.set(0, 0, 0);
+  torso.rotation.set(0, 0, 0);
+  if (head) head.rotation.set(0, 0, 0);
+
+  switch (state) {
+    case "walk": {
+      const freq = 6.0;
+      const legA = Math.sin(animTime * freq) * 0.55;
+      ll.rotation.x = legA;
+      rl.rotation.x = -legA;
+      la.rotation.x = -legA * 0.75;
+      ra.rotation.x = legA * 0.75;
+      torso.position.y = (u.baseY || 0) + 0.48 + Math.abs(Math.sin(animTime * freq)) * 0.04;
+      break;
+    }
+    case "calm": {
+      la.rotation.x = 0.05;
+      ra.rotation.x = -0.05;
+      if (head) head.rotation.y = Math.sin(animTime * 1.5) * 0.22;
+      torso.position.y = (u.baseY || 0) + 0.48;
+      break;
+    }
+    case "impatient": {
+      // Tapping right foot rapidly + checking watch with left arm
+      rl.rotation.x = Math.sin(animTime * 14) * 0.20;
+      la.rotation.x = -Math.PI * 0.48;
+      la.rotation.z = 0.38;
+      ra.rotation.x = Math.sin(animTime * 3) * 0.15;
+      if (head) head.rotation.y = Math.sin(animTime * 4.5) * 0.35;
+      torso.position.y = (u.baseY || 0) + 0.48;
+      break;
+    }
+    case "chase": {
+      // High-speed running chase, shaking right fist angrily!
+      const freq = 13.0;
+      const legA = Math.sin(animTime * freq) * 0.85;
+      ll.rotation.x = legA;
+      rl.rotation.x = -legA;
+      la.rotation.x = -legA * 0.7;
+      ra.rotation.x = -Math.PI * 0.72 + Math.sin(animTime * 16) * 0.35; // shaking fist in air
+      torso.rotation.x = 0.24; // leaned forward
+      torso.position.y = (u.baseY || 0) + 0.48 + Math.abs(Math.sin(animTime * freq)) * 0.08;
+      break;
+    }
+    case "grab": {
+      // Reaching forward with both hands to grab the bus handle or window
+      la.rotation.x = -Math.PI * 0.55 + Math.sin(animTime * 8) * 0.12;
+      ra.rotation.x = -Math.PI * 0.55 - Math.sin(animTime * 8) * 0.12;
+      torso.rotation.x = 0.32;
+      break;
+    }
+    case "punch": {
+      // Throwing aggressive forward punches
+      const punchA = Math.sin(animTime * 12);
+      ra.rotation.x = -Math.PI * 0.45 + punchA * 0.8;
+      la.rotation.x = -0.3;
+      torso.rotation.y = punchA * 0.35;
+      break;
+    }
+    case "kick": {
+      // Aggressive street kick
+      rl.rotation.x = -Math.PI * 0.45 + Math.sin(animTime * 8) * 0.25;
+      la.rotation.x = 0.5;
+      ra.rotation.x = 0.5;
+      break;
+    }
+    case "tumble": {
+      // Flailing wildly in mid-air
+      la.rotation.x = Math.sin(animTime * 22) * 1.6;
+      ra.rotation.x = -Math.sin(animTime * 24) * 1.6;
+      la.rotation.z = 0.95;
+      ra.rotation.z = -0.95;
+      ll.rotation.x = Math.sin(animTime * 18) * 0.9;
+      rl.rotation.x = -Math.sin(animTime * 18) * 0.9;
+      break;
+    }
+    case "down": {
+      // Lying flat on the ground
+      la.rotation.z = 1.15;
+      ra.rotation.z = -1.15;
+      ll.rotation.z = 0.35;
+      rl.rotation.z = -0.35;
+      break;
+    }
+    case "stunned": {
+      // Sitting up groggily holding head
+      ra.rotation.x = -Math.PI * 0.72; // hand to forehead
+      ra.rotation.z = -0.25;
+      la.rotation.x = 0.2;
+      if (head) {
+        head.rotation.y = Math.sin(animTime * 3) * 0.3;
+        head.rotation.z = Math.sin(animTime * 2) * 0.15;
+      }
+      break;
+    }
+    case "getUp":
+    case "beaten": {
+      // Standing up, dusting off, shaking fist
+      const phase = Math.sin(animTime * 8);
+      la.rotation.x = -0.3 + phase * 0.2;
+      ra.rotation.x = -Math.PI * 0.5 + phase * 0.4; // shaking fist
+      break;
+    }
+  }
 }
 
 /** A flat sign with text drawn on a canvas (works with Bangla text). Long text shrinks to fit. */

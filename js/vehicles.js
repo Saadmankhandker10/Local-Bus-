@@ -2,8 +2,8 @@
 // All models face -z (the way traffic drives), so the camera sees their backs.
 import * as THREE from "three";
 import { CFG } from "./config.js";
-import { pick } from "./utils.js";
-import { box, plate, person, UNIT } from "./world.js";
+import { pick, rnd } from "./utils.js";
+import { box, plate, person, lambert, UNIT } from "./world.js";
 import {
   createTruckArtTex,
   createRickshawHoodTex,
@@ -195,16 +195,174 @@ export function makeVehicle(t) {
 }
 
 // Stall signs are drawn once and shared, because canvas textures are expensive to make.
-const STALL_SIGNS = ["চা-বিস্কুট", "ফলের দোকান", "ডাব", "ফুচকা"].map(text => plate(text, 1.4, .45, "#fff8e1", "#c62828"));
+const STALL_SIGNS = [
+  "চা-বিস্কুট", "ফলের দোকান", "ডাব", "ফুচকা",
+  "তাজা ইলিশ", "পদ্মার মাছ", "ফলের ঠেলা", "টাটকা আম-কলা"
+].map(text => plate(text, 1.4, .45, "#fff8e1", "#c62828"));
 
-/** A roadside stall made of loose parts, so it can break apart when hit. */
+const thelaWheelGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.07, 10).rotateZ(Math.PI / 2);
+thelaWheelGeo.userData = { isShared: true };
+const thelaWheelMat = new THREE.MeshLambertMaterial({ color: 0x4e342e });
+thelaWheelMat.userData = { isShared: true };
+
+/** A 4-wheel wooden Dhaka pushcart (Thelagadi) piled with watermelons, bananas, and a lungi-wearing hawker. */
+export function makeThela() {
+  const g = new THREE.Group();
+  g.userData.stallType = "thela";
+
+  // 1. Wooden chassis bed & push handles
+  const bed = box(1.3, 0.1, 2.2, 0x8d6e63, 0, 0.65, 0);
+  const handleL = box(0.06, 0.06, 0.8, 0x5d4037, -0.5, 0.85, -1.3);
+  const handleR = box(0.06, 0.06, 0.8, 0x5d4037, 0.5, 0.85, -1.3);
+  const railFront = box(1.3, 0.22, 0.06, 0x5d4037, 0, 0.78, 1.07);
+  const railL = box(0.06, 0.22, 2.1, 0x5d4037, -0.62, 0.78, 0);
+  const railR = box(0.06, 0.22, 2.1, 0x5d4037, 0.62, 0.78, 0);
+  g.add(bed, handleL, handleR, railFront, railL, railR);
+
+  // 2. 4 Large Spoked Wooden Wheels
+  const wheelPositions = [
+    [-0.68, 0.32, 0.65],
+    [0.68, 0.32, 0.65],
+    [-0.68, 0.32, -0.65],
+    [0.68, 0.32, -0.65]
+  ];
+  for (const [wx, wy, wz] of wheelPositions) {
+    const w = new THREE.Mesh(thelaWheelGeo, thelaWheelMat);
+    w.position.set(wx, wy, wz);
+    w.castShadow = true;
+    const hub = box(0.12, 0.12, 0.12, 0x212121, wx, wy, wz);
+    g.add(w, hub);
+  }
+
+  // 3. Piled Fruits: Watermelons, Bananas, Papayas
+  const melonMat = lambert(0x1b5e20);
+  for (let i = 0; i < 4; i++) {
+    const melon = new THREE.Mesh(new THREE.SphereGeometry(0.20, 8, 8), melonMat);
+    melon.position.set(rnd(-0.35, 0.35), 0.85, rnd(-0.5, 0.6));
+    melon.scale.set(1.1, 1.0, 1.2);
+    melon.castShadow = true;
+    g.add(melon);
+  }
+  const bananaMat = lambert(0xffeb3b);
+  for (let i = 0; i < 5; i++) {
+    const ban = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.34, 6), bananaMat);
+    ban.rotation.set(rnd(-0.4, 0.4), rnd(-1, 1), rnd(0.5, 1.2));
+    ban.position.set(rnd(-0.4, 0.4), 0.88, rnd(-0.6, 0.7));
+    ban.castShadow = true;
+    g.add(ban);
+  }
+  const papayaMat = lambert(0xff9800);
+  for (let i = 0; i < 3; i++) {
+    const pap = new THREE.Mesh(new THREE.SphereGeometry(0.14, 6, 6), papayaMat);
+    pap.position.set(rnd(-0.3, 0.3), 0.86, rnd(-0.4, 0.5));
+    pap.castShadow = true;
+    g.add(pap);
+  }
+
+  // 4. Thela-puller (Hawker) behind the cart
+  const puller = person(0xffffff, 0, null, true, { outfit: "genji" });
+  puller.position.set(0, 0, -1.6);
+  puller.rotation.y = 0;
+  if (puller.userData.torso) puller.userData.torso.rotation.x = 0.28;
+  if (puller.userData.leftArm) puller.userData.leftArm.rotation.x = -Math.PI * 0.45;
+  if (puller.userData.rightArm) puller.userData.rightArm.rotation.x = -Math.PI * 0.45;
+  g.add(puller);
+
+  // 5. Bengali Sign Plate
+  const sign = pick(STALL_SIGNS).clone();
+  sign.position.set(0, 0.85, 1.15);
+  g.add(sign);
+
+  return g;
+}
+
+/** A roadside fish vendor (মাছের দোকান) with bamboo crates, silver Hilsa fish, cutting boti knife, and fishmonger. */
+export function makeFishStall() {
+  const g = new THREE.Group();
+  g.userData.stallType = "fish";
+
+  // 1. Low wooden cutting platform (chowki)
+  const platform = box(1.8, 0.42, 1.6, 0x6d4c41, 0, 0.21, 0);
+  g.add(platform);
+
+  // 2. Traditional iron boti knife upright on wooden base
+  const botiBase = box(0.18, 0.08, 0.60, 0x3e2723, 0.35, 0.46, 0.1);
+  const botiBlade = box(0.02, 0.38, 0.12, 0x37474f, 0.35, 0.65, 0.22);
+  botiBlade.rotation.x = -0.25;
+  g.add(botiBase, botiBlade);
+
+  // 3. Bamboo fish baskets (ডালা)
+  const basketGeo = new THREE.CylinderGeometry(0.38, 0.28, 0.18, 10);
+  const basketMat = lambert(0x8d6e63);
+  const fishMat = lambert(0xcfd8dc);
+
+  for (const bPos of [[-0.45, 0.52, -0.2], [-0.42, 0.52, 0.45]]) {
+    const basket = new THREE.Mesh(basketGeo, basketMat);
+    basket.position.set(bPos[0], bPos[1], bPos[2]);
+    basket.castShadow = true;
+    g.add(basket);
+
+    // Silver Hilsa fish inside basket
+    for (let f = 0; f < 3; f++) {
+      const fish = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.09, 0.38, 7), fishMat);
+      fish.rotation.set(Math.PI / 2 + rnd(-0.2, 0.2), rnd(-0.4, 0.4), rnd(-1, 1));
+      fish.position.set(bPos[0] + rnd(-0.15, 0.15), bPos[1] + 0.12, bPos[2] + rnd(-0.15, 0.15));
+      fish.scale.set(1, 0.4, 1);
+      fish.castShadow = true;
+      const gills = box(0.02, 0.03, 0.05, 0xd32f2f, fish.position.x, fish.position.y + 0.02, fish.position.z);
+      g.add(fish, gills);
+    }
+  }
+
+  // 4. Blue water bucket
+  const bucket = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.14, 0.32, 8), lambert(0x1976d2));
+  bucket.position.set(0.55, 0.58, -0.4);
+  bucket.castShadow = true;
+  g.add(bucket);
+
+  // 5. Fishmonger sitting in lungi beside the boti
+  const monger = person(0x1565c0, 0, null, true, { outfit: "lungi" });
+  monger.position.set(0.35, 0, -0.35);
+  monger.rotation.y = 0;
+  if (monger.userData.torso) monger.userData.torso.rotation.x = 0.15;
+  if (monger.userData.leftArm) monger.userData.leftArm.rotation.x = -Math.PI * 0.35;
+  if (monger.userData.rightArm) monger.userData.rightArm.rotation.x = -Math.PI * 0.40;
+  g.add(monger);
+
+  // 6. Sign plate
+  const sign = pick(STALL_SIGNS).clone();
+  sign.position.set(0, 0.75, 0.85);
+  g.add(sign);
+
+  return g;
+}
+
+/** A roadside stall made of loose parts (tea stall, thelagadi pushcart, or fish vendor), so it breaks apart when hit. */
 export function makeStall() {
+  const r = Math.random();
+  if (r < 0.36) {
+    return makeThela();
+  } else if (r < 0.68) {
+    return makeFishStall();
+  }
   const S = CFG.stall, c = pick(S.colors);
   const g = new THREE.Group();
+  g.userData.stallType = "tea";
   g.add(box(S.w, .8, S.l, 0x8d6e63, 0, .4, 0));                 // table
   g.add(box(S.w + .3, .1, S.l + .3, c, 0, S.h, 0));              // roof tarp
   for (const z of [-1, 1]) g.add(box(.08, S.h, .08, 0x5d4037, 0, S.h / 2, z * S.l * .45)); // poles
   for (let i = 0; i < 3; i++) g.add(box(.3, .3, .3, pick([0xffeb3b, 0x8bc34a, 0xff7043]), 0, .95, (i - 1) * .6)); // goods
+
+  // Aluminum tea kettle
+  const kettle = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 0.28, 8), lambert(0xb0bec5));
+  kettle.position.set(0.2, 0.94, -0.4);
+  g.add(kettle);
+
+  // Stallkeeper in lungi
+  const chaiwala = person(pick([0xe53935, 0x1e88e5, 0x43a047]), 0, null, true, { outfit: "lungi" });
+  chaiwala.position.set(0, 0, -S.l * 0.5 - 0.3);
+  g.add(chaiwala);
+
   const sign = pick(STALL_SIGNS).clone();
   sign.position.set(0, S.h - .3, S.l / 2 + .16);
   g.add(sign);

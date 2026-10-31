@@ -440,6 +440,66 @@ export function createGamchhaTex() {
   return t;
 }
 
+export function createSareeTex(baseColor = "#b71c1c", borderGold = "#ffd700") {
+  const c = document.createElement("canvas");
+  c.width = 128; c.height = 128;
+  const ctx = c.getContext("2d");
+
+  // Rich saree body color
+  ctx.fillStyle = baseColor;
+  ctx.fillRect(0, 0, 128, 128);
+
+  // Tiny floral gold buti polka motifs
+  ctx.fillStyle = borderGold;
+  for (let y = 14; y < 90; y += 22) {
+    for (let x = 14; x < 128; x += 22) {
+      ctx.beginPath();
+      ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Broad golden zari border along bottom hem
+  ctx.fillStyle = borderGold;
+  ctx.fillRect(0, 96, 128, 32);
+
+  // Zari zig-zag chevron detail
+  ctx.strokeStyle = "#b26a00";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  for (let x = 0; x <= 128; x += 8) {
+    ctx.lineTo(x, x % 16 === 0 ? 102 : 118);
+  }
+  ctx.stroke();
+
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = THREE.RepeatWrapping;
+  t.repeat.set(2, 1);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+export function createGenjiTex() {
+  const c = document.createElement("canvas");
+  c.width = 64; c.height = 64;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#f8f9fa";
+  ctx.fillRect(0, 0, 64, 64);
+  ctx.strokeStyle = "#e9ecef";
+  ctx.lineWidth = 2;
+  for (let x = 0; x < 64; x += 6) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, 64);
+    ctx.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(4, 4);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 /* ====== 6. Rickshaw Floral Art Hood & Vinyl Rain Film ====== */
 
 export function createRickshawHoodTex() {

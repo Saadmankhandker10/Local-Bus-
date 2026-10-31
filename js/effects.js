@@ -146,6 +146,9 @@ const COMIC_WORDS = [
   { text: "ক্র্যাশ!", bg: "#2979ff", textCol: "#ffffff" },
   { text: "আউচ!", bg: "#aa00ff", textCol: "#ffe57f" },
   { text: "ওরে বাবা!", bg: "#ff1744", textCol: "#ffffff" },
+  { text: "আমার ফল!", bg: "#ff9100", textCol: "#ffffff" },
+  { text: "আমার ইলিশ!", bg: "#00b0ff", textCol: "#000000" },
+  { text: "ঐ মিয়া!", bg: "#e91e63", textCol: "#ffffff" },
 ];
 
 const wordMats = [];
@@ -223,7 +226,7 @@ dustMat.userData = { isShared: true };
 const dustPool = [];
 
 /* ====== 7. Flying Loose Items & Flip-Flops ====== */
-const LOOSE_TYPES = ["teacup", "phone", "sandal", "umbrella", "veggieBasket"];
+const LOOSE_TYPES = ["teacup", "phone", "sandal", "umbrella", "veggieBasket", "banana", "fish"];
 const loosePool = [];
 
 function buildLooseModel(type) {
@@ -260,6 +263,23 @@ function buildLooseModel(type) {
       g.add(veg);
     }
     g.add(basket);
+  } else if (type === "banana") {
+    // Yellow ripe banana
+    const ban = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.035, 0.36, 6), new THREE.MeshLambertMaterial({ color: 0xffeb3b }));
+    ban.rotation.z = 0.35;
+    const tip = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.05), new THREE.MeshLambertMaterial({ color: 0x4e342e }));
+    tip.position.y = 0.18;
+    g.add(ban, tip);
+  } else if (type === "fish") {
+    // Silver Hilsa fish (রূপালী ইলিশ)
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.12, 0.44, 7), new THREE.MeshLambertMaterial({ color: 0xcfd8dc }));
+    body.rotation.z = Math.PI / 2;
+    body.scale.set(1, 0.35, 1);
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.02, 0.14), new THREE.MeshLambertMaterial({ color: 0xb0bec5 }));
+    tail.position.x = 0.24;
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.02, 4, 4), new THREE.MeshBasicMaterial({ color: 0x111111 }));
+    eye.position.set(-0.16, 0.03, 0.03);
+    g.add(body, tail, eye);
   }
   g.visible = false;
   return g;
@@ -943,3 +963,4 @@ export function updateEffects(dt) {
     }
   }
 }
+
