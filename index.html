@@ -7,15 +7,16 @@
 <title>লোকাল বাস — ঢাকা রুট | Local Bus: Dhaka Route</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://fonts.maateen.me/kalpurush/font.css">
 <link rel="stylesheet" href="css/tokens.css">
-<link rel="stylesheet" href="css/style.css?v=3.0">
+<link rel="stylesheet" href="css/style.css?v=3.3">
 <script>
   if (location.protocol === "file:") {
     window.__isFileProtocol = true;
   }
   // Auto-purge any stale service workers or caches during local updates
   (function() {
-    var v = "3.0";
+    var v = "3.3";
     var isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
     if (isLocal || localStorage.getItem("lb_sw_v") !== v) {
       localStorage.setItem("lb_sw_v", v);
@@ -105,6 +106,11 @@
     <div style="margin-bottom:8px">
       <button type="button" id="startPlaceBtn" class="start-spot-pill">📍 শুরুর এলাকা: মোহাম্মদপুর বাসস্ট্যান্ড (ক্লিক করে বদলান)</button>
     </div>
+    <div class="driver-card">
+      <span class="driver-badge">🏆 ওস্তাদ প্রোফাইল:</span>
+      <strong id="driverNameDisplay">কালা ওস্তাদ</strong>
+      <button type="button" id="editDriverBtn" class="sm-btn">✏ নাম পরিবর্তন</button>
+    </div>
     <div id="sub">
       রিকশা, বাইক, সিএনজি, গাড়ি, <b>ভিআইপি গাড়ি</b> আর দোকানে ধাক্কা দিলে <b>ড্যামেজ</b> বাড়ে, পরপর দিলে কম্বো!<br>
       ডিভাইডারের গ্যাপ দিয়ে ডান লেনে ঢুকলে <b>উল্টো পথ · ক্ষতি ×১.৫</b> বোনাস! যেকোনো <b>চৌরাস্তায় (মোড়ে)</b> বামে বা ডানে ঘুরুন!<br>
@@ -116,6 +122,10 @@
     <div id="wantedBox">
       <div class="wanted-head">🚨 মোস্ট ওয়ান্টেড ওস্তাদ তালিকা <small>· ধরিয়ে দিলে পুরস্কার: এক কাপ চা</small></div>
       <div id="wantedList"></div>
+      <div class="weekly-bar">
+        <span id="weeklyResetTimer">⏳ চলতি সপ্তাহ শেষ হতে: <b id="weeklyTimeLeft">...</b></span>
+        <button type="button" id="weeklyBoardBtn" class="sm-btn">🏆 অনলাইন সাপ্তাহিক সেরা ১০</button>
+      </div>
     </div>
     <div class="fiction">এটি একটি কাল্পনিক, ব্যঙ্গাত্মক গেম। বাস্তবে নিরাপদে চালান।</div>
   </div>
@@ -144,10 +154,25 @@
     <button id="title4dMapBtn" type="button">🗺 পুরো ঢাকা ম্যাপ</button>
     <button id="restart" hidden data-i18n="restartBtn">শুরু থেকে</button>
     <button id="share" hidden data-i18n="shareBtn">📰 ছবি সেভ / শেয়ার</button>
+    <button id="fbShareBtn" hidden type="button" class="social-btn fb-btn">📘 ফেসবুকে শেয়ার</button>
+    <button id="instaCopyBtn" hidden type="button" class="social-btn insta-btn">📸 ইনস্টাগ্রাম ক্যাপশন কপি</button>
     <button id="clipBtn" hidden type="button">🎬 ভিডিও সেভ / শেয়ার</button>
     <button id="dareBtn" hidden type="button">🔥 চ্যালেঞ্জ লিংক কপি</button>
     <button id="copyBtn" hidden data-i18n="copyBtn">📋 স্কোর কপি</button>
     <button id="installBtn" hidden>📲 অ্যাপ ইনস্টল</button>
+    <button id="iosInstallBtn" hidden type="button" class="social-btn ios-btn">🍏 আইফোনে ইনস্টল</button>
+  </div>
+  <div id="nlCard" class="nl-card">
+    <span class="nl-icon">📬</span>
+    <div class="nl-info">
+      <b>সাপ্তাহিক টুর্নামেন্ট রেজাল্ট ও ওস্তাদের ট্রফি</b>
+      <small>নতুন ইভেন্ট ও সেরা ওস্তাদের তালিকা সরাসরি ইমেইলে পান</small>
+    </div>
+    <form id="nlForm" class="nl-form">
+      <input type="email" id="nlEmail" placeholder="আপনার ইমেইল দিন" required>
+      <button type="submit" id="nlSubmitBtn">সাবস্ক্রাইব</button>
+    </form>
+    <div id="nlSuccess" hidden>✅ ধন্যবাদ! আপনি যুক্ত হয়েছেন।</div>
   </div>
   <div class="footer-links">
     <button type="button" class="linkbtn" data-info="howto">কীভাবে খেলবেন</button> ·
@@ -239,6 +264,40 @@
     </div>
   </div>
 </div>
+<div id="driverModal" class="modal" hidden>
+  <div class="modal-card">
+    <h2>✏ আপনার ওস্তাদ নাম লিখুন</h2>
+    <p>পত্রিকার হেডলাইন ও সাপ্তাহিক লিডারবোর্ডে এই নাম ভেসে উঠবে।</p>
+    <div class="srow">
+      <input type="text" id="driverNameInput" maxlength="20" placeholder="যেমন: কালা ওস্তাদ / তুফান রফিক" style="width:100%;box-sizing:border-box;padding:10px 14px;font-size:16px;border-radius:6px;border:1.5px solid #ffd54f;background:#151817;color:#fff;font-family:'Kalpurush',var(--font-bn);">
+    </div>
+    <div class="btns">
+      <button type="button" id="saveDriverBtn" class="ticket-btn">ঠিক আছে</button>
+      <button type="button" id="closeDriverModal">বাতিল</button>
+    </div>
+  </div>
+</div>
+<div id="weeklyModal" class="modal" hidden>
+  <div class="modal-card" style="max-width:540px;">
+    <h2>🏆 অনলাইন সাপ্তাহিক লিডারবোর্ড</h2>
+    <p id="weeklyTimerText" style="color:#ffd54f;font-size:14px;margin-bottom:12px;font-weight:700;"></p>
+    <div id="weeklyList" class="weekly-list"></div>
+    <div class="fiction" style="margin-top:12px;font-size:12.5px;">প্রতি শুক্রবার রাত ১২:০০ টায় টুর্নামেন্ট রিসেট হয় ও নতুন চ্যাম্পিয়ন নির্বাচিত হয়।</div>
+    <div class="btns" style="margin-top:14px;"><button type="button" id="closeWeeklyModal">বন্ধ করুন</button></div>
+  </div>
+</div>
+<div id="iosModal" class="modal" hidden>
+  <div class="modal-card" style="max-width:480px;">
+    <h2>🍏 আইফোনে (iOS) ইনস্টল করার নিয়ম</h2>
+    <p style="font-size:14.5px;color:#e0e0e0;margin-bottom:12px;">সাফারি ব্রাউজারে ৩টি সহজ ধাপে অ্যাপস্টোর ছাড়াই সম্পূর্ণ স্ক্রিনে খেলুন:</p>
+    <ol class="ios-steps" style="padding-left:22px;line-height:1.7;font-size:14px;color:#f5f5f5;">
+      <li>নিচের সাফারি বার থেকে <b>Share (শেয়ার)</b> আইকনে <span style="font-size:16px;">⎋</span> চাপুন।</li>
+      <li>একটু নিচে স্ক্রল করে <b>'Add to Home Screen' (হোম স্ক্রিনে যোগ করুন)</b> বাছুন।</li>
+      <li>উপরে ডানদিকের <b>'Add'</b> চাপলে আপনার হোমস্ক্রিনে অ্যাপ আইকন চলে আসবে!</li>
+    </ol>
+    <div class="btns" style="margin-top:14px;"><button type="button" id="closeIosModal" class="ticket-btn">বুঝেছি</button></div>
+  </div>
+</div>
 <button id="settingsbtn" aria-label="সেটিংস">⚙</button>
 <button id="soundbtn" aria-label="সাউন্ড">🔊</button>
 <button id="pausebtn" hidden aria-label="বিরতি">❚❚</button>
@@ -278,7 +337,7 @@
     });
   };
 </script>
-<script type="module" src="js/main.js?v=3.2" onerror="window.__bootErrors.push({ msg: 'main.js লোড হতে পারেনি (CORS বা নেটওয়ার্ক ব্লক)' })"></script>
+<script type="module" src="js/main.js?v=3.3" onerror="window.__bootErrors.push({ msg: 'main.js লোড হতে পারেনি (CORS বা নেটওয়ার্ক ব্লক)' })"></script>
 <script>
   // Boot guard: if ES modules or WebGL fail to load within 6 seconds, show a helpful message and force-reload button.
   setTimeout(function () {

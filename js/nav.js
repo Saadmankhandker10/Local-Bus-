@@ -588,7 +588,7 @@ function drawBig4DMap(tod) {
   });
 
   // Landmark 3D pins and Bangla labels.
-  bctx.font = `700 ${Math.round(12 * dpr)}px "Noto Sans Bengali", sans-serif`;
+  bctx.font = `700 ${Math.round(12 * dpr)}px 'Kalpurush', "Noto Sans Bengali", sans-serif`;
   bctx.textAlign = "center";
   for (const pin of MAP_PINS) {
     const sx = projX(pin.x, pin.z), sy = projY(pin.x, 12, pin.z), syGround = projY(pin.x, 0, pin.z);

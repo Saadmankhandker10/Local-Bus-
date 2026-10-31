@@ -30,10 +30,12 @@ import { HEAVY_HIT } from "./i18n.js";
 import { pick, clamp, $ } from "./utils.js";
 import { updateHud, onStartPressed, onPauseButton, hideScreen, showPause, showRunEnd, crashList } from "./hud.js";
 import { initEffects, resetEffects, updateEffects } from "./effects.js";
+import { trackEvent } from "./analytics.js";
 
 // Signal that all modules have evaluated and the engine is booting
 if (typeof window !== "undefined") {
   window.__localBusBooted = true;
+  trackEvent("game_ready");
 }
 
 let endReason = "";   // title of the ending, e.g. "ট্রাকে ধাক্কা!"
@@ -51,6 +53,7 @@ let hornT = 0, shoutBtnT = 0; // earliest time the next horn / shout may play
  */
 function start(fromCheckpoint) {
   try {
+    trackEvent("run_start", { fromCheckpoint, startStage: game.startStage });
     resetGame();
     resetScore();
     resetJourney(fromCheckpoint && !!journey.cp);

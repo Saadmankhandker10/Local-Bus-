@@ -3,8 +3,10 @@ import { CFG } from "./config.js";
 import { $, pick } from "./utils.js";
 import { PAPER, HEADLINES, STORIES } from "./data/headlines.bn.js";
 import { bnNum, bnDate, clock, UI } from "./i18n.js";
+import { getDriverName } from "./leaderboard.js";
+import { trackEvent } from "./analytics.js";
 
-const FONT = "'Noto Sans Bengali', 'Nirmala UI', sans-serif";
+const FONT = "'Kalpurush', 'Noto Sans Bengali', 'Nirmala UI', sans-serif";
 let current = null; // the last page shown, so "save image" can redraw it
 let mediaRec = null, recChunks = [], lastVideoBlob = null;
 
@@ -103,14 +105,31 @@ function fill(text, run) {
 /** Choose a headline and story that fit how the run went. */
 function write(run) {
   const P = CFG.paper;
+  const driver = getDriverName();
+  const personalized = [
+    `ওস্তাদ ${driver}-এর বেপরোয়া বাস চালানোর ভিডিও ভাইরাল!`,
+    `মিরপুর থেকে শাহবাগ: ওস্তাদ ${driver}-এর তাণ্ডবে ঢাকা স্থবির!`,
+    `ওস্তাদ ${driver} বললেন: 'রাস্তা কি কারও বাপের?'`,
+    `ট্রাফিক পুলিশ ও ওস্তাদ ${driver}-এর তীব্র ধাওয়া-পাল্টাধাওয়া!`,
+    `ওস্তাদ ${driver}-এর রকেট বাসের ধাক্কায় লণ্ডভণ্ড সড়ক!`
+  ];
+
   const specials = [];
   if (run.combo >= P.bigCombo) specials.push(...HEADLINES.bigCombo);
   if (run.damage >= P.highDamage) specials.push(...HEADLINES.highDamage);
   if (run.cause === "complete" && run.crashes === 0) specials.push(...HEADLINES.noCrash);
   if (run.fines > 0) specials.push(...HEADLINES.fines);
-  const base = HEADLINES[run.cause] || HEADLINES.general;
-  const headline = specials.length && Math.random() < P.specialChance ? pick(specials)
-    : Math.random() < P.generalChance ? pick(HEADLINES.general) : pick(base);
+
+  let headline;
+  if (Math.random() < 0.65) {
+    headline = pick(personalized);
+  } else if (specials.length && Math.random() < P.specialChance) {
+    headline = pick(specials);
+  } else {
+    const base = HEADLINES[run.cause] || HEADLINES.general;
+    headline = Math.random() < P.generalChance ? pick(HEADLINES.general) : pick(base);
+  }
+
   const story = pick(STORIES[run.cause] || STORIES.general);
   return { headline: fill(headline, run), story: fill(story, run) };
 }
@@ -133,7 +152,8 @@ function statLines(run) {
  */
 export function showPaper(run, photo) {
   const text = write(run);
-  current = { run, photo, ...text, kicker: `${UI.lastNews}: ${run.why}` };
+  const driver = getDriverName();
+  current = { run, photo, ...text, driver, kicker: `🚨 ওস্তাদ: ${driver} · ${UI.lastNews}: ${run.why}` };
   $("pname").textContent = PAPER.name;
   $("ptag").textContent = PAPER.tagline;
   $("pdate").textContent = bnDate();
@@ -141,7 +161,7 @@ export function showPaper(run, photo) {
   $("pkicker").textContent = current.kicker;
   $("phead").textContent = text.headline;
   $("pphoto").src = photo;
-  $("pcap").textContent = PAPER.photoCaption;
+  $("pcap").textContent = `ছবি: ${PAPER.photoCaption} (ড্রাইভার: ওস্তাদ ${driver})`;
   $("pstory").textContent = text.story;
   $("pstats").innerHTML = statLines(run).map(l => `<div>${l}</div>`).join("");
   const stamp = STAMPS[run.cause] || STAMPS.default;
@@ -208,6 +228,42 @@ export async function copyRunSummary() {
 
 export function hidePaper() {
   $("paper").hidden = true;
+}
+
+/** Share run result directly to Facebook with dare link. */
+export function shareOnFacebook() {
+  if (!current) return;
+  const { run } = current;
+  const taka = Math.max(100, run.damage * 10);
+  const url = new URL(location.href);
+  url.searchParams.set("dare", String(taka));
+  url.searchParams.set("at", run.stage);
+  const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url.toString())}`;
+  window.open(fbUrl, "_blank", "width=600,height=500");
+  trackEvent("share_click", { method: "facebook", stage: run.stage, damage: taka });
+}
+
+/** Copy viral Bengali Instagram Reels/Post caption with hashtags and driver name. */
+export async function copyInstagramCaption() {
+  if (!current) return false;
+  const { run } = current;
+  const name = getDriverName();
+  const taka = bnNum((run.damage * 10).toLocaleString("en-IN"));
+  const caption =
+    `🚌 লোকাল বাস — ঢাকা রুট 🇧🇩\n` +
+    `ওস্তাদ ${name}-এর বেপরোয়া ড্রাইভিংয়ে আজ রাস্তায় ৳${taka} ড্যামেজ! 💥\n` +
+    `🔥 সেরা কম্বো: x${bnNum(run.combo)} | পথ: ${bnNum(run.km)} কিমি (${run.stage})\n` +
+    `আমার এই রেকর্ড ভাঙার সাহস কার আছে? লিংক থেকে খেলে দেখাও! 👇\n` +
+    `${location.href}\n\n` +
+    `#LocalBusDhaka #BaperRasta #DhakaRoute #BanglaGame #LocalBus`;
+
+  trackEvent("share_click", { method: "instagram", stage: run.stage, damage: run.damage * 10 });
+  try {
+    await navigator.clipboard.writeText(caption);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Copy a challenge link (?dare=...&at=...) so friends can try to beat this run's damage! */

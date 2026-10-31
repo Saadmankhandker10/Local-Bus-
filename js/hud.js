@@ -10,7 +10,15 @@ import { crowd } from "./crowd.js";
 import { ROUTE, TOTAL } from "./route.js";
 import { progress } from "./journey.js";
 import { NAMES, bnNum, clock, getLang, setLang, applyLangDOM } from "./i18n.js";
-import { showPaper, hidePaper, savePaperImage, copyRunSummary, saveRunVideo, copyDareLink } from "./newspaper.js";
+import {
+  showPaper, hidePaper, savePaperImage, copyRunSummary, saveRunVideo,
+  copyDareLink, shareOnFacebook, copyInstagramCaption
+} from "./newspaper.js";
+import {
+  getDriverName, setDriverName, getWeeklyLeaderboard,
+  getWeeklyTournamentInfo, submitScoreToLeaderboard, handleNewsletterSubscribe
+} from "./leaderboard.js";
+import { trackEvent } from "./analytics.js";
 import { TICKER } from "./data/ticker.bn.js";
 import { nearestCng } from "./marks.js";
 import { renderer, setRenderQuality } from "./world.js";
@@ -61,6 +69,13 @@ export function refreshBestBanner() {
 
 /** Refresh the "মোস্ট ওয়ান্টেড" leaderboard and the friend-challenge banner on the title screen. */
 export function refreshWantedAndDare() {
+  if ($("driverNameDisplay")) {
+    $("driverNameDisplay").textContent = getDriverName();
+  }
+  const wInfo = getWeeklyTournamentInfo();
+  if ($("weeklyTimeLeft")) {
+    $("weeklyTimeLeft").textContent = wInfo.countdownText;
+  }
   const wl = $("wantedList");
   if (wl) {
     const list = getWantedList();
@@ -217,6 +232,19 @@ export function onStartPressed(main, fromStart) {
   $("go").onclick = main;
   $("restart").onclick = fromStart;
   $("share").onclick = () => savePaperImage();
+  if ($("fbShareBtn")) {
+    $("fbShareBtn").onclick = () => {
+      shareOnFacebook();
+      trackEvent("share_click", { platform: "facebook" });
+    };
+  }
+  if ($("instaCopyBtn")) {
+    $("instaCopyBtn").onclick = async () => {
+      const ok = await copyInstagramCaption();
+      msg(ok ? "📸 ইনস্টাগ্রাম ক্যাপশন ও হ্যাশট্যাগ কপি হয়েছে!" : "কপি করা যায়নি", 1500);
+      trackEvent("share_click", { platform: "instagram" });
+    };
+  }
   if ($("clipBtn")) {
     $("clipBtn").onclick = async () => {
       const ok = await saveRunVideo();
@@ -350,6 +378,93 @@ function initModalsAndPwa() {
       await deferredPrompt.userChoice;
       deferredPrompt = null;
       $("installBtn").hidden = true;
+      trackEvent("install_offer", { platform: "android" });
+    };
+  }
+
+  // Edit Driver Name Modal
+  if ($("editDriverBtn")) {
+    $("editDriverBtn").onclick = () => {
+      if ($("driverNameInput")) $("driverNameInput").value = getDriverName();
+      if ($("driverModal")) $("driverModal").hidden = false;
+    };
+  }
+  if ($("saveDriverBtn")) {
+    $("saveDriverBtn").onclick = () => {
+      const val = $("driverNameInput")?.value;
+      const clean = setDriverName(val);
+      if ($("driverNameDisplay")) $("driverNameDisplay").textContent = clean;
+      if ($("driverModal")) $("driverModal").hidden = true;
+      refreshWantedAndDare();
+      msg(`ওস্তাদ "${clean}" সংরক্ষিত!`, 1400);
+    };
+  }
+  if ($("closeDriverModal")) {
+    $("closeDriverModal").onclick = () => {
+      if ($("driverModal")) $("driverModal").hidden = true;
+    };
+  }
+
+  // Weekly Leaderboard Modal
+  async function renderWeeklyModal() {
+    const wInfo = getWeeklyTournamentInfo();
+    if ($("weeklyTimerText")) {
+      $("weeklyTimerText").textContent = `⏳ চলতি সপ্তাহ শেষ হতে বাকি: ${wInfo.countdownText}`;
+    }
+    const listEl = $("weeklyList");
+    if (!listEl) return;
+    listEl.innerHTML = `<div style="text-align:center;padding:12px;color:#aaa;">লোড হচ্ছে...</div>`;
+    const entries = await getWeeklyLeaderboard();
+    listEl.innerHTML = entries.map((it, idx) =>
+      `<div class="wrow${it.isYou ? " you" : ""}">` +
+      `<span>#${bnNum(idx + 1)} ${it.name} <small>(${it.stage})</small></span>` +
+      `<b>৳${bnNum(it.score.toLocaleString("en-IN"))}</b></div>`
+    ).join("");
+  }
+
+  if ($("weeklyBoardBtn")) {
+    $("weeklyBoardBtn").onclick = () => {
+      if ($("weeklyModal")) $("weeklyModal").hidden = false;
+      renderWeeklyModal();
+      trackEvent("leaderboard_view");
+    };
+  }
+  if ($("closeWeeklyModal")) {
+    $("closeWeeklyModal").onclick = () => {
+      if ($("weeklyModal")) $("weeklyModal").hidden = true;
+    };
+  }
+
+  // iOS Safari Install Modal
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  if (isIOS && $("iosInstallBtn")) {
+    $("iosInstallBtn").hidden = false;
+  }
+  if ($("iosInstallBtn")) {
+    $("iosInstallBtn").onclick = () => {
+      if ($("iosModal")) $("iosModal").hidden = false;
+      trackEvent("install_offer", { platform: "ios" });
+    };
+  }
+  if ($("closeIosModal")) {
+    $("closeIosModal").onclick = () => {
+      if ($("iosModal")) $("iosModal").hidden = true;
+    };
+  }
+
+  // Newsletter Subscription Form
+  if ($("nlForm")) {
+    $("nlForm").onsubmit = e => {
+      e.preventDefault();
+      const email = $("nlEmail")?.value;
+      const ok = handleNewsletterSubscribe(email);
+      if (ok) {
+        if ($("nlSuccess")) $("nlSuccess").hidden = false;
+        if ($("nlForm")) $("nlForm").hidden = true;
+        msg("📬 টুর্নামেন্ট আপডেটে সাবস্ক্রাইব হয়েছে!", 1500);
+      } else {
+        msg("সঠিক ইমেইল ঠিকানা দিন", 1400);
+      }
     };
   }
 }
@@ -364,6 +479,8 @@ export function onPauseButton(fn) {
 export function hideScreen() {
   hidePaper();
   $("share").hidden = true;
+  if ($("fbShareBtn")) $("fbShareBtn").hidden = true;
+  if ($("instaCopyBtn")) $("instaCopyBtn").hidden = true;
   if ($("clipBtn")) $("clipBtn").hidden = true;
   if ($("dareBtn")) $("dareBtn").hidden = true;
   if ($("copyBtn")) $("copyBtn").hidden = true;
@@ -410,14 +527,21 @@ export function crashList() {
 export function showRunEnd(run, photo, checkpointName) {
   clearOverlays();
   saveWantedEntry(run.stage);
+  const runScore = Math.floor(game.damage * 10);
+  submitScoreToLeaderboard(runScore, run.stage);
+  trackEvent("run_end", { stage: run.stage, score: runScore, cause: run.cause });
   refreshBestBanner();
   refreshWantedAndDare();
   if ($("ticker")) $("ticker").hidden = false;
   $("titleblock").hidden = true;
   showPaper(run, photo);
   $("share").hidden = false;
+  if ($("fbShareBtn")) $("fbShareBtn").hidden = false;
+  if ($("instaCopyBtn")) $("instaCopyBtn").hidden = false;
   if ($("dareBtn")) $("dareBtn").hidden = false;
   if ($("copyBtn")) $("copyBtn").hidden = false;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  if (isIOS && $("iosInstallBtn")) $("iosInstallBtn").hidden = false;
   if (run.cause === "complete") {
     $("go").textContent = "🎫 আবার যাত্রা";
     $("restart").hidden = true;

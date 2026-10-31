@@ -179,7 +179,7 @@ function createWordMaterials() {
     ctx.restore();
 
     // Bold Bengali comic text with black 3D drop shadow
-    ctx.font = "bold 38px sans-serif";
+    ctx.font = "bold 38px 'Kalpurush', 'Noto Sans Bengali', sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 

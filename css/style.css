@@ -1,4 +1,4 @@
-html,body{margin:0;height:100%;overflow:hidden;background:var(--asphalt-dark,#1a1d1f);font-family:var(--font-bn);color:#fff}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--asphalt-dark,#1a1d1f);font-family:'Kalpurush',var(--font-bn);color:#fff}
 canvas{display:block}
 [hidden]{display:none!important}
 
@@ -59,10 +59,14 @@ canvas{display:block}
 
 #msg{position:fixed;top:108px;width:100%;text-align:center;font-size:22px;font-weight:700;text-shadow:0 2px 6px #000;pointer-events:none}
 #screen{position:fixed;inset:0;bottom:34px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow-y:auto;background:rgba(15,20,17,.78);text-align:center;padding:18px;line-height:1.55;z-index:25}
-.tinboard{background:linear-gradient(180deg,var(--bus-green,#1f6b3a),var(--bus-green-dark,#134625));border:4px double var(--signal-yellow,#ffc21a);border-radius:14px;padding:10px 22px;margin-bottom:10px;box-shadow:0 6px 20px rgba(0,0,0,.55)}
+.tinboard{background:linear-gradient(180deg,var(--bus-green,#1f6b3a),var(--bus-green-dark,#134625));border:4px double var(--signal-yellow,#ffc21a);border-radius:14px;padding:10px 22px;margin-bottom:6px;box-shadow:0 6px 20px rgba(0,0,0,.55)}
 .tinplate{font-size:12px;color:var(--cream-paper,#f6efdd);letter-spacing:.5px;opacity:.9}
 #screen h1{margin:2px 0 4px;font-size:clamp(24px,5vw,34px);color:var(--signal-yellow,#ffc21a);text-shadow:0 2px 4px rgba(0,0,0,.6)}
 #bestBanner{background:rgba(255,194,26,.15);border:1px solid var(--signal-yellow,#ffc21a);color:var(--signal-yellow,#ffc21a);padding:4px 14px;border-radius:20px;font-size:14px;font-weight:700;margin-bottom:8px}
+
+.driver-card{margin-top:4px;margin-bottom:8px;background:rgba(24,36,28,.88);border:1.5px solid rgba(255,194,26,.45);padding:4px 14px;border-radius:18px;font-size:13.5px;display:inline-flex;align-items:center;gap:6px;color:#fff8e1}
+.driver-card b{color:#ffd54f}
+
 button{font-size:18px;padding:11px 24px;border:0;border-radius:10px;background:var(--signal-yellow,#ffc21a);color:#111;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 3px 10px rgba(0,0,0,.35)}
 button:active{transform:translateY(1px)}
 .ticket-btn{background:linear-gradient(180deg,#ffd54f,#ffb300);border:2px dashed #5d4037;padding:12px 30px;font-size:21px}
@@ -83,10 +87,10 @@ button:active{transform:translateY(1px)}
 #crowdcue{position:fixed;left:0;right:0;bottom:0;height:35%;pointer-events:none;opacity:0;
   background:linear-gradient(to top,rgba(255,120,0,.75),transparent)}
 
-/* Frosted cream subtitle pill at the bottom above the TV news bar */
-#subtitle{position:fixed;left:50%;bottom:44px;transform:translateX(-50%);max-width:min(580px,92vw);
-  background:rgba(15,23,20,.88);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:#fff8e1;border:1px solid rgba(255,255,255,.2);
-  padding:6px 18px;border-radius:20px;font-size:clamp(12.5px,2.9vw,15.5px);font-weight:700;text-align:center;box-shadow:0 4px 14px rgba(0,0,0,.5);pointer-events:none;z-index:25;line-height:1.35}
+/* Subtitle pill at the bottom with Kalpurush font and strong contrast */
+#subtitle{position:fixed;left:50%;bottom:44px;transform:translateX(-50%);max-width:min(600px,94vw);
+  background:rgba(12,20,16,.94);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:#fffde7;border:1.5px solid rgba(255,214,0,.45);
+  padding:7px 20px;border-radius:24px;font-family:'Kalpurush',var(--font-bn);font-size:clamp(14px,3.2vw,17.5px);font-weight:700;letter-spacing:.3px;text-align:center;box-shadow:0 4px 18px rgba(0,0,0,.65);text-shadow:0 1px 3px rgba(0,0,0,.9);pointer-events:none;z-index:25;line-height:1.4}
 @keyframes pop{0%{opacity:0;transform:scale(.6)}15%{opacity:1;transform:scale(1.1)}70%{opacity:1;transform:translateY(-20px)}100%{opacity:0;transform:translateY(-40px)}}
 
 #touch{position:fixed;bottom:42px;left:0;right:0;display:none;justify-content:space-between;padding:0 14px;touch-action:none;z-index:20}
@@ -110,10 +114,20 @@ button:active{transform:translateY(1px)}
 #title4dMapBtn{background:#1f5fae;color:#fff}
 .start-spot-pill{background:rgba(31,107,58,.88);border:1.5px solid #ffd54f;color:#fff8e1;font-size:13.5px;padding:5px 15px;border-radius:18px;font-weight:700}
 #dareBanner{background:linear-gradient(90deg,#b71c1c,#e65100);border:2px solid #ffd54f;color:#fff;padding:6px 18px;border-radius:16px;font-size:14.5px;font-weight:800;margin-bottom:8px;max-width:560px;box-shadow:0 4px 12px rgba(0,0,0,.5)}
+
 #wantedBox{margin-top:10px;background:rgba(18,26,21,.88);border:1.5px dashed rgba(255,194,26,.65);border-radius:12px;padding:8px 14px;width:min(520px,92vw);text-align:left;font-size:12.5px}
 .wanted-head{font-weight:800;color:#ffd54f;border-bottom:1px solid rgba(255,255,255,.15);padding-bottom:3px;margin-bottom:4px;text-align:center}
-.wrow{display:flex;justify-content:space-between;padding:2px 0;color:#e0e0e0}
-.wrow.you{color:#35e0c2;font-weight:800}
+.wrow{display:flex;justify-content:space-between;padding:2.5px 0;color:#e0e0e0;border-bottom:1px solid rgba(255,255,255,.05)}
+.wrow.you{color:#35e0c2;font-weight:800;background:rgba(53,224,194,.1);padding-left:4px;padding-right:4px;border-radius:4px}
+
+/* Newsletter subscription card */
+.nl-card{margin-top:10px;background:rgba(18,26,21,.88);border:1.5px solid rgba(53,224,194,.35);border-radius:12px;padding:10px 16px;width:min(520px,92vw);text-align:center}
+.nl-title{font-size:13.5px;font-weight:700;color:#80cbc4;margin-bottom:6px}
+.nl-row{display:flex;gap:8px;justify-content:center}
+.nl-row input{flex:1;max-width:320px;padding:6px 12px;border-radius:8px;border:1px solid #4db6ac;background:#111b16;color:#fff;font-family:'Kalpurush',var(--font-bn);font-size:13.5px}
+.nl-row button{padding:6px 16px;font-size:13.5px;background:#26a69a;color:#fff;border-radius:8px}
+.nl-success{margin-top:6px;color:#a7ffeb;font-size:13px;font-weight:700}
+
 #npPriceBox{margin-top:8px;background:#f3e5f5;border:1.5px dashed #6a1b9a;border-radius:6px;padding:7px 10px;font-size:12.5px;color:#222}
 .pbox-head{font-weight:800;color:#4a148c;border-bottom:1px solid #ce93d8;padding-bottom:2px;margin-bottom:4px}
 #npDare{margin-top:8px;background:#ffebee;border:1.5px solid #c62828;color:#b71c1c;padding:6px 10px;border-radius:6px;font-size:13px;font-weight:800;text-align:center}
@@ -146,16 +160,16 @@ button:active{transform:translateY(1px)}
 #inappNote{margin-top:8px;background:#fff3cd;color:#664d03;padding:6px 10px;border-radius:4px;font-size:12px}
 #pnote{margin-top:8px;font-size:11px;text-align:center;opacity:.75}
 
-/* Bottom TV-style Breaking News Bar ("• সর্বশেষ") — always visible during play and menus */
+/* Bottom TV-style Breaking News Bar ("• সর্বশেষ") */
 #ticker{position:fixed;left:0;right:0;bottom:0;height:34px;background:linear-gradient(90deg,#0a2259,#0d2e78);border-top:2px solid #f59e0b;display:flex;align-items:center;overflow:hidden;pointer-events:none;z-index:28}
 #tickerBadge{background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-weight:900;font-size:14px;height:100%;display:flex;align-items:center;padding:0 18px 0 12px;clip-path:polygon(0 0,100% 0,88% 100%,0 100%);flex:none;z-index:2;text-shadow:0 1px 2px rgba(0,0,0,.5)}
 #tickerWrap{flex:1;overflow:hidden;display:flex;align-items:center}
 #tickerTrack{display:inline-block;white-space:nowrap;color:#fff;font-size:14.5px;font-weight:700;padding-left:40%;animation:ticker 34s linear infinite}
 @keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-100%)}}
 
-/* Modals for Settings, Info, and Full City Map */
+/* Modals for Settings, Info, Driver Name, Weekly Leaderboard, and Full City Map */
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:30;padding:16px}
-.modal-card{background:#1c2520;border:2px solid var(--signal-yellow,#ffc21a);border-radius:14px;padding:18px 22px;width:min(460px,92vw);max-height:86vh;overflow-y:auto;text-align:left;line-height:1.5}
+.modal-card{background:#1c2520;border:2px solid var(--signal-yellow,#ffc21a);border-radius:14px;padding:18px 22px;width:min(480px,92vw);max-height:86vh;overflow-y:auto;text-align:left;line-height:1.5}
 .modal-card h2{margin:0 0 12px;color:var(--signal-yellow,#ffc21a);text-align:center}
 .srow{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.12);font-size:14px;gap:10px}
 .srow select{padding:5px 8px;border-radius:6px;background:#2b3730;color:#fff;border:1px solid #666;font-family:inherit}

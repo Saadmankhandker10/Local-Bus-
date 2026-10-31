@@ -367,7 +367,7 @@ export function createTruckArtTex(text = "দূর হতে ভালোবা
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.font = "bold 44px 'Noto Sans Bengali', 'Nirmala UI', sans-serif";
+  ctx.font = "bold 44px 'Kalpurush', 'Noto Sans Bengali', 'Nirmala UI', sans-serif";
   ctx.shadowColor = "rgba(0,0,0,0.85)";
   ctx.shadowBlur = 10;
   ctx.shadowOffsetX = 3;
@@ -377,7 +377,7 @@ export function createTruckArtTex(text = "দূর হতে ভালোবা
   // Sub-badge: "মা-বাবার দোয়া"
   ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
   ctx.fillStyle = "#ffea00";
-  ctx.font = "bold 24px 'Noto Sans Bengali', 'Nirmala UI', sans-serif";
+  ctx.font = "bold 24px 'Kalpurush', 'Noto Sans Bengali', 'Nirmala UI', sans-serif";
   ctx.fillText("✦ মা-বাবার দোয়া ✦", 256, 185);
 
   applyNoise(ctx, 0, 0, 512, 256, 1200, 0.12);
