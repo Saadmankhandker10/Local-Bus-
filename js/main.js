@@ -391,8 +391,23 @@ const devUrlParams = typeof window !== "undefined" && window.location ? new URLS
 if (devUrlParams && (devUrlParams.get("start") || devUrlParams.get("autostart"))) {
   setTimeout(() => startFresh(), 150);
 }
-if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
-  navigator.serviceWorker.register("./sw.js").catch(() => {});
+const isLocalhost = Boolean(
+  typeof window !== "undefined" && (
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1" ||
+    window.location.hostname === "[::1]"
+  )
+);
+
+if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+  if (isLocalhost) {
+    // In local development, purge service workers immediately to prevent stale cached shaders
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      regs.forEach(r => r.unregister());
+    }).catch(() => {});
+  } else if (location.protocol === "https:") {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  }
 }
 
 // Fixed timestep: the game always simulates in equal 1/60 s steps, no matter how fast

@@ -8,7 +8,30 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/tokens.css">
-<link rel="stylesheet" href="css/style.css?v=2.8">
+<link rel="stylesheet" href="css/style.css?v=2.9">
+<script>
+  if (location.protocol === "file:") {
+    window.__isFileProtocol = true;
+  }
+  // Auto-purge any stale service workers or caches during local updates
+  (function() {
+    var v = "2.9";
+    var isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+    if (isLocal || localStorage.getItem("lb_sw_v") !== v) {
+      localStorage.setItem("lb_sw_v", v);
+      if ("caches" in window) {
+        caches.keys().then(function(keys) {
+          keys.forEach(function(k) { caches.delete(k); });
+        });
+      }
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          regs.forEach(function(r) { r.unregister(); });
+        });
+      }
+    }
+  })();
+</script>
 <!-- The import map lets every module write `import * as THREE from "three"`.
      The version is pinned so a Three.js update can never break the game by surprise. -->
 <script type="importmap">
@@ -234,15 +257,42 @@
   window.addEventListener('unhandledrejection', function(e) {
     window.__bootErrors.push({ msg: 'UnhandledRejection: ' + (e.reason ? (e.reason.message || e.reason) : e) });
   });
+
+  window.forceClearAllCacheAndReload = function() {
+    var btn = document.getElementById("purgeBtn");
+    if (btn) { btn.textContent = "⏳ ক্যাশ মোছা হচ্ছে..."; btn.disabled = true; }
+    var p1 = ("caches" in window)
+      ? caches.keys().then(function(names) { return Promise.all(names.map(function(n) { return caches.delete(n); })); })
+      : Promise.resolve();
+    var p2 = ("serviceWorker" in navigator)
+      ? navigator.serviceWorker.getRegistrations().then(function(regs) { return Promise.all(regs.map(function(r) { return r.unregister(); })); })
+      : Promise.resolve();
+    Promise.all([p1, p2]).then(function() {
+      try { localStorage.clear(); } catch(e){}
+      try { sessionStorage.clear(); } catch(e){}
+      var url = new URL(window.location.href);
+      url.searchParams.set("nocache", Date.now());
+      window.location.replace(url.toString());
+    }).catch(function() {
+      window.location.reload();
+    });
+  };
 </script>
-<script type="module" src="js/main.js?v=2.8"></script>
+<script type="module" src="js/main.js?v=2.9" onerror="window.__bootErrors.push({ msg: 'main.js লোড হতে পারেনি (CORS বা নেটওয়ার্ক ব্লক)' })"></script>
 <script>
   // Boot guard: if ES modules or WebGL fail to load within 6 seconds, show a helpful message and force-reload button.
   setTimeout(function () {
     if (!window.__localBusBooted) {
       var s = document.getElementById("sub");
       if (s) {
-        s.innerHTML = "⚠ গেমটির 3D ইঞ্জিন লোড হতে সমস্যা হচ্ছে।<br><button type='button' onclick='if (\"serviceWorker\" in navigator) { navigator.serviceWorker.getRegistrations().then(function(r){ for(var i=0;i<r.length;i++) r[i].unregister(); location.reload(true); }); } else { location.reload(true); }' style='margin-top:10px;padding:8px 16px;background:#e53935;color:#fff;border:none;border-radius:6px;font-size:14px;font-weight:bold;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.4);'>🔄 ক্যাশ ক্লিয়ার করে রিলোড করুন</button>";
+        if (window.__isFileProtocol) {
+          s.innerHTML = "📂 <b>গেমটি সরাসরি ডাবল ক্লিক করে (file://) খোলা হয়েছে!</b><br>আধুনিক ব্রাউজার সিকিউরিটি (CORS) লোকাল ফাইল থেকে 3D ইঞ্জিন লোড ব্লক করে।<br><br>👉 সমাধান: <b>VS Code-এ 'Open with Live Server'</b> দিয়ে চালান অথবা লোকাল সার্ভারে ওপেন করুন।";
+          return;
+        }
+        var errInfo = (window.__bootErrors && window.__bootErrors.length > 0)
+          ? ("<br><small style='color:#ffab91;font-size:12px;'>" + window.__bootErrors.map(function(e){ return e.msg; }).join("<br>") + "</small>")
+          : "";
+        s.innerHTML = "⚠ গেমটির 3D ইঞ্জিন লোড হতে সমস্যা হচ্ছে।" + errInfo + "<br><button type='button' id='purgeBtn' onclick='window.forceClearAllCacheAndReload()' style='margin-top:10px;padding:8px 16px;background:#e53935;color:#fff;border:none;border-radius:6px;font-size:14px;font-weight:bold;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.4);'>🔄 সম্পূর্ণ ক্যাশ ডিলিট করে নতুন করে খুলুন</button>";
       }
     }
   }, 6000);
