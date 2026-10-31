@@ -503,6 +503,8 @@ export function showPause(on) {
 /** Hide the HUD extras that should not sit on top of a menu screen. */
 function clearOverlays() {
   $("screen").style.display = "flex";
+  if ($("titleblock")) $("titleblock").hidden = false;
+  if ($("startInfo")) $("startInfo").hidden = false;
   $("pausebtn").hidden = true;
   $("warn").hidden = true;
   $("crowdbox").hidden = true;
@@ -534,6 +536,7 @@ export function showRunEnd(run, photo, checkpointName) {
   refreshWantedAndDare();
   if ($("ticker")) $("ticker").hidden = false;
   $("titleblock").hidden = true;
+  if ($("startInfo")) $("startInfo").hidden = true;
   showPaper(run, photo);
   $("share").hidden = false;
   if ($("fbShareBtn")) $("fbShareBtn").hidden = false;
