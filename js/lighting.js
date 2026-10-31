@@ -2,7 +2,7 @@
 // Smoothly blends the 15 atmospheric parameters between Dhaka daylight keyframes.
 import * as THREE from "three";
 import { ROUTE } from "./route.js";
-import { scene, sun, hemi, groundMat, skyUniforms, skyMesh, renderer } from "./world.js";
+import { scene, sun, hemi, groundMat, skyUniforms, skyMesh, renderer, setBuildingEmissive } from "./world.js";
 import { cam } from "./camera.js";
 import { bus } from "./bus.js";
 
@@ -45,6 +45,10 @@ export function applyTimeOfDay(p) {
 
   // Ground plane tint
   mix(groundMat.color, k0.ground, k1.ground, t);
+
+  // Building night window glow between dusk (p=0.68) and night (p=0.82)
+  const nightFactor = Math.min(1, Math.max(0, (p - 0.68) / 0.14));
+  setBuildingEmissive(nightFactor);
 
   // Dynamic sun angle & shadow camera frustum tracking around the bus
   const offX = k0.sunPos[0] + (k1.sunPos[0] - k0.sunPos[0]) * t;

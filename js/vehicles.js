@@ -3,17 +3,40 @@
 import * as THREE from "three";
 import { CFG } from "./config.js";
 import { pick } from "./utils.js";
-import { box, plate, person } from "./world.js";
+import { box, plate, person, UNIT } from "./world.js";
+import {
+  createTruckArtTex,
+  createRickshawHoodTex,
+  createRickshawFilmTex,
+  createDangerRingTex
+} from "./textures.js";
 
 // Shared materials: one copy on the GPU, used by many meshes.
 const DARK = 0x263238, TYRE = 0x111111;
 /** Red warning light on top of heavy things. Shared, so every beacon pulses together. */
 export const beaconMat = new THREE.MeshBasicMaterial({ color: 0xff1a1a, transparent: true, opacity: 0.9 });
+/** Ground danger warning ring under heavy trucks & buses. */
+export const dangerRingMat = new THREE.MeshBasicMaterial({
+  map: createDangerRingTex(),
+  transparent: true,
+  opacity: 0.65,
+  depthWrite: false,
+});
 const beaconGeo = new THREE.SphereGeometry(.35, 10, 8);
 const vipBadge = plate("▲ ভিআইপি গাড়ি", 2.2, .48, "#4a148c", "#ffd54f");
 const policeSign = plate("পুলিশ · POLICE", 1.5, .34, "#1a237e", "#ffffff");
 const rampSign = plate("🚀 ঠেলায় চড়ে উড়েন!", 2.6, .55, "#ffeb3b", "#b71c1c");
 const trenchSign = plate("⚠ ওয়াসার কাজ চলছে", 2.4, .52, "#b71c1c", "#ffffff");
+
+const TRUCK_ART_TEXTS = ["দূর হতে ভালোবাসুন", "ধীরে চলুন", "মা-বাবার দোয়া", "আল্লাহ সর্বশক্তিমান"];
+const TRUCK_ART_MATS = TRUCK_ART_TEXTS.map(txt => new THREE.MeshBasicMaterial({ map: createTruckArtTex(txt) }));
+const rickshawHoodMat = new THREE.MeshLambertMaterial({ map: createRickshawHoodTex() });
+const rickshawFilmMat = new THREE.MeshBasicMaterial({
+  map: createRickshawFilmTex(),
+  transparent: true,
+  opacity: 0.82,
+  side: THREE.DoubleSide
+});
 
 function addMirrorsAndHazards(g, t, color) {
   const left = box(.22, .14, .18, color, -t.w * .56, t.h * .58, -t.l * .18);
@@ -75,10 +98,19 @@ function rickshaw(t, c) {
   const g = new THREE.Group();
   g.add(box(t.w, .25, t.l * .9, 0x5d4037, 0, .6, 0));             // frame
   g.add(box(t.w, .7, .9, c, 0, 1.1, t.l * .25));                  // painted seat back
-  g.add(box(t.w * 1.05, .9, 1.1, c, 0, 1.75, t.l * .2));          // folding hood
+  const hood = new THREE.Mesh(UNIT, rickshawHoodMat);
+  hood.scale.set(t.w * 1.05, .9, 1.1);
+  hood.position.set(0, 1.75, t.l * .2);
+  hood.castShadow = true; hood.receiveShadow = true;
+  g.add(hood);                                                     // floral folk art hood
+
+  const film = new THREE.Mesh(new THREE.PlaneGeometry(t.w * 1.02, .75), rickshawFilmMat);
+  film.position.set(0, 1.75, t.l * .2 - .56);
+  g.add(film);                                                     // translucent rain vinyl cover
+
   for (const s of [-1, 1]) g.add(box(.08, .9, .9, TYRE, s * t.w * .5, .45, t.l * .25)); // back wheels
   g.add(box(.08, .7, .7, TYRE, 0, .35, -t.l * .4));               // front wheel
-  g.add(person(pick([0xffffff, 0x8d6e63, 0x1e88e5]), .6).translateZ(-t.l * .3)); // puller
+  g.add(person(pick([0xffffff, 0x8d6e63, 0x1e88e5]), .6, null, true).translateZ(-t.l * .3)); // puller with lungi/gamchha
   return g;
 }
 
@@ -96,6 +128,10 @@ function truck(t, c) {
   g.add(box(t.w, t.h * .9, t.l * .7, c, 0, t.h * .55, t.l * .15));          // cargo
   g.add(box(t.w * .95, t.h * .7, t.l * .25, 0xfdd835, 0, t.h * .45, -t.l * .37)); // cab
   for (const s of [-1, 1]) g.add(box(.3, .7, t.l * .85, TYRE, s * t.w * .5, .35, 0));
+  // Painted Folk Dhaka Truck Art plate on the rear tailgate
+  const artMesh = new THREE.Mesh(new THREE.PlaneGeometry(t.w * .92, t.h * .55), pick(TRUCK_ART_MATS));
+  artMesh.position.set(0, t.h * .55, t.l * .5 + 0.02);
+  g.add(artMesh);
   return g;
 }
 
@@ -110,7 +146,7 @@ function rivalBus(t, c) {
 
 const BUILDERS = { car, vip, policeCar, rickshaw, bike, truck, bus: rivalBus };
 
-/** Build a traffic vehicle. Heavy ones get a (hidden) red warning beacon on top. */
+/** Build a traffic vehicle. Heavy ones get a red warning beacon and ground danger ring. */
 export function makeVehicle(t) {
   const g = BUILDERS[t.shape](t, pick(t.colors));
   if (t.heavy) {
@@ -119,6 +155,15 @@ export function makeVehicle(t) {
     b.visible = false;
     g.add(b);
     g.userData.beacon = b;
+
+    // Ground danger warning ring under heavy vehicle (truck/bus)
+    const ringGeo = new THREE.PlaneGeometry(t.w * 2.2, t.l * 1.3);
+    ringGeo.rotateX(-Math.PI / 2);
+    const dangerRing = new THREE.Mesh(ringGeo, dangerRingMat);
+    dangerRing.position.y = 0.04;
+    dangerRing.visible = false;
+    g.add(dangerRing);
+    g.userData.dangerRing = dangerRing;
   }
   return g;
 }

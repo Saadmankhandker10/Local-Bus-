@@ -10,7 +10,7 @@ import { scene, box, person } from "./world.js";
 import { game } from "./state.js";
 import { emit, on } from "./events.js";
 import { sweptHit, sideGap } from "./physics.js";
-import { makeVehicle, makeStall, makePillar, makeManhole, makeTrench, makeRamp, beaconMat } from "./vehicles.js";
+import { makeVehicle, makeStall, makePillar, makeManhole, makeTrench, makeRamp, beaconMat, dangerRingMat } from "./vehicles.js";
 import { currentStage } from "./journey.js";
 import { SEGS, here, ahead, walk, place, lanesOf } from "./map.js";
 import { PROCESSION_EVENTS } from "./data/events.js";
@@ -512,6 +512,9 @@ export function updateTraffic(dt) {
         const inPath = sideGap(bx, B.hitHalfWidth, o.x, t.w / 2) < W.sideMargin;
         const danger = aheadGap > -t.l && aheadGap < warnDist && inPath && closing > 0;
         o.m.userData.beacon.visible = danger;
+        if (o.m.userData.dangerRing) {
+          o.m.userData.dangerRing.visible = danger;
+        }
         warn = warn || danger;
       }
     }
@@ -571,6 +574,7 @@ export function updateTraffic(dt) {
   game.warn = warn;
   // Gentle pulse (2 Hz) instead of hard flashing.
   beaconMat.opacity = .55 + .45 * Math.sin(game.time * Math.PI * 2 * W.pulseHz);
+  dangerRingMat.opacity = .45 + .35 * Math.sin(game.time * Math.PI * 2 * W.pulseHz);
 }
 
 // Horn: light vehicles just ahead in the bus's lane move one lane aside, and pedestrians jump back to the pavement.

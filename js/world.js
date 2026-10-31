@@ -6,6 +6,14 @@ import { CFG } from "./config.js";
 import { rnd, pick } from "./utils.js";
 import { SEGS, here, sample, place, ahead, progressOf, hitsAnyRoad } from "./map.js";
 import { getProcessionBySegId } from "./data/events.js";
+import {
+  createAsphaltTex,
+  createPaversTex,
+  createBuildingMaterials,
+  DHAKA_SHOP_DATA,
+  createPlaidTex,
+  createGamchhaTex
+} from "./textures.js";
 
 const W = CFG.world;
 
@@ -109,7 +117,7 @@ addEventListener("resize", () => renderer.setSize(innerWidth, innerHeight));
 
 // Every box in the game is the same 1×1×1 cube, stretched with `scale`, and boxes of the
 // same colour share one material. So the GPU stores one cube, not thousands of copies.
-const UNIT = new THREE.BoxGeometry(1, 1, 1);
+export const UNIT = new THREE.BoxGeometry(1, 1, 1);
 const matCache = new Map();
 
 /** A coloured box mesh of size w×h×d at (x, y, z). All boxes share GPU data and cast/receive soft shadows. */
@@ -131,14 +139,27 @@ export function lambert(color) {
 
 const bodyGeo = new THREE.CylinderGeometry(.22, .27, .9, 8);
 const headGeo = new THREE.SphereGeometry(.21, 8, 8);
-/** A simple person (body + head, optional cap) standing at height y. Shares all GPU data. */
-export function person(shirt, y = 0, cap) {
+const lungiGeo = new THREE.CylinderGeometry(.25, .29, .5, 8);
+const lungiMat1 = new THREE.MeshLambertMaterial({ map: createPlaidTex("#1a365d", "#e2e8f0", "#2b6cb0") });
+const lungiMat2 = new THREE.MeshLambertMaterial({ map: createPlaidTex("#1b4332", "#d8f3dc", "#2d6a4f") });
+const gamchhaMat = new THREE.MeshLambertMaterial({ map: createGamchhaTex() });
+const LUNGI_MATS = [lungiMat1, lungiMat2, gamchhaMat];
+
+/** A simple person (body + head, optional cap and authentic lungi/gamchha) standing at height y. Shares GPU data. */
+export function person(shirt, y = 0, cap, wearsLungi = false) {
   const g = new THREE.Group();
   const b = new THREE.Mesh(bodyGeo, lambert(shirt)); b.position.y = y + .45;
   const h = new THREE.Mesh(headGeo, lambert(0xc68642)); h.position.y = y + 1.12;
   b.castShadow = true; b.receiveShadow = true;
   h.castShadow = true;
   g.add(b, h);
+  if (wearsLungi || Math.random() < 0.45) {
+    const l = new THREE.Mesh(lungiGeo, pick(LUNGI_MATS));
+    l.position.y = y + .26;
+    l.castShadow = true;
+    l.receiveShadow = true;
+    g.add(l);
+  }
   if (cap) {
     const c = box(.48, .12, .48, cap, 0, y + 1.32, 0);
     c.castShadow = true;
@@ -183,9 +204,9 @@ export function followGround(x, z) {
 /* ====== Roads: one long ribbon mesh per material, built once from map.js ====== */
 // Batching: every road piece with the same material goes into ONE geometry, so the
 // whole network costs only a handful of draw calls.
-const batches = new Map(); // material -> { pos: [], idx: [] }
+const batches = new Map(); // material -> { pos: [], uvs: [], idx: [] }
 function batch(mat) {
-  if (!batches.has(mat)) batches.set(mat, { pos: [], idx: [] });
+  if (!batches.has(mat)) batches.set(mat, { pos: [], uvs: [], idx: [] });
   return batches.get(mat);
 }
 
@@ -204,6 +225,7 @@ function band(seg, x0, x1, y, mat, dash, range) {
     const rx = Math.cos(pt.yaw), rz = -Math.sin(pt.yaw);
     const base = b.pos.length / 3;
     b.pos.push(pt.x + rx * x0, pt.y + y, pt.z + rz * x0, pt.x + rx * x1, pt.y + y, pt.z + rz * x1);
+    b.uvs.push(x0 * 0.15, (i * S.step) * 0.1, x1 * 0.15, (i * S.step) * 0.1);
     const ok = !dash || (((i - .5) * S.step + off) % dash[1]) < dash[0];
     if (i > i0 && ok) b.idx.push(base - 2, base, base - 1, base - 1, base, base + 1);
   }
@@ -219,6 +241,7 @@ function wall(seg, x, y0, h, mat, range) {
     const rx = Math.cos(pt.yaw), rz = -Math.sin(pt.yaw);
     const base = b.pos.length / 3;
     b.pos.push(pt.x + rx * x, pt.y + y0, pt.z + rz * x, pt.x + rx * x, pt.y + y0 + h, pt.z + rz * x);
+    b.uvs.push((i * S.step) * 0.1, 0, (i * S.step) * 0.1, 1);
     if (i > i0) b.idx.push(base - 2, base, base - 1, base - 1, base, base + 1);
   }
 }
@@ -234,6 +257,7 @@ function stub(seg, s, side) {
   const quad = (mat, d0, d1, a0, a1, y) => {
     const b = batch(mat), base = b.pos.length / 3;
     b.pos.push(...corner(d0, a0, y), ...corner(d0, a1, y), ...corner(d1, a0, y), ...corner(d1, a1, y));
+    b.uvs.push(d0 * 0.15, a0 * 0.1, d0 * 0.15, a1 * 0.1, d1 * 0.15, a0 * 0.1, d1 * 0.15, a1 * 0.1);
     b.idx.push(base, base + 2, base + 1, base + 1, base + 2, base + 3);
   };
   quad(MATS.road, -0.5, L, -h, h, .004);
@@ -249,10 +273,13 @@ function stub(seg, s, side) {
   }
 }
 
+const asphaltTex = createAsphaltTex();
+const paversTex = createPaversTex();
+
 const MATS = {
-  road: new THREE.MeshLambertMaterial({ color: 0x3b3835, side: THREE.DoubleSide }),
-  patch: new THREE.MeshLambertMaterial({ color: 0x2a2725, side: THREE.DoubleSide }),
-  pave: new THREE.MeshLambertMaterial({ color: 0x8d8273, side: THREE.DoubleSide }),
+  road: new THREE.MeshLambertMaterial({ map: asphaltTex, side: THREE.DoubleSide }),
+  patch: new THREE.MeshLambertMaterial({ color: 0x242220, side: THREE.DoubleSide }),
+  pave: new THREE.MeshLambertMaterial({ map: paversTex, side: THREE.DoubleSide }),
   median: new THREE.MeshLambertMaterial({ color: 0xa68966, side: THREE.DoubleSide }),
   kerbYellow: new THREE.MeshLambertMaterial({ color: 0xf5b014, side: THREE.DoubleSide }),
   kerbBlack: new THREE.MeshLambertMaterial({ color: 0x1c1c1c, side: THREE.DoubleSide }),
@@ -377,6 +404,9 @@ function buildRoads() {
   for (const [mat, b] of batches) {
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.Float32BufferAttribute(b.pos, 3));
+    if (b.uvs && b.uvs.length === (b.pos.length / 3) * 2) {
+      g.setAttribute("uv", new THREE.Float32BufferAttribute(b.uvs, 2));
+    }
     g.setIndex(b.idx);
     g.computeVertexNormals();
     const m = new THREE.Mesh(g, mat);
@@ -388,63 +418,18 @@ function buildRoads() {
 
 /* ====== Procedural Multi-Storey Windowed Dhaka Building Textures & Shop Signs ====== */
 
-function makeBuildingMat(wallHex, warmTint) {
-  const c = document.createElement("canvas");
-  c.width = 256; c.height = 512;
-  const g = c.getContext("2d");
-  g.fillStyle = wallHex;
-  g.fillRect(0, 0, 256, 512);
+export const BLDG_MATS = createBuildingMaterials();
 
-  // Horizontal floor slabs and balcony ledges.
-  const floors = 7, fh = Math.floor(430 / floors);
-  for (let f = 0; f < floors; f++) {
-    const y = 16 + f * fh;
-    g.fillStyle = "rgba(30, 22, 18, 0.35)";
-    g.fillRect(0, y + fh - 6, 256, 6);
-    for (let col = 0; col < 4; col++) {
-      const x = 16 + col * 58;
-      // Mix of warm-lit apartment windows, white fluorescent rooms, and dark windows.
-      const seed = (f * 7 + col * 13) % 5;
-      g.fillStyle = seed === 0 ? "#fff3c4" : seed === 1 ? warmTint : seed === 2 ? "#d7e8f0" : "#221c18";
-      g.fillRect(x, y + 8, 42, fh - 20);
-      // Balcony grill bars on the middle columns.
-      if (col === 1 || col === 2) {
-        g.fillStyle = "rgba(20, 20, 20, 0.55)";
-        g.fillRect(x - 2, y + fh - 18, 46, 10);
-      }
+export function setBuildingEmissive(nightFactor) {
+  const intensity = 0.15 + Math.max(0, Math.min(1, nightFactor)) * 1.25;
+  for (const m of BLDG_MATS) {
+    if (m && m.userData?.isBuilding) {
+      m.emissiveIntensity = intensity;
     }
   }
-  // Ground-floor commercial shopfront bays.
-  g.fillStyle = "#26201c";
-  g.fillRect(0, 446, 256, 66);
-  for (let col = 0; col < 3; col++) {
-    g.fillStyle = col % 2 === 0 ? "#ffecb3" : "#b3e5fc";
-    g.fillRect(14 + col * 80, 456, 66, 52);
-  }
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return new THREE.MeshLambertMaterial({ map: tex });
 }
 
-const BLDG_MATS = [
-  makeBuildingMat("#a67c5b", "#ffd584"),
-  makeBuildingMat("#8d6e63", "#ffe082"),
-  makeBuildingMat("#b89272", "#fff59d"),
-  makeBuildingMat("#78909c", "#ffecb3"),
-  makeBuildingMat("#9c7a65", "#ffcc80"),
-  makeBuildingMat("#c29b78", "#fff9c4"),
-];
-
-const SHOP_SIGNS = [
-  ["ঢাকা ফটোকপি ও স্টেশনারি", "#e65100", "#ffffff"],
-  ["রূপসী বিউটি পার্লার", "#1b5e20", "#ffeb3b"],
-  ["বিসমিল্লাহ ফার্মেসি", "#0d47a1", "#ffffff"],
-  ["জনতা ইলেকট্রনিক্স", "#b71c1c", "#ffeb3b"],
-  ["ভাই ভাই বিরিয়ানি হাউস", "#f57f17", "#111111"],
-  ["আল-মদিনা টেইলার্স", "#4a148c", "#ffffff"],
-  ["মেট্রো মোবাইল সার্ভিসিং", "#006064", "#ffffff"],
-  ["পদ্মা ডিপার্টমেন্টাল স্টোর", "#c62828", "#ffffff"],
-].map(([text, bg, fg]) => plate(text, 4.8, 0.85, bg, fg).material);
+const SHOP_SIGNS = DHAKA_SHOP_DATA.map(([text, bg, fg]) => plate(text, 4.8, 0.85, bg, fg).material);
 
 const signGeo = new THREE.PlaneGeometry(4.8, 0.85);
 const canopyMatBlue = new THREE.MeshLambertMaterial({ color: 0x0d3b66 });
