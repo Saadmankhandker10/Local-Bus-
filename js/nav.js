@@ -713,7 +713,7 @@ function drawBig4DMap(tod) {
   // 2. Live dynamic stops, CNG pumps, and police marks in current scene
   eachMark((kind, x, z, label) => {
     const sx = projX(x, z), sy = projY(x, 0, z);
-    if (sx < -60 || sx > W + 60 || sy < -60 || sy > H + 60) continue;
+    if (sx < -60 || sx > W + 60 || sy < -60 || sy > H + 60) return;
     markIcon(bctx, kind, sx, sy, rMark * 1.15, true, label);
   });
 
