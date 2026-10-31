@@ -18,6 +18,7 @@ import {
   createLEDMaterial,
   createLEDRowGeometry
 } from "./shaders.js";
+import { spawnScrapeSparks, spawnSkidPuff } from "./effects.js";
 
 const B = CFG.bus;
 
@@ -332,6 +333,9 @@ export function updateBus(dt) {
     game.yaw -= Math.sign(x) * B.edgeYawPush * over * dt;
     game.speed = Math.max(0, game.speed - B.edgeScrapeDrag * dt);
     game.shake = Math.max(game.shake, B.edgeShake);
+    if (speed > 8 && Math.random() < 0.45) {
+      spawnScrapeSparks(bus.position.x + Math.sign(x) * 1.3, 0.35, bus.position.z, 6, Math.sign(x), 0);
+    }
   }
   if (Math.abs(x) > hard) {
     x = Math.sign(x) * hard;

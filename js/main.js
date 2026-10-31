@@ -29,6 +29,7 @@ import { SHOUTS } from "./data/shouts.bn.js";
 import { HEAVY_HIT } from "./i18n.js";
 import { pick, clamp, $ } from "./utils.js";
 import { updateHud, onStartPressed, onPauseButton, hideScreen, showPause, showRunEnd, crashList } from "./hud.js";
+import { initEffects, resetEffects, updateEffects } from "./effects.js";
 
 // Signal that all modules have evaluated and the engine is booting
 if (typeof window !== "undefined") {
@@ -57,6 +58,7 @@ function start(fromCheckpoint) {
     resetMarks(game.dist);
     resetLandmarks(game.prog);
     resetWorld();
+    resetEffects();
     resetCrowd();
     resetNav();
     clearSpeech();
@@ -338,6 +340,7 @@ function render(dt) {
     updateAudio(game.speed, game.boostT > 0, close, game.running && !game.paused && !game.crashing && !game.caught);
 
     updateShaders(dt);
+    updateEffects(dt);
     applyTimeOfDay(progress(game.prog));
     updateBusVisual(dt);
     updateCrowdVisual(dt);
@@ -361,6 +364,7 @@ try {
 
 try {
   initWorld(sceneryAt);
+  initEffects(scene);
   // Behind the title screen: the bus stand at Mohammadpur, early morning.
   resetBus(0);
   resetCamera();

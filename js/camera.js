@@ -52,7 +52,8 @@ export function updateCamera(dt) {
   const ax = p.x + Math.cos(p.yaw) * camLat, az = p.z - Math.sin(p.yaw) * camLat;
   const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw); // forward on the ground
   const back = C.distance + boostFx * C.boostPullBack;
-  const shake = game.shake * C.shakeScale;
+  const trauma = game.shake;
+  const shake = Math.min(1.2, trauma * trauma * 1.1) * C.shakeScale;
   let cx = ax - fx * back, cz = az - fz * back;
 
   // In a bend the camera can swing out over the pavement and into a building. Find the

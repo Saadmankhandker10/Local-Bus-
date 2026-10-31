@@ -13,6 +13,7 @@ import { emit, on } from "./events.js";
 import { sweptHit, sideGap } from "./physics.js";
 import { makeVehicle, makeStall, makePillar, makeManhole, makeTrench, makeRamp, beaconMat, dangerRingMat } from "./vehicles.js";
 import { disposeHierarchy, sparkMat } from "./shaders.js";
+import { spawnCrashEffects, spawnScrapeSparks, spawnDizzyStars } from "./effects.js";
 import { currentStage } from "./journey.js";
 import { SEGS, here, ahead, walk, place, lanesOf } from "./map.js";
 import { PROCESSION_EVENTS } from "./data/events.js";
@@ -154,6 +155,7 @@ function ejectDriver(seg, s, x) {
     scared: true, angry: true, ph: rnd(0, 6),
   });
   place(m, seg, s, x + side * 1.1);
+  spawnDizzyStars(m, 2.8);
 }
 
 /** Is anything near this spot already? Keeps new things from appearing inside others. */
@@ -343,6 +345,18 @@ function launch(o) {
     spawnChunks(o.seg, o.s, o.x, o.t.name === "vip" || o.t.name === "car" ? 4 : 2, false);
     if (Math.random() < 0.75) ejectDriver(o.seg, o.s, o.x);
   }
+
+  // Section 2.4: Spawn explosive debris, sparks, dust, comic words, and loose items
+  spawnCrashEffects({
+    x: o.m.position.x,
+    y: o.m.position.y + 0.9,
+    z: o.m.position.z,
+    type: o.t.name,
+    severity: share > 0.7 ? 1.0 : 0.8,
+    isPedestrian: o.t.name === "rickshaw" || o.t.name === "bike",
+    vx: o.vx,
+    vz: o.v,
+  });
   // Rickshaws and bikes tip onto their side ("fallen" state).
   if (o.t.name === "rickshaw" || o.t.name === "bike") {
     o.fallen = true;
@@ -517,6 +531,14 @@ export function updateTraffic(dt) {
         // Right after a light crash the bus may be shoved into something big: forgive that.
         } else if (game.invulnT <= 0) {
           emitSparks(o.m.position.x, o.m.position.y + 1.4, o.m.position.z, 12);
+          spawnCrashEffects({
+            x: o.m.position.x,
+            y: o.m.position.y + 1.4,
+            z: o.m.position.z,
+            type: t.name,
+            severity: 1.5,
+            color: 0x263238,
+          });
           emit("heavyHit", { type: t.name });
         }
       } else if (!t.heavy && !t.isRamp && !t.hazard && o.m.userData.mirrors) {
@@ -530,12 +552,26 @@ export function updateTraffic(dt) {
             o.m.userData.mirrors.left.visible = false;
             spawnChunks(o.seg, o.s, o.x - t.w * .5, 1, true);
             emitSparks(o.m.position.x - t.w * .5, o.m.position.y + 1.2, o.m.position.z, 5);
+            spawnCrashEffects({
+              x: o.m.position.x - t.w * .5,
+              y: o.m.position.y + 1.2,
+              z: o.m.position.z,
+              type: "mirror",
+              severity: 0.5,
+            });
             emit("mirrorHit", { type: "mirror", damage: HZ.mirrorBonus, x: o.m.position.x, y: o.m.position.y + 1.2, z: o.m.position.z });
           } else if (!busOnLeft && o.mirrorR) {
             o.mirrorR = false;
             o.m.userData.mirrors.right.visible = false;
             spawnChunks(o.seg, o.s, o.x + t.w * .5, 1, true);
             emitSparks(o.m.position.x + t.w * .5, o.m.position.y + 1.2, o.m.position.z, 5);
+            spawnCrashEffects({
+              x: o.m.position.x + t.w * .5,
+              y: o.m.position.y + 1.2,
+              z: o.m.position.z,
+              type: "mirror",
+              severity: 0.5,
+            });
             emit("mirrorHit", { type: "mirror", damage: HZ.mirrorBonus, x: o.m.position.x, y: o.m.position.y + 1.2, z: o.m.position.z });
           }
         }
