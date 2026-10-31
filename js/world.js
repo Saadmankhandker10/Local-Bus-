@@ -496,7 +496,7 @@ export function plate(text, w, h, bg, fg) {
   g.strokeStyle = fg; g.lineWidth = Math.max(4, Math.round(c.height * .06));
   g.strokeRect(4, 4, c.width - 8, c.height - 8);
   let size = Math.round(c.height * .58);
-  const font = s => `bold ${s}px 'Noto Sans Bengali', 'Nirmala UI', sans-serif`;
+  const font = s => `bold ${s}px 'Kalpurush', 'Noto Sans Bengali', 'Nirmala UI', sans-serif`;
   g.font = font(size);
   while (g.measureText(text).width > c.width * .9 && size > 10) g.font = font(--size);
   g.fillStyle = fg; g.textAlign = "center"; g.textBaseline = "middle";

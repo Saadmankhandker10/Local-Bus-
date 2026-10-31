@@ -267,10 +267,15 @@ const PREFABS = {
       }
     }
     // Main cloth banner stretched across the front of the gathering, facing the oncoming bus (+z).
-    for (const dx of [-w / 2 + .6, w / 2 - .6]) g.add(box(.14, 3.6, .14, POLE, cx + dx, 1.8, 5.6));
+    for (const dx of [-w / 2 + .6, w / 2 - .6]) g.add(box(.14, 5.2, .14, POLE, cx + dx, 2.6, 5.6));
     const mainBanner = sign(BANNERS[0], 6.8, 1.15, "#b8322a", "#fff8e1");
     mainBanner.position.set(cx, 2.75, 5.7);
     g.add(mainBanner);
+
+    // Overhead high-visibility floating rally banner for drivers
+    const rallySign = sign("✊ ছাত্রদের সমাবেশ ও মিছিল", 5.6, 1.25, "#b8322a", "#fff8e1");
+    rallySign.position.set(cx, 4.45, 5.7);
+    g.add(rallySign);
 
     // Diversion arrow sign on the left edge guiding drivers into the narrow open left lane.
     const bypassSign = sign("◄ বাম লেন খোলা", 3.2, .85, "#ffc21a", "#1a1d1f");
@@ -333,10 +338,15 @@ const PREFABS = {
     }
 
     // Main front cloth banner: deep royal blue banner with gold/white civic slogan.
-    for (const dx of [-w / 2 + .5, w / 2 - .5]) g.add(box(.14, 3.6, .14, POLE, cx + dx, 1.8, 5.8));
+    for (const dx of [-w / 2 + .5, w / 2 - .5]) g.add(box(.14, 5.2, .14, POLE, cx + dx, 2.6, 5.8));
     const mainBanner = sign(CIVIC_BANNERS[0], 6.2, 1.15, "#1565c0", "#fff8e1");
     mainBanner.position.set(cx, 2.75, 5.9);
     g.add(mainBanner);
+
+    // Overhead high-visibility floating rally banner for oncoming drivers
+    const rallySign = sign("📢 নাগরিক ও ব্যবসায়ী সমাবেশ", 5.6, 1.25, "#e65100", "#fff8e1");
+    rallySign.position.set(cx, 4.45, 5.9);
+    g.add(rallySign);
 
     // Glowing yellow diversion sign at the median opening guiding drivers to swerve into the opposite lane.
     const detourSign = sign("উল্টা লেনে কাটেন ►", 3.4, .88, "#ffc21a", "#1a1d1f");

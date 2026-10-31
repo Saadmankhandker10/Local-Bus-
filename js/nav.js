@@ -121,6 +121,42 @@ const MAP_PINS = [
   return { ...pin, x: p.x + rx * pin.side * 18, z: p.z + rz * pin.side * 18 };
 });
 
+// Key designated route services across Dhaka (Fuel, Passenger Stops, Police, Public Rallies)
+const ROUTE_SERVICES = [
+  // Stage 0: Mohammadpur
+  { kind: "stop", progFrac: 0.02, name: "মোহাম্মদপুর বাসস্ট্যান্ড" },
+  { kind: "police", progFrac: 0.12, name: "আসাদ এভিনিউ পুলিশ ফাঁড়ি" },
+  { kind: "cng", progFrac: 0.17, name: "আসাদগেট সিএনজি পাম্প" },
+  { kind: "public", progFrac: 0.21, name: "আসাদ গেট মিছিল" },
+  { kind: "stop", progFrac: 0.24, name: "আসাদগেট বাস স্টপ" },
+
+  // Stage 1: Dhanmondi
+  { kind: "stop", progFrac: 0.32, name: "ধানমন্ডি ২৭ বাস স্টপ" },
+  { kind: "cng", progFrac: 0.39, name: "ধানমন্ডি লেক সিএনজি পাম্প" },
+  { kind: "police", progFrac: 0.46, name: "সোবহানবাগ পুলিশ বক্স" },
+  { kind: "stop", progFrac: 0.49, name: "ধানমন্ডি ৩২ বাস স্টপ" },
+
+  // Stage 2: Shahbagh & Science Lab
+  { kind: "stop", progFrac: 0.57, name: "সায়েন্সল্যাব বাস স্টপ" },
+  { kind: "cng", progFrac: 0.62, name: "কাঁটাবন সিএনজি পাম্প" },
+  { kind: "stop", progFrac: 0.66, name: "নিউমার্কেট / কাঁটাবন স্টপ" },
+  { kind: "public", progFrac: 0.69, name: "শাহবাগ ছাত্রদের মিছিল" },
+  { kind: "police", progFrac: 0.73, name: "শাহবাগ পুলিশ বক্স" },
+  { kind: "stop", progFrac: 0.77, name: "শাহবাগ মোড় বাস স্টপ" },
+
+  // Stage 3: Dhaka University
+  { kind: "cng", progFrac: 0.83, name: "দোয়েল চত্বর সিএনজি পাম্প" },
+  { kind: "police", progFrac: 0.87, name: "হাইকোর্ট পুলিশ চেকপোস্ট" },
+  { kind: "stop", progFrac: 0.93, name: "টিএসসি / ঢাবি বাস স্টপ" },
+];
+
+const MAP_SERVICES = ROUTE_SERVICES.map(s => {
+  fromProgress(s.progFrac * TOTAL, spot);
+  sample(spot.seg, spot.s, p);
+  const rx = Math.cos(p.yaw), rz = -Math.sin(p.yaw);
+  return { ...s, x: p.x + rx * 6, z: p.z + rz * 6 };
+});
+
 const STYLE = {
   street: { color: "#5c646b" },
   main: { color: "#8d949b" },
@@ -365,27 +401,33 @@ function drawMap(tod) {
     }
   });
 
-  // Animated dashed radar line to nearest Police (when chased) or nearest CNG station.
+  // Animated dashed radar line to nearest Police (when chased) or nearest CNG station or Passenger stop.
   let bestTarget = null, bestDist2 = Infinity;
-  const wantKind = crowd.active ? "police" : "cng";
-  eachMark((kind, x, z) => {
-    if (kind !== wantKind) return;
-    const d2 = (x - bx) ** 2 + (z - bz) ** 2;
-    if (d2 < bestDist2) { bestDist2 = d2; bestTarget = { kind, x, z }; }
-  });
-  if (bestTarget && bestDist2 < (reach * 1.2) ** 2) {
-    const tx = a * bestTarget.x - b * bestTarget.z + e;
-    const ty = b * bestTarget.x + a * bestTarget.z + f;
-    ctx.save();
-    ctx.setLineDash([px * 1.4, px * 1.1]);
-    ctx.lineDashOffset = -(game.time * 24) % (px * 2.5);
-    ctx.lineWidth = Math.max(1.8, px * 0.55);
-    ctx.strokeStyle = wantKind === "police" ? "#ff6fb5" : "#ffd600";
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.lineTo(tx, ty);
-    ctx.stroke();
-    ctx.restore();
+  let wantKind = "";
+  if (crowd.active) wantKind = "police";
+  else if (game.fuel < CFG.fuel.max * 0.45) wantKind = "cng";
+  else if (game.pass < CFG.fare.maxPassengers * 0.8) wantKind = "stop";
+
+  if (wantKind) {
+    eachMark((kind, x, z) => {
+      if (kind !== wantKind) return;
+      const d2 = (x - bx) ** 2 + (z - bz) ** 2;
+      if (d2 < bestDist2) { bestDist2 = d2; bestTarget = { kind, x, z }; }
+    });
+    if (bestTarget && bestDist2 < (reach * 1.3) ** 2) {
+      const tx = a * bestTarget.x - b * bestTarget.z + e;
+      const ty = b * bestTarget.x + a * bestTarget.z + f;
+      ctx.save();
+      ctx.setLineDash([px * 1.4, px * 1.1]);
+      ctx.lineDashOffset = -(game.time * 24) % (px * 2.5);
+      ctx.lineWidth = Math.max(2.0, px * 0.6);
+      ctx.strokeStyle = wantKind === "police" ? "#ff1744" : wantKind === "cng" ? "#ffd600" : "#00e5ff";
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(tx, ty);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   // Live moving Metro Rail carriages overhead.
@@ -398,7 +440,7 @@ function drawMap(tod) {
     ctx.beginPath(); ctx.arc(sx, sy, px * 1.3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   });
 
-  // Chasing crowd radar pulse behind the bus.
+  // Chasing crowd radar pulse & public megaphone mark behind the bus.
   if (crowd.active) {
     const pulse = 0.55 + 0.45 * Math.sin(game.time * 8);
     ctx.fillStyle = `rgba(255, 111, 0, ${pulse.toFixed(2)})`;
@@ -408,12 +450,15 @@ function drawMap(tod) {
       ctx.arc(cx + i * px * 1.4, Math.min(W - px, cyCrowd), px * 1.1, 0, Math.PI * 2);
       ctx.fill();
     }
+    // High-visibility public badge on the angry chasing mob
+    markIcon(ctx, "public", cx, Math.min(W - px * 2, cyCrowd), px, false, "পাবলিক");
   }
 
-  eachMark((kind, x, z) => {
+  // Active Stops, CNG stations, Police, and Public Rallies
+  eachMark((kind, x, z, label) => {
     const sx = a * x - b * z + e, sy = b * x + a * z + f;
     if ((sx - R) ** 2 + (sy - R) ** 2 > R * R) return;
-    markIcon(ctx, kind, sx, sy, px);
+    markIcon(ctx, kind, sx, sy, px, false, label);
   });
 
   // Next stop flag at the rim of the minimap.
@@ -452,13 +497,105 @@ function drawMap(tod) {
   ctx.restore();
 }
 
-function markIcon(g, kind, x, y, r) {
+/** High-visibility circular badge with icons for Fuel ⛽, Passengers 🚏, Police 👮, and Public 📢 */
+function markIcon(g, kind, x, y, r, isBigMap = false, label = "") {
+  const badgeR = isBigMap ? Math.max(12, r) : Math.max(9.5, r * 2.2);
+  let bg = "#ffd600", border = "#1a1d1f", icon = "⛽", defaultLabel = "সিএনজি / তেল";
+  let pulse = false, pulseCol = "rgba(255, 214, 0, 0.55)";
+
+  if (kind === "cng") {
+    bg = "#ffd600";
+    border = "#1a1d1f";
+    icon = "⛽";
+    defaultLabel = "তেল / CNG";
+    if (game.fuel < CFG.fuel.max * 0.45) {
+      pulse = true;
+      pulseCol = "rgba(255, 214, 0, 0.65)";
+    }
+  } else if (kind === "stop") {
+    bg = "#0288d1";
+    border = "#ffffff";
+    icon = "🚏";
+    defaultLabel = "যাত্রী স্টপ";
+    if (game.pass < CFG.fare.maxPassengers) {
+      pulse = true;
+      pulseCol = "rgba(2, 136, 209, 0.45)";
+    }
+  } else if (kind === "police") {
+    const flash = Math.floor(game.time * 8) % 2 === 0;
+    bg = "#1a237e";
+    border = flash ? "#ff1744" : "#00e5ff";
+    icon = "👮";
+    defaultLabel = "পুলিশ";
+    if (crowd.active) {
+      pulse = true;
+      pulseCol = flash ? "rgba(255, 23, 68, 0.75)" : "rgba(0, 229, 255, 0.75)";
+    }
+  } else if (kind === "public") {
+    bg = "#e65100";
+    border = "#ffd54f";
+    icon = "📢";
+    defaultLabel = "পাবলিক সমাবেশ";
+    pulse = true;
+    pulseCol = "rgba(230, 81, 0, 0.55)";
+  }
+
+  g.save();
+
+  // Translucent glowing pulse aura
+  if (pulse) {
+    const pR = badgeR + (1 + Math.sin(game.time * 7.5)) * (isBigMap ? 4.5 : 3.0);
+    g.beginPath();
+    g.arc(x, y, pR, 0, Math.PI * 2);
+    g.fillStyle = pulseCol;
+    g.fill();
+  }
+
+  // Outer dark shadow halo
   g.beginPath();
-  if (kind === "stop") { g.arc(x, y, r, 0, Math.PI * 2); g.fillStyle = "#42a5f5"; }
-  else if (kind === "cng") { g.rect(x - r, y - r, r * 2, r * 2); g.fillStyle = "#ffd600"; }
-  else { g.moveTo(x, y - r * 1.2); g.lineTo(x + r * 1.1, y + r * .8); g.lineTo(x - r * 1.1, y + r * .8); g.closePath(); g.fillStyle = "#ff6fb5"; }
+  g.arc(x, y, badgeR + 1.6, 0, Math.PI * 2);
+  g.fillStyle = "rgba(0, 0, 0, 0.65)";
   g.fill();
-  g.lineWidth = r * .4; g.strokeStyle = "#111"; g.stroke();
+
+  // Solid colored circular badge
+  g.beginPath();
+  g.arc(x, y, badgeR, 0, Math.PI * 2);
+  g.fillStyle = bg;
+  g.fill();
+
+  // High-contrast rim
+  g.lineWidth = isBigMap ? 2.5 : 1.8;
+  g.strokeStyle = border;
+  g.stroke();
+
+  // Crisp Emoji Icon
+  const fontSize = Math.round(badgeR * 1.25);
+  g.font = `${fontSize}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  g.fillText(icon, x, y + badgeR * 0.06);
+
+  // Big Map: pill label in Kalpurush font underneath
+  if (isBigMap) {
+    const tag = label || defaultLabel;
+    if (tag) {
+      const dpr = typeof devicePixelRatio !== "undefined" ? devicePixelRatio : 1;
+      const tagFont = Math.round(10.5 * dpr);
+      g.font = `700 ${tagFont}px 'Kalpurush', "Noto Sans Bengali", sans-serif`;
+      const tw = g.measureText(tag).width + 10 * dpr;
+      const th = 17 * dpr;
+      const ty = y + badgeR + 3.5 * dpr;
+      g.fillStyle = "rgba(10, 16, 14, 0.92)";
+      g.fillRect(x - tw / 2, ty, tw, th);
+      g.strokeStyle = bg;
+      g.lineWidth = 1 * dpr;
+      g.strokeRect(x - tw / 2, ty, tw, th);
+      g.fillStyle = "#ffffff";
+      g.fillText(tag, x, ty + th * 0.55);
+    }
+  }
+
+  g.restore();
 }
 
 /* ====== Full-Screen Interactive 4D Dhaka City Map (#bigmap) ====== */
@@ -565,10 +702,19 @@ function drawBig4DMap(tod) {
     bctx.fillRect(sx - w / 2, syRoof - w * 0.4, w, w * 0.7);
   }
 
-  // Active Stops, CNG stations, and Police marks.
-  const rMark = Math.max(4, 5 * dpr);
-  eachMark((kind, x, z) => {
-    markIcon(bctx, kind, projX(x, z), projY(x, 0, z), rMark);
+  // 1. Designated Route Services across Dhaka City (Stops, CNG stations, Police checkposts, Public rallies)
+  const rMark = Math.max(10, 7.5 * dpr);
+  for (const s of MAP_SERVICES) {
+    const sx = projX(s.x, s.z), sy = projY(s.x, 0, s.z);
+    if (sx < -60 || sx > W + 60 || sy < -60 || sy > H + 60) continue;
+    markIcon(bctx, s.kind, sx, sy, rMark, true, s.name);
+  }
+
+  // 2. Live dynamic stops, CNG pumps, and police marks in current scene
+  eachMark((kind, x, z, label) => {
+    const sx = projX(x, z), sy = projY(x, 0, z);
+    if (sx < -60 || sx > W + 60 || sy < -60 || sy > H + 60) continue;
+    markIcon(bctx, kind, sx, sy, rMark * 1.15, true, label);
   });
 
   // Live moving traffic vehicles in 3D space.

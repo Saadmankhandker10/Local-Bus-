@@ -387,7 +387,7 @@ export const CFG = {
     mapRoadScale: 1.6,    // roads are drawn wider than real so they read at this small size
     routeStep: 8,         // spacing of the points on the yellow route line
     routeWidth: 7,        // width of the yellow route line, in world units
-    markPx: 4,            // size of the stop / CNG / police icons on the minimap (CSS pixels)
+    markPx: 5.5,          // size of the stop / CNG / police / public icons on the minimap (CSS pixels)
   },
 
   world: {
