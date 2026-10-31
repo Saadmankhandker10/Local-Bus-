@@ -26,25 +26,23 @@ export function attachBlackoutShader(material) {
 
     shader.uniforms.uBlackout = blackoutState.uniform;
 
-    shader.fragmentShader = shader.fragmentShader.replace(
-      "#include <common>",
-      `#include <common>
-       uniform float uBlackout;`
-    );
+    if (!shader.fragmentShader.includes("uniform float uBlackout;")) {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        "#include <common>",
+        `#include <common>
+         uniform float uBlackout;`
+      );
+    }
 
     // Suppress emissive radiance proportionally to uBlackout (down to 5% emergency backup)
     if (shader.fragmentShader.includes("#include <emissivemap_fragment>")) {
-      shader.fragmentShader = shader.fragmentShader.replace(
-        "#include <emissivemap_fragment>",
-        `#include <emissivemap_fragment>
-         totalEmissiveRadiance *= mix(1.0, 0.05, uBlackout);`
-      );
-    } else {
-      shader.fragmentShader = shader.fragmentShader.replace(
-        "#include <dithering_fragment>",
-        `#include <dithering_fragment>
-         gl_FragColor.rgb *= mix(vec3(1.0), vec3(0.18, 0.16, 0.14), uBlackout * 0.7);`
-      );
+      if (!shader.fragmentShader.includes("totalEmissiveRadiance *= mix")) {
+        shader.fragmentShader = shader.fragmentShader.replace(
+          "#include <emissivemap_fragment>",
+          `#include <emissivemap_fragment>
+           totalEmissiveRadiance *= mix(1.0, 0.05, uBlackout);`
+        );
+      }
     }
   };
   material.needsUpdate = true;
@@ -95,63 +93,55 @@ export function createLEDMaterial(options = {}) {
     toneMapped: false,
   });
 
-  mat.userData = { isLED: true };
+  mat.userData = { isLED: true, isShared: true };
 
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uLedT = ledTimeUniform;
     shader.uniforms.uLedSpeed = { value: speed };
     shader.uniforms.uLedGain = { value: gain };
 
-    shader.vertexShader = `
-      attribute float bulb;
-      varying float vBulb;
-      varying vec3 vColor;
-      ${shader.vertexShader}
-    `.replace(
-      "#include <color_vertex>",
-      `#include <color_vertex>
-       vBulb = bulb;
-       vColor = color;`
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        "#include <common>",
+        `#include <common>
+         attribute float bulb;
+         varying float vBulb;`
+      )
+      .replace(
+        "#include <color_vertex>",
+        `#include <color_vertex>
+         vBulb = bulb;`
+      );
+
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <common>",
+      `#include <common>
+       uniform float uLedT;
+       uniform float uLedSpeed;
+       uniform float uLedGain;
+       varying float vBulb;`
     );
 
     if (isPolice) {
       // Police strobe: bulbs 0..3 strobe Red 3 times, bulbs 4..7 strobe Blue 3 times
-      shader.fragmentShader = `
-        uniform float uLedT;
-        uniform float uLedSpeed;
-        uniform float uLedGain;
-        varying float vBulb;
-        varying vec3 vColor;
-        ${shader.fragmentShader}
-      `.replace(
+      shader.fragmentShader = shader.fragmentShader.replace(
         "#include <color_fragment>",
-        `
-        float cycle = mod(uLedT * uLedSpeed, 2.0);
-        float isRedSide = step(vBulb, 3.5);
-        float activeSide = (cycle < 1.0) ? isRedSide : (1.0 - isRedSide);
-        float flash = step(0.5, sin(cycle * 37.699)) * activeSide; // 6 sub-flashes per cycle
-        vec3 bulbCol = vColor * (flash * uLedGain + 0.15);
-        diffuseColor.rgb = bulbCol;
-        `
+        `#include <color_fragment>
+         float cycle = mod(uLedT * uLedSpeed, 2.0);
+         float isRedSide = step(vBulb, 3.5);
+         float activeSide = (cycle < 1.0) ? isRedSide : (1.0 - isRedSide);
+         float flash = step(0.5, sin(cycle * 37.699)) * activeSide;
+         diffuseColor.rgb *= (flash * uLedGain + 0.15);`
       );
     } else {
       // Chasing fairy lights / decorative garland wave
-      shader.fragmentShader = `
-        uniform float uLedT;
-        uniform float uLedSpeed;
-        uniform float uLedGain;
-        varying float vBulb;
-        varying vec3 vColor;
-        ${shader.fragmentShader}
-      `.replace(
+      shader.fragmentShader = shader.fragmentShader.replace(
         "#include <color_fragment>",
-        `
-        float wave = sin(uLedT * uLedSpeed + vBulb * 1.25);
-        float isOn = step(-0.2, wave);
-        float glow = smoothstep(-0.2, 1.0, wave);
-        vec3 bulbCol = vColor * (isOn * 0.75 + glow * uLedGain + 0.12);
-        diffuseColor.rgb = bulbCol;
-        `
+        `#include <color_fragment>
+         float wave = sin(uLedT * uLedSpeed + vBulb * 1.25);
+         float isOn = step(-0.2, wave);
+         float glow = smoothstep(-0.2, 1.0, wave);
+         diffuseColor.rgb *= (isOn * 0.75 + glow * uLedGain + 0.12);`
       );
     }
   };
@@ -315,3 +305,4 @@ export function disposeHierarchy(root) {
     }
   });
 }
+

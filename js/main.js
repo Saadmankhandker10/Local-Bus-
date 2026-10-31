@@ -30,6 +30,11 @@ import { HEAVY_HIT } from "./i18n.js";
 import { pick, clamp, $ } from "./utils.js";
 import { updateHud, onStartPressed, onPauseButton, hideScreen, showPause, showRunEnd, crashList } from "./hud.js";
 
+// Signal that all modules have evaluated and the engine is booting
+if (typeof window !== "undefined") {
+  window.__localBusBooted = true;
+}
+
 let endReason = "";   // title of the ending, e.g. "ট্রাকে ধাক্কা!"
 let endCause = "";    // what ended it: truck / bus / pillar / caught / fuel / complete
 let caughtT = 0;      // seconds left in the "surrounded" moment
@@ -325,21 +330,25 @@ function step(dt) {
 
 /** Draw one frame. dt is the real time since the last frame (0 while paused). */
 function render(dt) {
-  if (game.warn && !prevWarn && game.running) warnBeep();
-  prevWarn = game.warn;
-  const close = (game.running && crowd.active)
-    ? clamp(1 - (crowd.gap - CFG.crowd.catchGap) / (CFG.crowd.cueGap - CFG.crowd.catchGap), 0, 1) : 0;
-  updateAudio(game.speed, game.boostT > 0, close, game.running && !game.paused && !game.crashing && !game.caught);
+  try {
+    if (game.warn && !prevWarn && game.running) warnBeep();
+    prevWarn = game.warn;
+    const close = (game.running && crowd.active)
+      ? clamp(1 - (crowd.gap - CFG.crowd.catchGap) / (CFG.crowd.cueGap - CFG.crowd.catchGap), 0, 1) : 0;
+    updateAudio(game.speed, game.boostT > 0, close, game.running && !game.paused && !game.crashing && !game.caught);
 
-  updateShaders(dt);
-  applyTimeOfDay(progress(game.prog));
-  updateBusVisual(dt);
-  updateCrowdVisual(dt);
-  updateSpeech(dt);
-  const boostFx = updateCamera(dt);
-  renderer.render(scene, cam);
-  updateHud(dt, boostFx);
-  drawNav(dt);
+    updateShaders(dt);
+    applyTimeOfDay(progress(game.prog));
+    updateBusVisual(dt);
+    updateCrowdVisual(dt);
+    updateSpeech(dt);
+    const boostFx = updateCamera(dt);
+    renderer.render(scene, cam);
+    updateHud(dt, boostFx);
+    drawNav(dt);
+  } catch (err) {
+    console.warn("Render loop frame error:", err);
+  }
 }
 
 // Mark the engine as loaded and bind start buttons immediately

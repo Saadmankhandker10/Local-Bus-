@@ -29,20 +29,31 @@ export const dangerRingMat = new THREE.MeshBasicMaterial({
 });
 dangerRingMat.userData = { isShared: true };
 const beaconGeo = new THREE.SphereGeometry(.35, 10, 8);
+beaconGeo.userData = { isShared: true };
 const vipBadge = plate("▲ ভিআইপি গাড়ি", 2.2, .48, "#4a148c", "#ffd54f");
+vipBadge.userData = { isShared: true };
 const policeSign = plate("পুলিশ · POLICE", 1.5, .34, "#1a237e", "#ffffff");
+policeSign.userData = { isShared: true };
 const rampSign = plate("🚀 ঠেলায় চড়ে উড়েন!", 2.6, .55, "#ffeb3b", "#b71c1c");
+rampSign.userData = { isShared: true };
 const trenchSign = plate("⚠ ওয়াসার কাজ চলছে", 2.4, .52, "#b71c1c", "#ffffff");
+trenchSign.userData = { isShared: true };
 
 const TRUCK_ART_TEXTS = ["দূর হতে ভালোবাসুন", "ধীরে চলুন", "মা-বাবার দোয়া", "আল্লাহ সর্বশক্তিমান"];
-const TRUCK_ART_MATS = TRUCK_ART_TEXTS.map(txt => new THREE.MeshBasicMaterial({ map: createTruckArtTex(txt) }));
+const TRUCK_ART_MATS = TRUCK_ART_TEXTS.map(txt => {
+  const m = new THREE.MeshBasicMaterial({ map: createTruckArtTex(txt) });
+  m.userData = { isShared: true };
+  return m;
+});
 const rickshawHoodMat = new THREE.MeshLambertMaterial({ map: createRickshawHoodTex() });
+rickshawHoodMat.userData = { isShared: true };
 const rickshawFilmMat = new THREE.MeshBasicMaterial({
   map: createRickshawFilmTex(),
   transparent: true,
   opacity: 0.82,
   side: THREE.DoubleSide
 });
+rickshawFilmMat.userData = { isShared: true };
 
 const policeLightbarMat = createLEDMaterial({ police: true, speed: 11.0, gain: 2.8 });
 policeLightbarMat.userData = { isShared: true };

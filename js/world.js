@@ -14,7 +14,7 @@ import {
   createPlaidTex,
   createGamchhaTex
 } from "./textures.js";
-import { attachBlackoutShader, disposeHierarchy, applyPolygonOffset } from "./shaders.js";
+import { attachBlackoutShader, disposeHierarchy, applyPolygonOffset, blackoutState } from "./shaders.js";
 
 const W = CFG.world;
 
@@ -119,11 +119,16 @@ addEventListener("resize", () => renderer.setSize(innerWidth, innerHeight));
 // Every box in the game is the same 1×1×1 cube, stretched with `scale`, and boxes of the
 // same colour share one material. So the GPU stores one cube, not thousands of copies.
 export const UNIT = new THREE.BoxGeometry(1, 1, 1);
+UNIT.userData = { isShared: true };
 const matCache = new Map();
 
 /** A coloured box mesh of size w×h×d at (x, y, z). All boxes share GPU data and cast/receive soft shadows. */
 export function box(w, h, d, color, x = 0, y = 0, z = 0) {
-  if (!matCache.has(color)) matCache.set(color, new THREE.MeshLambertMaterial({ color }));
+  if (!matCache.has(color)) {
+    const mat = new THREE.MeshLambertMaterial({ color });
+    mat.userData = { isShared: true };
+    matCache.set(color, mat);
+  }
   const m = new THREE.Mesh(UNIT, matCache.get(color));
   m.scale.set(w, h, d);
   m.position.set(x, y, z);
@@ -134,7 +139,11 @@ export function box(w, h, d, color, x = 0, y = 0, z = 0) {
 
 /** A shared Lambert material for a colour. */
 export function lambert(color) {
-  if (!matCache.has(color)) matCache.set(color, new THREE.MeshLambertMaterial({ color }));
+  if (!matCache.has(color)) {
+    const mat = new THREE.MeshLambertMaterial({ color });
+    mat.userData = { isShared: true };
+    matCache.set(color, mat);
+  }
   return matCache.get(color);
 }
 
@@ -429,7 +438,8 @@ for (const m of BLDG_MATS) {
 }
 
 export function setBuildingEmissive(nightFactor) {
-  const intensity = 0.15 + Math.max(0, Math.min(1, nightFactor)) * 1.25;
+  const blackoutDim = Math.max(0.05, 1.0 - (blackoutState?.uniform?.value || 0.0) * 0.95);
+  const intensity = (0.15 + Math.max(0, Math.min(1, nightFactor)) * 1.25) * blackoutDim;
   for (const m of BLDG_MATS) {
     if (m && m.userData?.isBuilding) {
       m.emissiveIntensity = intensity;
