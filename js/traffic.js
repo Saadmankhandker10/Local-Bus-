@@ -4,6 +4,7 @@
 // Every object lives on a road piece: `seg` (which piece), `s` (how far along it) and
 // `x` (how far right of the centre line). `z` is worked out each step: the distance
 // from the bus along the road (negative = ahead), so the old collision rules still work.
+import * as THREE from "three";
 import { CFG } from "./config.js";
 import { rnd, pick, clamp } from "./utils.js";
 import { scene, box, person } from "./world.js";

@@ -8,14 +8,14 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/tokens.css">
-<link rel="stylesheet" href="css/style.css?v=2.9">
+<link rel="stylesheet" href="css/style.css?v=3.0">
 <script>
   if (location.protocol === "file:") {
     window.__isFileProtocol = true;
   }
   // Auto-purge any stale service workers or caches during local updates
   (function() {
-    var v = "2.9";
+    var v = "3.0";
     var isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
     if (isLocal || localStorage.getItem("lb_sw_v") !== v) {
       localStorage.setItem("lb_sw_v", v);
@@ -278,7 +278,7 @@
     });
   };
 </script>
-<script type="module" src="js/main.js?v=2.9" onerror="window.__bootErrors.push({ msg: 'main.js লোড হতে পারেনি (CORS বা নেটওয়ার্ক ব্লক)' })"></script>
+<script type="module" src="js/main.js?v=3.0" onerror="window.__bootErrors.push({ msg: 'main.js লোড হতে পারেনি (CORS বা নেটওয়ার্ক ব্লক)' })"></script>
 <script>
   // Boot guard: if ES modules or WebGL fail to load within 6 seconds, show a helpful message and force-reload button.
   setTimeout(function () {
