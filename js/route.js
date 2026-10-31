@@ -27,6 +27,7 @@ export const ROUTE = {
         { prefab: "busStand", at: 0.03, side: -1, clear: 40 },
         { prefab: "wires", every: 70, from: 0, to: 1 },
         { prefab: "teaShop", every: 160, from: 0.05, to: 0.6 },
+        { prefab: "mosque", at: 0.38, side: 1, text: "মোহাম্মদপুর জামে মসজিদ", clear: 35 },
         { prefab: "civicMichil", at: 0.80, clear: 24 },
         { prefab: "gateArch", at: 0.82, text: "আসাদগেট" },
       ],
@@ -48,6 +49,7 @@ export const ROUTE = {
         { prefab: "tree", every: 22, from: 0, to: 1, side: -1 },
         { prefab: "tree", every: 22, from: 0.7, to: 1, side: 1 },
         { prefab: "coachingBanner", every: 140, from: 0.05, to: 1 },
+        { prefab: "mosque", at: 0.85, side: -1, text: "সোবহানবাগ জামে মসজিদ", clear: 35 },
       ],
     },
     {
@@ -66,6 +68,7 @@ export const ROUTE = {
         { prefab: "wires", every: 55, from: 0, to: 0.8 },
         { prefab: "marketSign", at: 0.12, text: "মার্কেট এলাকা — সাবধানে চলুন" },
         { prefab: "footbridge", at: 0.28, text: "সায়েন্সল্যাব ফুটওভার ব্রিজ" },
+        { prefab: "mosque", at: 0.44, side: 1, text: "কাটাবন জামে মসজিদ", clear: 35 },
         { prefab: "footbridge", at: 0.68, text: "ফুটওভার ব্রিজ — পথচারী পারাপার" },
         { prefab: "studentDemo", at: 0.72, clear: 24 },
         { prefab: "museum", at: 0.78, side: 1, clear: 40 },
@@ -89,6 +92,7 @@ export const ROUTE = {
         { prefab: "shaheedMinar", at: 0.42, side: 1, clear: 55 },
         { prefab: "tsc", at: 0.58, side: 1, clear: 60 },
         { prefab: "monument", at: 0.62, side: -1 },
+        { prefab: "mosque", at: 0.78, side: -1, text: "বিশ্ববিদ্যালয় কেন্দ্রীয় মসজিদ", clear: 35 },
         { prefab: "finishBanner", at: 0.985, text: "গন্তব্য: ঢাকা বিশ্ববিদ্যালয়" },
       ],
     },
@@ -100,46 +104,46 @@ export const ROUTE = {
     {
       p: 0.00, // Mohammadpur Bus Stand: crisp golden dawn
       skyTop: 0x3b6d9e, skyHor: 0xe8ad84,
-      sunCol: 0xffd285, sunI: 1.85,
-      hemiSky: 0xffeedd, hemiGround: 0x6e5848, hemiI: 1.05,
+      sunCol: 0xffd999, sunI: 2.05,
+      hemiSky: 0xfff3e0, hemiGround: 0x6e5848, hemiI: 1.25,
       fogNear: 55, fogFar: 180,
-      exposure: 1.12, ground: 0x6d5e4e,
+      exposure: 1.24, ground: 0x6d5e4e,
       sunPos: [25, 42, -35]
     },
     {
       p: 0.28, // Dhanmondi / Mirpur Road: clear tropical noon
       skyTop: 0x226bb8, skyHor: 0x86c2e2,
-      sunCol: 0xfff6ea, sunI: 2.15,
-      hemiSky: 0xffffff, hemiGround: 0x586b58, hemiI: 1.15,
+      sunCol: 0xfffaea, sunI: 2.30,
+      hemiSky: 0xffffff, hemiGround: 0x586b58, hemiI: 1.30,
       fogNear: 60, fogFar: 190,
-      exposure: 1.05, ground: 0x6e6856,
+      exposure: 1.20, ground: 0x6e6856,
       sunPos: [15, 68, -25]
     },
     {
       p: 0.55, // Science Lab / New Market: golden afternoon
       skyTop: 0x3d6494, skyHor: 0xeb8b52,
-      sunCol: 0xffa84d, sunI: 1.9,
-      hemiSky: 0xffcca6, hemiGround: 0x563e2e, hemiI: 1.05,
+      sunCol: 0xffa84d, sunI: 2.10,
+      hemiSky: 0xffcca6, hemiGround: 0x563e2e, hemiI: 1.20,
       fogNear: 52, fogFar: 180,
-      exposure: 1.1, ground: 0x624e40,
+      exposure: 1.22, ground: 0x624e40,
       sunPos: [-35, 34, -35]
     },
     {
       p: 0.80, // Shahbagh / Asad Gate: dramatic crimson sunset
       skyTop: 0x242a54, skyHor: 0xc45645,
-      sunCol: 0xff5e3d, sunI: 1.35,
-      hemiSky: 0x8e5c6a, hemiGround: 0x3a242d, hemiI: 0.9,
+      sunCol: 0xff5e3d, sunI: 1.60,
+      hemiSky: 0x8e5c6a, hemiGround: 0x3a242d, hemiI: 1.10,
       fogNear: 48, fogFar: 168,
-      exposure: 1.16, ground: 0x483a34,
+      exposure: 1.25, ground: 0x483a34,
       sunPos: [-55, 18, -30]
     },
     {
       p: 1.00, // Curzon Hall / Dhaka University: atmospheric night with neon/streetlight glow
       skyTop: 0x080d1a, skyHor: 0x1a1f33,
-      sunCol: 0x90b0f8, sunI: 0.6,
-      hemiSky: 0x283254, hemiGround: 0x161522, hemiI: 0.72,
+      sunCol: 0x90b0f8, sunI: 0.75,
+      hemiSky: 0x283254, hemiGround: 0x161522, hemiI: 0.85,
       fogNear: 42, fogFar: 155,
-      exposure: 1.3, ground: 0x262326,
+      exposure: 1.38, ground: 0x262326,
       sunPos: [-20, 42, 10]
     },
   ],

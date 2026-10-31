@@ -34,7 +34,7 @@ renderer.setSize(innerWidth, innerHeight);
 const defaultMaxPr = isMobile ? 1.5 : CFG.render.maxPixelRatio;
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, defaultMaxPr));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.1;
+renderer.toneMappingExposure = 1.22;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = isMobile ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 document.body.prepend(renderer.domElement);
@@ -42,11 +42,11 @@ document.body.prepend(renderer.domElement);
 export const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(W.skyColor, W.fogNear, W.fogFar);
 
-export const hemi = new THREE.HemisphereLight(0xffeedd, 0x556655, 1.1);
+export const hemi = new THREE.HemisphereLight(0xfff5e6, 0x665443, 1.25);
 scene.add(hemi);
 
-export const sun = new THREE.DirectionalLight(0xfff2cc, 1.8);
-sun.position.set(20, 60, 20);
+export const sun = new THREE.DirectionalLight(0xfffae6, 2.0);
+sun.position.set(22, 65, 22);
 sun.castShadow = true;
 const defaultShadowRes = isMobile ? 1024 : 2048;
 sun.shadow.mapSize.set(defaultShadowRes, defaultShadowRes);
@@ -508,7 +508,7 @@ export function plate(text, w, h, bg, fg) {
 
 /* ====== Ground ====== */
 /** The ground has its own material so time-of-day can tint it (grass, dust, night). */
-export const groundMat = new THREE.MeshLambertMaterial({ color: 0x6d6a61 });
+export const groundMat = new THREE.MeshLambertMaterial({ color: 0x5e584f });
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(900, 900).rotateX(-Math.PI / 2), groundMat);
 ground.position.y = -.2;
 ground.receiveShadow = true;
@@ -762,8 +762,32 @@ const signGeo = new THREE.PlaneGeometry(4.8, 0.85);
 const canopyMatBlue = new THREE.MeshLambertMaterial({ color: 0x0d3b66 });
 const canopyMatRed = new THREE.MeshLambertMaterial({ color: 0x8e2424 });
 
+// Shared Rooftop Props (Water Tanks, TV Aerials, Bulkhead)
+const tankGeo = new THREE.CylinderGeometry(0.55, 0.55, 1.25, 10);
+const tankCapGeo = new THREE.CylinderGeometry(0.58, 0.58, 0.14, 10);
+const antennaMastGeo = new THREE.CylinderGeometry(0.04, 0.04, 4.4, 6);
+const antennaBarGeo = new THREE.BoxGeometry(1.2, 0.03, 0.03);
+const tankMatBlack = new THREE.MeshLambertMaterial({ color: 0x1a2327 }); // Sintex Black
+const tankMatBlue = new THREE.MeshLambertMaterial({ color: 0x0d47a1 });  // Gazi Blue
+const antennaMat = new THREE.MeshLambertMaterial({ color: 0x90a4ae });
+
+// Shared Construction Scaffolding & Safety Netting
+const scaffoldNetGeo = new THREE.PlaneGeometry(1, 1);
+const scaffoldNetMat = new THREE.MeshLambertMaterial({
+  color: 0x1e6b37,
+  transparent: true,
+  opacity: 0.82,
+  side: THREE.DoubleSide
+});
+const cautionSignMat = plate("সতর্কতা: নির্মাণ কাজ চলিতেছে", 4.2, 0.85, "#b71c1c", "#ffffff").material;
+
+[tankGeo, tankCapGeo, antennaMastGeo, antennaBarGeo, scaffoldNetGeo].forEach(g => { g.userData = { isShared: true }; });
+[tankMatBlack, tankMatBlue, antennaMat, scaffoldNetMat, cautionSignMat].forEach(m => { m.userData = { isShared: true }; });
+
 function makePooledBuilding(idx) {
   const g = new THREE.Group();
+  const isUnderConstruction = (idx % 6 === 5);
+
   // Main apartment/commercial building block (unit cube scaled per placement).
   const bldg = new THREE.Mesh(UNIT, BLDG_MATS[idx % BLDG_MATS.length]);
   bldg.castShadow = true;
@@ -792,7 +816,78 @@ function makePooledBuilding(idx) {
   }
   g.add(hawker);
 
-  g.userData = { bldg, sign, hawker };
+  // 1. Rooftop Props Group (water tanks, stairwell bulkhead, TV aerial antenna with red beacon)
+  const roof = new THREE.Group();
+  // Stairwell bulkhead (চিলেকোঠা)
+  roof.add(box(2.2, 2.0, 2.2, 0x8d6e63, 0.8, 1.0, -1.2));
+  roof.add(box(0.1, 1.4, 0.8, 0x3e2723, 0.8 - 1.15, 0.7, -1.2)); // door
+
+  // 1 or 2 Sintex/Gazi Cylindrical Water Tanks on concrete plinths
+  const tankMat = (idx % 2 === 0) ? tankMatBlack : tankMatBlue;
+  const tank1 = new THREE.Mesh(tankGeo, tankMat);
+  tank1.position.set(-1.4, 0.82, 0.8);
+  tank1.castShadow = true;
+  const tankCap1 = new THREE.Mesh(tankCapGeo, lambert(0xffffff));
+  tankCap1.position.set(-1.4, 1.48, 0.8);
+  roof.add(tank1, tankCap1);
+  roof.add(box(1.5, 0.22, 1.5, 0x757575, -1.4, 0.11, 0.8));
+
+  if (idx % 3 !== 0) {
+    const tank2 = new THREE.Mesh(tankGeo, tankMat);
+    tank2.position.set(-1.4, 0.82, -0.8);
+    tank2.castShadow = true;
+    const tankCap2 = new THREE.Mesh(tankCapGeo, lambert(0xffffff));
+    tankCap2.position.set(-1.4, 1.48, -0.8);
+    roof.add(tank2, tankCap2);
+    roof.add(box(1.5, 0.22, 1.5, 0x757575, -1.4, 0.11, -0.8));
+  }
+
+  // TV Aerial Yagi antenna with red warning beacon
+  const antenna = new THREE.Group();
+  antenna.position.set(1.5, 0, 1.2);
+  const mast = new THREE.Mesh(antennaMastGeo, antennaMat);
+  mast.position.y = 2.2;
+  antenna.add(mast);
+  for (let b = 0; b < 3; b++) {
+    const bar = new THREE.Mesh(antennaBarGeo, antennaMat);
+    bar.position.set(0, 2.2 + b * 0.7, 0);
+    bar.scale.x = 1.0 - b * 0.2;
+    antenna.add(bar);
+  }
+  antenna.add(box(0.12, 0.15, 0.12, 0xff1744, 0, 4.45, 0)); // red beacon
+  roof.add(antenna);
+  g.add(roof);
+
+  // 2. Bamboo Scaffolding & Green Safety Netting Group (for under-construction buildings)
+  const scaffold = new THREE.Group();
+  // Green safety mesh covering front facade
+  const net = new THREE.Mesh(scaffoldNetGeo, scaffoldNetMat);
+  net.position.set(0, 0.5, 0);
+  net.rotation.y = Math.PI / 2;
+  scaffold.add(net);
+
+  // Bamboo poles framework: 4 vertical poles
+  for (const dz of [-3.2, -1.1, 1.1, 3.2]) {
+    scaffold.add(box(0.08, 1, 0.08, 0xd7b473, 0.12, 0.5, dz));
+  }
+  // Horizontal bamboo tie ledgers across the scaffold
+  for (const dy of [0.2, 0.45, 0.7, 0.95]) {
+    scaffold.add(box(0.06, 0.06, 7.2, 0xc5a059, 0.15, dy, 0));
+  }
+  // Caution / Developer Signboard on scaffolding
+  const cautionSign = new THREE.Mesh(signGeo, cautionSignMat);
+  cautionSign.position.set(0.22, 0.35, 0);
+  cautionSign.rotation.y = Math.PI / 2;
+  scaffold.add(cautionSign);
+
+  // Sidewalk construction pile: sandbags and wooden planks
+  for (const dz of [-2.4, 0, 2.4]) {
+    scaffold.add(box(1.2, 0.35, 1.8, 0x8d6e63, 0.5, 0.18, dz));
+    scaffold.add(box(0.08, 0.08, 3.6, 0xbcaaa4, 0.4, 0.42, dz));
+  }
+  g.add(scaffold);
+
+  g.userData = { bldg, sign, hawker, roof, scaffold, isUnderConstruction };
   g.visible = false;
   scene.add(g);
   return g;
@@ -879,15 +974,41 @@ export function updateWorld() {
       const a = ahead(seg, p.s);
       if (!(a > -W.buildingBehind && a < W.buildingAhead)) continue;
       const g = pool.pop();
-      const { bldg, sign, hawker } = g.userData;
+      const { bldg, sign, hawker, roof, scaffold, isUnderConstruction } = g.userData;
       bldg.scale.set(p.w, p.h, p.d);
       bldg.position.set(0, p.h / 2, 0);
-      // Position the shop signboard and sidewalk hawker canopy on the road-facing side of the building.
+
+      // Position the rooftop props at the top of the building (y = p.h)
+      if (roof) {
+        roof.position.set(0, p.h, 0);
+        roof.visible = !isUnderConstruction;
+      }
+
+      // Position the shop signboard, scaffolding, or sidewalk hawker canopy on the road-facing side
       const faceX = -p.side * (p.w / 2 + 0.08);
-      sign.position.set(faceX, 3.8, 0);
-      sign.rotation.y = -p.side * Math.PI / 2;
-      hawker.position.set(-p.side * (p.w / 2 + 1.4), 0, 0);
-      hawker.scale.x = p.side;
+
+      if (isUnderConstruction) {
+        if (scaffold) {
+          scaffold.position.set(-p.side * (p.w / 2 + 0.3), 0, 0);
+          scaffold.scale.set(1, p.h, p.d);
+          scaffold.rotation.y = (p.side > 0 ? 0 : Math.PI);
+          scaffold.visible = true;
+        }
+        if (sign) sign.visible = false;
+        if (hawker) hawker.visible = false;
+      } else {
+        if (scaffold) scaffold.visible = false;
+        if (sign) {
+          sign.position.set(faceX, 3.8, 0);
+          sign.rotation.y = -p.side * Math.PI / 2;
+          sign.visible = true;
+        }
+        if (hawker) {
+          hawker.position.set(-p.side * (p.w / 2 + 1.4), 0, 0);
+          hawker.scale.x = p.side;
+          hawker.visible = true;
+        }
+      }
       place(g, seg, p.s, p.side * p.off, 0);
       g.visible = true;
       p.mesh = g;

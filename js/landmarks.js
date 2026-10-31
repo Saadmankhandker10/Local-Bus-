@@ -489,6 +489,125 @@ const PREFABS = {
     return g;
   },
 
+  mosque: ({ side, text = "জামে মসজিদ" }) => {
+    // Grand Dhaka neighborhood mosque: prayer hall, Islamic arches, central grand emerald dome,
+    // golden crescent spire, 4 corner domes, and a towering minaret with 4 directional horn loudspeakers.
+    const g = new THREE.Group(), x = side * (R + 15);
+    const hallW = 16, hallH = 8.5, hallD = 24;
+
+    // 1. Plinth / Stepped base
+    g.add(box(hallW + 2, 0.8, hallD + 2, 0xe0e0e0, x, 0.4, 0));
+
+    // 2. Main Prayer Hall
+    g.add(box(hallW, hallH, hallD, 0xf7faf7, x, 0.8 + hallH / 2, 0));
+
+    // Ornamental green & gold bands along top cornice
+    g.add(box(hallW + 0.3, 0.6, hallD + 0.3, 0x1b5e20, x, 0.8 + hallH - 0.3, 0));
+    g.add(box(hallW + 0.4, 0.2, hallD + 0.4, 0xffd54f, x, 0.8 + hallH - 0.7, 0));
+
+    // Front facade Islamic arches (facing road: local x towards road)
+    const faceX = x - side * (hallW / 2 + 0.05);
+    for (let z = -8; z <= 8; z += 4) {
+      g.add(box(0.25, 4.5, 0.25, 0x1b5e20, faceX, 3.25, z));
+      g.add(box(0.1, 3.6, 2.2, 0x004d40, faceX, 3.6, z));
+      g.add(box(0.15, 0.6, 2.4, 0xffd54f, faceX, 5.6, z));
+    }
+
+    // 3. Central Grand Emerald Dome
+    const domeBaseY = 0.8 + hallH;
+    g.add(box(8.5, 1.2, 8.5, 0xffffff, x, domeBaseY + 0.6, 0)); // octagonal drum base
+    const domeMesh = new THREE.Mesh(domeGeo, new THREE.MeshLambertMaterial({ color: 0x1b5e20 }));
+    domeMesh.scale.set(4.2, 4.8, 4.2);
+    domeMesh.position.set(x, domeBaseY + 1.2, 0);
+    domeMesh.castShadow = true;
+    domeMesh.receiveShadow = true;
+    g.add(domeMesh);
+
+    // Golden crescent spire atop the main dome
+    g.add(box(0.12, 2.2, 0.12, 0xffd54f, x, domeBaseY + 6.6, 0));
+    const cresc = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.08, 6, 12), new THREE.MeshLambertMaterial({ color: 0xffd54f }));
+    cresc.position.set(x, domeBaseY + 7.8, 0);
+    cresc.rotation.y = Math.PI / 4;
+    g.add(cresc);
+
+    // 4 Corner Domes
+    for (const dx of [-hallW / 2 + 1.6, hallW / 2 - 1.6]) {
+      for (const dz of [-hallD / 2 + 1.6, hallD / 2 - 1.6]) {
+        const smDome = new THREE.Mesh(domeGeo, new THREE.MeshLambertMaterial({ color: 0x1b5e20 }));
+        smDome.scale.set(1.4, 1.8, 1.4);
+        smDome.position.set(x + dx, domeBaseY, dz);
+        g.add(smDome);
+        g.add(box(0.06, 1.0, 0.06, 0xffd54f, x + dx, domeBaseY + 2.0, dz));
+      }
+    }
+
+    // 4. Towering Octagonal Minaret (24 units high)
+    const minX = x - side * (hallW / 2 - 1.2), minZ = -hallD / 2 - 1.2;
+    const minH = 24;
+    g.add(box(2.8, 4.5, 2.8, 0x1b5e20, minX, 2.25, minZ));
+    const minShaft = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.3, minH, 8), new THREE.MeshLambertMaterial({ color: 0xf5f5f5 }));
+    minShaft.position.set(minX, 4.5 + minH / 2, minZ);
+    minShaft.castShadow = true;
+    minShaft.receiveShadow = true;
+    g.add(minShaft);
+
+    // Green ring collars along the shaft
+    for (const yh of [10, 16, 22]) {
+      g.add(box(2.4, 0.4, 2.4, 0x1b5e20, minX, yh, minZ));
+    }
+
+    // Minaret Balcony Gallery (মুয়াজ্জিনের আজানের বারান্দা)
+    const balcY = minH + 3.5;
+    g.add(box(3.2, 0.45, 3.2, 0xffffff, minX, balcY, minZ));
+    for (const bx of [-1.5, 1.5]) g.add(box(0.1, 0.8, 3.2, 0x1b5e20, minX + bx, balcY + 0.45, minZ));
+    for (const bz of [-1.5, 1.5]) g.add(box(3.2, 0.8, 0.1, 0x1b5e20, minX, balcY + 0.45, minZ + bz));
+
+    // Upper minaret pavilion & top dome
+    g.add(box(1.8, 3.0, 1.8, 0xffffff, minX, balcY + 1.8, minZ));
+    const topDome = new THREE.Mesh(domeGeo, new THREE.MeshLambertMaterial({ color: 0x1b5e20 }));
+    topDome.scale.set(1.3, 1.8, 1.3);
+    topDome.position.set(minX, balcY + 3.3, minZ);
+    g.add(topDome);
+    g.add(box(0.08, 1.4, 0.08, 0xffd54f, minX, balcY + 5.2, minZ));
+
+    // 5. THE 4 LOUDSPEAKERS (৪টি মাইক — উত্তর, দক্ষিণ, পূর্ব, পশ্চিম)
+    const hornGeo = new THREE.CylinderGeometry(0.16, 0.38, 0.65, 8).rotateX(Math.PI / 2);
+    const spkMat = new THREE.MeshLambertMaterial({ color: 0x90a4ae });
+
+    const spkOffsets = [
+      { dx: 1.55, dz: 0, ry: Math.PI / 2 },
+      { dx: -1.55, dz: 0, ry: -Math.PI / 2 },
+      { dx: 0, dz: 1.55, ry: 0 },
+      { dx: 0, dz: -1.55, ry: Math.PI },
+    ];
+    for (const s of spkOffsets) {
+      const spk = new THREE.Mesh(hornGeo, spkMat);
+      spk.position.set(minX + s.dx, balcY + 0.6, minZ + s.dz);
+      spk.rotation.y = s.ry;
+      spk.castShadow = true;
+      g.add(spk);
+      g.add(box(0.08, 0.35, 0.08, 0x37474f, minX + s.dx * 0.75, balcY + 0.45, minZ + s.dz * 0.75));
+    }
+
+    // 6. Mosque Signboard
+    const p = sign(`🕌 ${text}`, 8.5, 1.25, "#1b5e20", "#ffffff");
+    p.position.set(faceX, 5.2, 0);
+    p.rotation.y = -side * FACE;
+    g.add(p);
+
+    // 7. Roadside Boundary Wall & Lush Green Palm/Mehogani Trees
+    for (const s of [-1, 1]) {
+      const palmX = x - side * (hallW / 2 + 1.8), palmZ = s * (hallD / 2 - 2);
+      g.add(box(0.35, 4.5, 0.35, 0x5d4037, palmX, 2.25, palmZ));
+      const crown = new THREE.Mesh(crownGeo, leafMat);
+      crown.scale.set(2.2, 1.8, 2.2);
+      crown.position.set(palmX, 5.2, palmZ);
+      g.add(crown);
+    }
+
+    return g;
+  },
+
   finishBanner: ({ text }) => gantry(text, "#b71c1c", "#ffeb3b", 8),
 };
 

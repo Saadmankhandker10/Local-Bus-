@@ -133,31 +133,31 @@ export function createPaversTex() {
 export function createBuildingMaterials() {
   const mats = [];
 
-  // 5 Distinct Architectural Styles
+  // 6 Distinct Architectural Styles (including Under-Construction Developer Site)
   const configs = [
     // 0: Modern Mirpur/Dhanmondi Commercial Glass Tower (Cool Slate Blue)
     {
       name: "commercial_glass",
-      wall: "#607d8b",
-      trim: "#455a64",
+      wall: "#54788c",
+      trim: "#375363",
       floors: 8,
       style: "glass_grid",
-      litWindows: ["#ffe082", "#b3e5fc", "#fff8e1"],
+      litWindows: ["#ffea00", "#80d8ff", "#ffffff"],
     },
-    // 1: Old Dhaka Brick & Stucco Residential (Warm Terracotta Brick)
+    // 1: Old Dhaka Brick & Stucco Residential (Vibrant Terracotta Brick)
     {
       name: "old_dhaka_brick",
-      wall: "#a15d48",
-      trim: "#7c3826",
+      wall: "#b85638",
+      trim: "#853018",
       floors: 6,
       style: "arched_brick",
-      litWindows: ["#ffd54f", "#ffca28", "#ffe082"],
+      litWindows: ["#ffd54f", "#ffca28", "#fff8e1"],
     },
-    // 2: Dhaka Shopping Complex / Market Building (Ochre / Beige)
+    // 2: Dhaka Shopping Complex / Market Building (Warm Ochre / Mustard)
     {
       name: "dhaka_market",
-      wall: "#b8976c",
-      trim: "#8d6e45",
+      wall: "#cfa36b",
+      trim: "#996e38",
       floors: 5,
       style: "shopping_complex",
       litWindows: ["#fff59d", "#ffecb3", "#ffe082"],
@@ -165,20 +165,29 @@ export function createBuildingMaterials() {
     // 3: Residential Apartment with Balconies & Verandas (Warm Clay)
     {
       name: "residential_balcony",
-      wall: "#9e7960",
-      trim: "#6e4f3a",
+      wall: "#b07d5d",
+      trim: "#7a4d31",
       floors: 7,
       style: "balcony_apartment",
-      litWindows: ["#ffe082", "#ffb74d", "#fff9c4"],
+      litWindows: ["#ffd54f", "#ff9800", "#fffde7"],
     },
     // 4: Medical / Diagnostic Centre with Tiled Facade (Teal & Cream)
     {
       name: "clinic_diagnostic",
-      wall: "#80cbc4",
-      trim: "#00796b",
+      wall: "#4db6ac",
+      trim: "#00695c",
       floors: 6,
       style: "clinic_tile",
-      litWindows: ["#e0f7fa", "#fffde7", "#b2ebf2"],
+      litWindows: ["#e0f2f1", "#ffffff", "#b2dfdb"],
+    },
+    // 5: Under-Construction Building (Raw Grey Concrete, Exposed Slabs, Columns & Red Brickwork)
+    {
+      name: "under_construction",
+      wall: "#75726e",
+      trim: "#524f4b",
+      floors: 6,
+      style: "under_construction",
+      litWindows: [],
     },
   ];
 
@@ -279,6 +288,33 @@ export function createBuildingMaterials() {
             g.fillRect(gx, y + fh - 18, 2, 14);
           }
         }
+      } else if (cfg.style === "under_construction") {
+        // Raw concrete floor slabs, concrete columns & exposed red clay brick partitions
+        g.fillStyle = "#8a857f"; // concrete floor slab
+        g.fillRect(0, y + fh - 6, W, 6);
+        // Vertical concrete pillars
+        for (let col = 0; col < 4; col++) {
+          const px = 8 + col * 64;
+          g.fillStyle = "#5e5b57";
+          g.fillRect(px, y, 16, fh);
+          // Highlight edge of concrete column
+          g.fillStyle = "rgba(255,255,255,0.12)";
+          g.fillRect(px, y, 3, fh);
+        }
+        // Partial red clay brickwork infill on some bays
+        for (let col = 0; col < 3; col++) {
+          const bx = 24 + col * 64;
+          if ((f + col) % 2 === 0) {
+            g.fillStyle = "#b24d35"; // Dhaka terracotta brick
+            g.fillRect(bx, y + fh * 0.35, 48, fh * 0.62);
+            // Mortar grid lines
+            g.strokeStyle = "rgba(220, 215, 205, 0.45)";
+            g.lineWidth = 1.2;
+            for (let by = y + fh * 0.35; by < y + fh - 6; by += 6) {
+              g.beginPath(); g.moveTo(bx, by); g.lineTo(bx + 48, by); g.stroke();
+            }
+          }
+        }
       } else {
         // Standard mixed storefront & office windows
         for (let col = 0; col < 4; col++) {
@@ -296,16 +332,27 @@ export function createBuildingMaterials() {
       }
     }
 
-    // Ground floor commercial shop / showroom
-    g.fillStyle = "#1e1b18";
-    g.fillRect(0, 444, W, 68);
-    for (let s = 0; s < 3; s++) {
-      const sx = 14 + s * 80;
-      g.fillStyle = s % 2 === 0 ? "#ffecb3" : "#e1f5fe";
-      g.fillRect(sx, 454, 66, 54);
-      // Bright shopfront illumination
-      eg.fillStyle = s % 2 === 0 ? "#ffe082" : "#81d4fa";
-      eg.fillRect(sx, 454, 66, 54);
+    // Ground floor commercial shop or construction ground entry
+    if (cfg.style === "under_construction") {
+      g.fillStyle = "#3d3a36";
+      g.fillRect(0, 444, W, 68);
+      // Rough concrete entry & steel rebar rods sticking out
+      for (let s = 0; s < 4; s++) {
+        const sx = 18 + s * 60;
+        g.fillStyle = "#272523";
+        g.fillRect(sx, 452, 44, 56);
+      }
+    } else {
+      g.fillStyle = "#1e1b18";
+      g.fillRect(0, 444, W, 68);
+      for (let s = 0; s < 3; s++) {
+        const sx = 14 + s * 80;
+        g.fillStyle = s % 2 === 0 ? "#ffecb3" : "#e1f5fe";
+        g.fillRect(sx, 454, 66, 54);
+        // Bright shopfront illumination
+        eg.fillStyle = s % 2 === 0 ? "#ffe082" : "#81d4fa";
+        eg.fillRect(sx, 454, 66, 54);
+      }
     }
 
     // Urban grime, water streaks & road mud splash

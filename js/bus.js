@@ -101,12 +101,13 @@ const crackGeo = new THREE.PlaneGeometry(.75, .75);
 
 /** Build the green Dhaka local bus out of simple boxes. */
 function buildBus() {
-  body.add(box(2.6, 2.3, 7, 0x2e7d32, 0, 1.5, 0));       // body
-  body.add(box(2.62, .45, 7.02, 0xfdd835, 0, .95, 0));   // yellow stripe
+  body.add(box(2.6, 2.3, 7, 0x1f8a44, 0, 1.5, 0));       // vibrant emerald Dhaka bus body
+  body.add(box(2.62, .45, 7.02, 0xffc21a, 0, .95, 0));   // vibrant golden yellow stripe
+  body.add(box(2.62, .28, 7.04, 0xb71c1c, 0, .56, 0));   // lower red Dhaka bus skirt
   body.add(box(2.64, .8, 5.8, 0x263238, 0, 2.2, .3));    // side windows
   body.add(box(2.2, .8, .05, 0x263238, 0, 2.2, -3.52));  // windscreen
   body.add(box(2.0, .62, .05, 0x263238, 0, 2.3, 3.51));  // rear window
-  body.add(box(2.4, .15, 6.8, 0xeeeeee, 0, 2.72, 0));    // roof
+  body.add(box(2.4, .15, 6.8, 0xf5f5f5, 0, 2.72, 0));    // clean white roof
 
   // Staged window crack overlays (revealed as game.hp drops below 75, 45, 20).
   const addCrack = (x, y, z, ry) => {
