@@ -19,6 +19,7 @@ import {
   createLEDRowGeometry
 } from "./shaders.js";
 import { spawnScrapeSparks, spawnSkidPuff } from "./effects.js";
+import { loadBusModel, instantiateBusModel, isBusModelReady } from "./busModel.js";
 
 const B = CFG.bus;
 
@@ -30,6 +31,10 @@ export const bus = new THREE.Group();
 const body = new THREE.Group();
 bus.add(body);
 
+const procBody = new THREE.Group();
+body.add(procBody);
+
+export let playerBusInstance = null;
 const wheels = [];
 const cracks = []; // staged window crack meshes [stage1, stage2, stage3]
 const tassels = []; // hanging rear corner tassels that swing in turns
@@ -99,15 +104,15 @@ function makeCrackMat() {
 const crackMat = makeCrackMat();
 const crackGeo = new THREE.PlaneGeometry(.75, .75);
 
-/** Build the green Dhaka local bus out of simple boxes. */
+/** Build the green Dhaka local bus out of simple boxes (fallback & visual anchor). */
 function buildBus() {
-  body.add(box(2.6, 2.3, 7, 0x1f8a44, 0, 1.5, 0));       // vibrant emerald Dhaka bus body
-  body.add(box(2.62, .45, 7.02, 0xffc21a, 0, .95, 0));   // vibrant golden yellow stripe
-  body.add(box(2.62, .28, 7.04, 0xb71c1c, 0, .56, 0));   // lower red Dhaka bus skirt
-  body.add(box(2.64, .8, 5.8, 0x263238, 0, 2.2, .3));    // side windows
-  body.add(box(2.2, .8, .05, 0x263238, 0, 2.2, -3.52));  // windscreen
-  body.add(box(2.0, .62, .05, 0x263238, 0, 2.3, 3.51));  // rear window
-  body.add(box(2.4, .15, 6.8, 0xf5f5f5, 0, 2.72, 0));    // clean white roof
+  procBody.add(box(2.6, 2.3, 7, 0x1f8a44, 0, 1.5, 0));       // vibrant emerald Dhaka bus body
+  procBody.add(box(2.62, .45, 7.02, 0xffc21a, 0, .95, 0));   // vibrant golden yellow stripe
+  procBody.add(box(2.62, .28, 7.04, 0xb71c1c, 0, .56, 0));   // lower red Dhaka bus skirt
+  procBody.add(box(2.64, .8, 5.8, 0x263238, 0, 2.2, .3));    // side windows
+  procBody.add(box(2.2, .8, .05, 0x263238, 0, 2.2, -3.52));  // windscreen
+  procBody.add(box(2.0, .62, .05, 0x263238, 0, 2.3, 3.51));  // rear window
+  procBody.add(box(2.4, .15, 6.8, 0xf5f5f5, 0, 2.72, 0));    // clean white roof
 
   // Staged window crack overlays (revealed as game.hp drops below 75, 45, 20).
   const addCrack = (x, y, z, ry) => {
@@ -206,6 +211,26 @@ function refreshBusSigns() {
   numPlateBoard.position.set(0, 0.68, 3.54);
   body.add(numPlateBoard);
 }
+
+function apply3DModel(instance) {
+  if (!instance) return;
+  playerBusInstance = instance;
+  procBody.visible = false;
+  for (const w of wheels) w.visible = false;
+  body.add(instance.root);
+  // Re-align passenger door and helper to the 3D model entrance
+  if (doorPivot) doorPivot.position.set(-1.08, 1.25, -2.62);
+  if (helperGroup) helperGroup.position.set(-1.18, 0.48, -2.15);
+}
+
+// Preload and attach the authentic 3D Bangladeshi bus model
+loadBusModel().then(() => {
+  const inst = instantiateBusModel({ isPlayer: true, scale: 0.85 });
+  apply3DModel(inst);
+}).catch(err => {
+  console.warn("Using procedural bus model fallback:", err);
+});
+
 buildBus();
 scene.add(bus);
 
@@ -418,8 +443,13 @@ export function updateBusVisual(dt) {
     body.position.y = game.running && game.busY === 0 ? Math.sin(game.dist * 1.9) * .025 : 0;
   }
 
-  const spin = game.speed * dt / B.wheelRadius; // rolling without slipping: angle = distance / radius
-  for (const w of wheels) w.rotation.x -= spin;
+  if (playerBusInstance) {
+    playerBusInstance.roll(game.speed, dt);
+    playerBusInstance.steer(game.yaw);
+  } else {
+    const spin = game.speed * dt / B.wheelRadius; // rolling without slipping: angle = distance / radius
+    for (const w of wheels) w.rotation.x -= spin;
+  }
 
   // Swinging rear tassels react to sideways steering and road vibration.
   const sway = clamp(-game.vx * .045, -.45, .45) + Math.sin(game.time * 7) * .06;

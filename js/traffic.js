@@ -525,6 +525,11 @@ export function updateTraffic(dt) {
       o.m.userData.siren.blue.visible = !redOn;
     }
 
+    // Animate wheels on 3D traffic buses
+    if (o.m.userData.busController) {
+      o.m.userData.busController.roll(o.v || t.v, dt);
+    }
+
     if (!o.hit && !game.crashing && !game.caught && onBusRoad(o.seg)) {
       const hitNow = sweptHit(bx, B.hitHalfWidth, o.x, t.w / 2, zPrev, o.z, B.hitHalfLength + t.l / 2);
       if (hitNow && game.busY < 1.8) {

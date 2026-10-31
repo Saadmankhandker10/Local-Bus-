@@ -11,6 +11,7 @@ import {
   createDangerRingTex
 } from "./textures.js";
 import { createLEDMaterial, createLEDRowGeometry } from "./shaders.js";
+import { isBusModelReady, instantiateBusModel, BUS_OPERATORS } from "./busModel.js";
 
 // Shared materials: one copy on the GPU, used by many meshes.
 const DARK = 0x263238, TYRE = 0x111111;
@@ -162,11 +163,23 @@ function truck(t, c) {
 }
 
 function rivalBus(t, c) {
+  if (isBusModelReady()) {
+    const operator = pick(BUS_OPERATORS);
+    const busInst = instantiateBusModel({ operator, scale: 0.85 });
+    if (busInst) {
+      const g = busInst.root;
+      g.userData.busController = busInst;
+      g.userData.operator = operator;
+      addMirrorsAndHazards(g, t, operator.bodyTint);
+      return g;
+    }
+  }
   const g = new THREE.Group();
   g.add(box(t.w, t.h * .8, t.l, c, 0, t.h * .55, 0));
   g.add(box(t.w + .02, .4, t.l + .02, 0xfafafa, 0, t.h * .35, 0));   // stripe
   g.add(box(t.w + .04, t.h * .28, t.l * .8, DARK, 0, t.h * .8, 0)); // windows
   for (const s of [-1, 1]) g.add(box(.3, .7, t.l * .8, TYRE, s * t.w * .5, .35, 0));
+  addMirrorsAndHazards(g, t, c);
   return g;
 }
 

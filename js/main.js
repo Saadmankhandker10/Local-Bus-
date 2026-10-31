@@ -31,6 +31,10 @@ import { pick, clamp, $ } from "./utils.js";
 import { updateHud, onStartPressed, onPauseButton, hideScreen, showPause, showRunEnd, crashList } from "./hud.js";
 import { initEffects, resetEffects, updateEffects } from "./effects.js";
 import { trackEvent } from "./analytics.js";
+import { loadBusModel } from "./busModel.js";
+
+// Preload the authentic 3D Bangladeshi bus model at boot
+loadBusModel().catch(err => console.warn("Bus model preload notice:", err));
 
 // Signal that all modules have evaluated and the engine is booting
 if (typeof window !== "undefined") {
