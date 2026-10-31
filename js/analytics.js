@@ -49,3 +49,4 @@ export function trackEvent(eventName, params = {}) {
 
   return payload;
 }
+

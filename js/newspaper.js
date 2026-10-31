@@ -153,7 +153,8 @@ function statLines(run) {
 export function showPaper(run, photo) {
   const text = write(run);
   const driver = getDriverName();
-  current = { run, photo, ...text, driver, kicker: `🚨 ওস্তাদ: ${driver} · ${UI.lastNews}: ${run.why}` };
+  const capText = `ছবি: ${PAPER.photoCaption} (ড্রাইভার: ওস্তাদ ${driver})`;
+  current = { run, photo, ...text, driver, caption: capText, kicker: `🚨 ওস্তাদ: ${driver} · ${UI.lastNews}: ${run.why}` };
   $("pname").textContent = PAPER.name;
   $("ptag").textContent = PAPER.tagline;
   $("pdate").textContent = bnDate();
@@ -161,7 +162,7 @@ export function showPaper(run, photo) {
   $("pkicker").textContent = current.kicker;
   $("phead").textContent = text.headline;
   $("pphoto").src = photo;
-  $("pcap").textContent = `ছবি: ${PAPER.photoCaption} (ড্রাইভার: ওস্তাদ ${driver})`;
+  $("pcap").textContent = capText;
   $("pstory").textContent = text.story;
   $("pstats").innerHTML = statLines(run).map(l => `<div>${l}</div>`).join("");
   const stamp = STAMPS[run.cause] || STAMPS.default;
@@ -330,7 +331,8 @@ export async function savePaperImage() {
   const sh = Math.min(img.height, img.width * 9 / 16);
   g.drawImage(img, 0, (img.height - sh) / 2, img.width, sh, M, y, pw, ph);
   y += ph + 8;
-  g.font = `italic 24px ${FONT}`; g.fillText(PAPER.photoCaption, M, y); y += 50;
+  g.font = `italic 24px ${FONT}`;
+  y = wrap(g, current.caption || `ছবি: ${PAPER.photoCaption}`, M, y, W - 2 * M, 34) + 16;
 
   g.font = `32px ${FONT}`; y = wrap(g, story, M, y, W - 2 * M, 46) + 16;
   g.fillRect(M, y, W - 2 * M, 2); y += 18;

@@ -171,3 +171,4 @@ export function handleNewsletterSubscribe(email) {
   }).catch(() => {});
   return true;
 }
+
