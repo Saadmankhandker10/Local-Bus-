@@ -1,10 +1,10 @@
 // Service worker: a small background script that saves a copy of the game's files in the
 // browser, so the game can open as an installed app and still work when the internet drops.
-const CACHE = "localbus-v2.6";
+const CACHE = "localbus-v2.7";
 
 self.addEventListener("install", e => {
   self.skipWaiting();
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(["./", "./index.html", "./css/tokens.css", "./css/style.css?v=2.6"])));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(["./", "./index.html", "./css/tokens.css", "./css/style.css?v=2.7"])));
 });
 
 self.addEventListener("activate", e => {

@@ -14,6 +14,7 @@ import {
   createPlaidTex,
   createGamchhaTex
 } from "./textures.js";
+import { attachBlackoutShader, disposeHierarchy, applyPolygonOffset } from "./shaders.js";
 
 const W = CFG.world;
 
@@ -204,9 +205,9 @@ export function followGround(x, z) {
 /* ====== Roads: one long ribbon mesh per material, built once from map.js ====== */
 // Batching: every road piece with the same material goes into ONE geometry, so the
 // whole network costs only a handful of draw calls.
-const batches = new Map(); // material -> { pos: [], uvs: [], idx: [] }
+const batches = new Map(); // material -> { pos: [], uvs: [], cols: [], idx: [] }
 function batch(mat) {
-  if (!batches.has(mat)) batches.set(mat, { pos: [], uvs: [], idx: [] });
+  if (!batches.has(mat)) batches.set(mat, { pos: [], uvs: [], cols: [], idx: [] });
   return batches.get(mat);
 }
 
@@ -278,12 +279,13 @@ const paversTex = createPaversTex();
 
 const MATS = {
   road: new THREE.MeshLambertMaterial({ map: asphaltTex, side: THREE.DoubleSide }),
-  patch: new THREE.MeshLambertMaterial({ color: 0x242220, side: THREE.DoubleSide }),
+  patch: applyPolygonOffset(new THREE.MeshLambertMaterial({ color: 0x242220, side: THREE.DoubleSide }), -1.0, -2.0),
   pave: new THREE.MeshLambertMaterial({ map: paversTex, side: THREE.DoubleSide }),
   median: new THREE.MeshLambertMaterial({ color: 0xa68966, side: THREE.DoubleSide }),
-  kerbYellow: new THREE.MeshLambertMaterial({ color: 0xf5b014, side: THREE.DoubleSide }),
-  kerbBlack: new THREE.MeshLambertMaterial({ color: 0x1c1c1c, side: THREE.DoubleSide }),
-  line: new THREE.MeshLambertMaterial({ color: 0xeae6df, side: THREE.DoubleSide }),
+  kerbYellow: applyPolygonOffset(new THREE.MeshLambertMaterial({ color: 0xf5b014, side: THREE.DoubleSide }), -1.0, -2.0),
+  kerbBlack: applyPolygonOffset(new THREE.MeshLambertMaterial({ color: 0x1c1c1c, side: THREE.DoubleSide }), -1.0, -2.0),
+  kerbStripes: applyPolygonOffset(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), -1.0, -2.0),
+  line: applyPolygonOffset(new THREE.MeshLambertMaterial({ color: 0xeae6df, side: THREE.DoubleSide }), -2.0, -4.0),
   wall: new THREE.MeshLambertMaterial({ color: 0xbdb5a6, side: THREE.DoubleSide }),
   metroGreen: new THREE.MeshLambertMaterial({ color: 0x1f6b3a, side: THREE.DoubleSide }),
 };
@@ -407,6 +409,9 @@ function buildRoads() {
     if (b.uvs && b.uvs.length === (b.pos.length / 3) * 2) {
       g.setAttribute("uv", new THREE.Float32BufferAttribute(b.uvs, 2));
     }
+    if (b.cols && b.cols.length === b.pos.length) {
+      g.setAttribute("color", new THREE.Float32BufferAttribute(b.cols, 3));
+    }
     g.setIndex(b.idx);
     g.computeVertexNormals();
     const m = new THREE.Mesh(g, mat);
@@ -419,6 +424,9 @@ function buildRoads() {
 /* ====== Procedural Multi-Storey Windowed Dhaka Building Textures & Shop Signs ====== */
 
 export const BLDG_MATS = createBuildingMaterials();
+for (const m of BLDG_MATS) {
+  attachBlackoutShader(m);
+}
 
 export function setBuildingEmissive(nightFactor) {
   const intensity = 0.15 + Math.max(0, Math.min(1, nightFactor)) * 1.25;

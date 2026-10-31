@@ -9,6 +9,15 @@ import { emit } from "./events.js";
 import { SEGS, here, sample, place, fromProgress, progressOf } from "./map.js";
 import { SLOGANS, COMPANIES, PLATES } from "./data/slogans.bn.js";
 import { playKhelaHobe } from "./audio.js";
+import {
+  boostFlameMat,
+  boostCoreMat,
+  sparkMat,
+  headlightBeamMat,
+  createHeadlightBeamGeo,
+  createLEDMaterial,
+  createLEDRowGeometry
+} from "./shaders.js";
 
 const B = CFG.bus;
 
@@ -29,12 +38,28 @@ let companyBoard = null, sloganBoard = null, numPlateBoard = null;
 
 // Object-pooled exhaust smoke puffs at the rear tailpipe (reused, zero allocations per frame).
 const smokeGeo = new THREE.IcosahedronGeometry(.22, 0);
+smokeGeo.userData = { isShared: true };
 const smokeMat = new THREE.MeshLambertMaterial({ color: 0x9e9e9e, transparent: true, opacity: 0.55 });
+smokeMat.userData = { isShared: true };
 const exhaustPool = Array.from({ length: 12 }, () => {
   const m = new THREE.Mesh(smokeGeo, smokeMat);
   m.visible = false;
   scene.add(m);
   return { m, active: false, t: 0, maxT: 0.6, x: 0, y: 0, z: 0, vy: 0 };
+});
+
+// Additive nitro flame burst pool for turbo boost (spits blazing cyan/orange flames)
+const nitroGeo = new THREE.IcosahedronGeometry(.28, 0);
+nitroGeo.userData = { isShared: true };
+const nitroCoreGeo = new THREE.IcosahedronGeometry(.16, 0);
+nitroCoreGeo.userData = { isShared: true };
+const nitroPool = Array.from({ length: 10 }, () => {
+  const m = new THREE.Mesh(nitroGeo, boostFlameMat);
+  const core = new THREE.Mesh(nitroCoreGeo, boostCoreMat);
+  m.add(core);
+  m.visible = false;
+  scene.add(m);
+  return { m, active: false, t: 0, maxT: 0.35, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0 };
 });
 let smokeTimer = 0;
 const tailWorld = new THREE.Vector3();
@@ -98,8 +123,15 @@ function buildBus() {
   // Wheels share one geometry and material: the GPU stores them once.
   const tyreGeo = new THREE.CylinderGeometry(B.wheelRadius, B.wheelRadius, .4, 12);
   const tyreMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+  const beamGeo = createHeadlightBeamGeo(26, 0.22, 3.2);
+  beamGeo.userData = { isShared: true };
   for (const s of [-1, 1]) {
     body.add(box(.4, .3, .1, 0xffffaa, s * .9, 1.0, -3.52)); // headlight
+    // Forward-projecting volumetric additive headlight beam
+    const beam = new THREE.Mesh(beamGeo, headlightBeamMat);
+    beam.position.set(s * 0.9, 1.0, -3.55);
+    body.add(beam);
+
     const tail = new THREE.Mesh(new THREE.BoxGeometry(.3, .25, .1), tailMat);
     tail.position.set(s * 1.0, 1.0, 3.52); body.add(tail);
 
@@ -113,6 +145,15 @@ function buildBus() {
       bus.add(w); wheels.push(w);
     }
   }
+
+  // Decorative Dhaka bus front LED strip ("ঢাকা মেট্রো" chasing RGB/amber visor lights)
+  const visorLEDMat = createLEDMaterial({ speed: 8.5, gain: 2.4 });
+  visorLEDMat.userData = { isShared: true };
+  const visorLEDGeo = createLEDRowGeometry(12, 2.1, 0.09, [0xff1744, 0xffd600, 0x00e676, 0x2979ff]);
+  visorLEDGeo.userData = { isShared: true };
+  const visorMesh = new THREE.Mesh(visorLEDGeo, visorLEDMat);
+  visorMesh.position.set(0, 2.62, -3.54);
+  body.add(visorMesh);
 
   // Colourful rickshaw-art tassels hanging from the rear roof corners.
   for (const s of [-1, 1]) {
@@ -187,6 +228,7 @@ export function resetBus(progress = 0) {
   if (sloganBoard) { sloganBoard.position.set(0, 1.68, 3.53); sloganBoard.rotation.set(0, 0, 0); }
   if (progress === 0) refreshBusSigns();
   for (const p of exhaustPool) { p.active = false; p.m.visible = false; }
+  for (const np of nitroPool) { np.active = false; np.m.visible = false; }
   placeBus();
 }
 
@@ -414,6 +456,24 @@ export function updateBusVisual(dt) {
         p.m.scale.setScalar(boosting ? 1.2 : 0.75);
         p.m.visible = true;
       }
+
+      // Additive nitro flame burst during ⚡ Boost
+      if (boosting) {
+        const np = nitroPool.find(it => !it.active);
+        if (np) {
+          bus.updateMatrixWorld();
+          tailWorld.set(0.95, 0.48, 3.65).applyMatrix4(bus.matrixWorld);
+          np.active = true; np.t = 0; np.maxT = rnd(0.2, 0.32);
+          np.x = tailWorld.x + rnd(-.08, .08);
+          np.y = tailWorld.y + rnd(-.04, .04);
+          np.z = tailWorld.z + rnd(-.08, .08);
+          np.vx = rnd(-1.4, 1.4);
+          np.vy = rnd(0.4, 1.8);
+          np.vz = rnd(9.0, 18.0);
+          np.m.position.set(np.x, np.y, np.z);
+          np.m.visible = true;
+        }
+      }
     }
   }
   for (const p of exhaustPool) {
@@ -424,6 +484,16 @@ export function updateBusVisual(dt) {
     p.m.position.y = p.y;
     const s = 0.75 + (p.t / p.maxT) * 1.6;
     p.m.scale.setScalar(s);
+  }
+  for (const np of nitroPool) {
+    if (!np.active) continue;
+    np.t += dt;
+    if (np.t >= np.maxT) { np.active = false; np.m.visible = false; continue; }
+    const prg = np.t / np.maxT;
+    np.x += np.vx * dt; np.y += np.vy * dt; np.z += np.vz * dt;
+    np.m.position.set(np.x, np.y, np.z);
+    np.m.scale.setScalar(Math.max(0.1, (1.0 - prg) * rnd(1.1, 1.6)));
+    np.m.material.opacity = (1.0 - prg) * 0.9;
   }
 
   tailMat.emissiveIntensity = input.brake > 0 && game.running ? B.brakeLightGlow : 0.3;

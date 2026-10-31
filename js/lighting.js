@@ -5,6 +5,7 @@ import { ROUTE } from "./route.js";
 import { scene, sun, hemi, groundMat, skyUniforms, skyMesh, renderer, setBuildingEmissive } from "./world.js";
 import { cam } from "./camera.js";
 import { bus } from "./bus.js";
+import { blackoutState } from "./shaders.js";
 
 const K = ROUTE.sky;
 // Reused colour objects, so nothing new is created every frame.
@@ -41,7 +42,16 @@ export function applyTimeOfDay(p) {
 
   // Cinematic ACES Filmic exposure
   const exp0 = k0.exposure || 1.1, exp1 = k1.exposure || 1.1;
-  renderer.toneMappingExposure = exp0 + (exp1 - exp0) * t;
+  let curExp = exp0 + (exp1 - exp0) * t;
+
+  // Loadshedding blackout effect: drop ambient and sun brightness while vehicle lights shine
+  if (blackoutState.uniform.value > 0) {
+    const dim = 1.0 - blackoutState.uniform.value * 0.42;
+    sun.intensity *= dim;
+    hemi.intensity *= dim;
+    curExp *= (1.0 - blackoutState.uniform.value * 0.18);
+  }
+  renderer.toneMappingExposure = curExp;
 
   // Ground plane tint
   mix(groundMat.color, k0.ground, k1.ground, t);

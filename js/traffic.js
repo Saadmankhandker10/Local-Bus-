@@ -11,6 +11,7 @@ import { game } from "./state.js";
 import { emit, on } from "./events.js";
 import { sweptHit, sideGap } from "./physics.js";
 import { makeVehicle, makeStall, makePillar, makeManhole, makeTrench, makeRamp, beaconMat, dangerRingMat } from "./vehicles.js";
+import { disposeHierarchy, sparkMat } from "./shaders.js";
 import { currentStage } from "./journey.js";
 import { SEGS, here, ahead, walk, place, lanesOf } from "./map.js";
 import { PROCESSION_EVENTS } from "./data/events.js";
@@ -39,6 +40,28 @@ for (let i = 0; i < 24; i++) {
   chunks.push({ m, active: false, seg: 0, s: 0, x: 0, y: 0, vx: 0, vy: 0, vz: 0, rx: 0, rz: 0, t: 0 });
 }
 
+// Pooled additive sparks for metal scrapes, barrier hits, and high-energy collisions
+const sparkGeo = new THREE.IcosahedronGeometry(0.12, 0);
+sparkGeo.userData = { isShared: true };
+const sparkPool = Array.from({ length: 16 }, () => {
+  const m = new THREE.Mesh(sparkGeo, sparkMat);
+  m.visible = false;
+  scene.add(m);
+  return { m, active: false, t: 0, maxT: 0.35, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0 };
+});
+
+export function emitSparks(x, y, z, count = 5) {
+  for (let i = 0; i < count; i++) {
+    const sp = sparkPool.find(s => !s.active);
+    if (!sp) break;
+    sp.active = true; sp.t = 0; sp.maxT = rnd(0.2, 0.35);
+    sp.x = x + rnd(-0.25, 0.25); sp.y = y + rnd(-0.15, 0.15); sp.z = z + rnd(-0.25, 0.25);
+    sp.vx = rnd(-7, 7); sp.vy = rnd(3, 8); sp.vz = rnd(-7, 7);
+    sp.m.position.set(sp.x, sp.y, sp.z);
+    sp.m.visible = true;
+  }
+}
+
 let spawnTimer = 0;   // seconds until the next vehicle tries to spawn
 let nextStall = 0;    // odometer distance where the next stall appears
 let nextPed = 0;      // odometer distance where the next crossing pedestrian appears
@@ -59,9 +82,13 @@ function onBusRoad(seg) {
 
 /** Remove everything and restart all spawn counters from this odometer distance. */
 export function resetTraffic(fromDist = 0) {
-  for (const o of objs) scene.remove(o.m);
+  for (const o of objs) {
+    scene.remove(o.m);
+    if (o.hit) disposeHierarchy(o.m);
+  }
   for (const p of peds) scene.remove(p.m);
   for (const c of chunks) { c.active = false; c.m.visible = false; }
+  for (const sp of sparkPool) { sp.active = false; sp.m.visible = false; }
   objs.length = 0;
   peds.length = 0;
   spawnTimer = T.firstSpawnDelay;
@@ -443,7 +470,9 @@ export function updateTraffic(dt) {
     o.z = -ahead(o.seg, o.s);
     // Gone: off the end of the map, on a road the bus is not near, or too far ahead/behind.
     if (!alive || Number.isNaN(o.z) || o.z > T.despawnBehind || o.z < T.despawnAhead || Math.abs(o.x) > SEGS[o.seg].half + T.despawnSide) {
-      scene.remove(o.m); objs.splice(i, 1);
+      scene.remove(o.m);
+      if (o.hit) disposeHierarchy(o.m);
+      objs.splice(i, 1);
       continue;
     }
 
@@ -471,10 +500,12 @@ export function updateTraffic(dt) {
           game.busVy = t.name === "trench" ? 5.6 : 3.4;
           game.busY = 0.15;
           game.shake = Math.max(game.shake, 0.75);
+          emitSparks(o.m.position.x, o.m.position.y + 1.0, o.m.position.z, 8);
           emit("crash", { type: t.name, damage: t.damage, x: o.m.position.x, y: o.m.position.y + 1.2, z: o.m.position.z });
         } else if (!t.heavy) {
           launch(o);
           game.invulnT = CFG.hit.invulnTime;
+          emitSparks(o.m.position.x, o.m.position.y + 1.2, o.m.position.z, 8);
           emit("crash", {
             type: t.name,
             damage: t.damage,
@@ -483,7 +514,10 @@ export function updateTraffic(dt) {
             z: o.m.position.z,
           });
         // Right after a light crash the bus may be shoved into something big: forgive that.
-        } else if (game.invulnT <= 0) emit("heavyHit", { type: t.name });
+        } else if (game.invulnT <= 0) {
+          emitSparks(o.m.position.x, o.m.position.y + 1.4, o.m.position.z, 12);
+          emit("heavyHit", { type: t.name });
+        }
       } else if (!t.heavy && !t.isRamp && !t.hazard && o.m.userData.mirrors) {
         // Side-mirror grazing: passing super close beside a car/VIP/policeCar snaps off its side mirror!
         const sGap = sideGap(bx, B.hitHalfWidth, o.x, t.w / 2);
@@ -494,11 +528,13 @@ export function updateTraffic(dt) {
             o.mirrorL = false;
             o.m.userData.mirrors.left.visible = false;
             spawnChunks(o.seg, o.s, o.x - t.w * .5, 1, true);
+            emitSparks(o.m.position.x - t.w * .5, o.m.position.y + 1.2, o.m.position.z, 5);
             emit("mirrorHit", { type: "mirror", damage: HZ.mirrorBonus, x: o.m.position.x, y: o.m.position.y + 1.2, z: o.m.position.z });
           } else if (!busOnLeft && o.mirrorR) {
             o.mirrorR = false;
             o.m.userData.mirrors.right.visible = false;
             spawnChunks(o.seg, o.s, o.x + t.w * .5, 1, true);
+            emitSparks(o.m.position.x + t.w * .5, o.m.position.y + 1.2, o.m.position.z, 5);
             emit("mirrorHit", { type: "mirror", damage: HZ.mirrorBonus, x: o.m.position.x, y: o.m.position.y + 1.2, z: o.m.position.z });
           }
         }
@@ -536,6 +572,17 @@ export function updateTraffic(dt) {
     place(c.m, c.seg, clamp(c.s, 0, SEGS[c.seg].len), c.x, c.y);
     c.m.rotation.x += c.rx * dt;
     c.m.rotation.z += c.rz * dt;
+  }
+
+  // Update additive collision sparks.
+  for (const sp of sparkPool) {
+    if (!sp.active) continue;
+    sp.t += dt;
+    if (sp.t >= sp.maxT) { sp.active = false; sp.m.visible = false; continue; }
+    sp.vy -= 16 * dt;
+    sp.x += sp.vx * dt; sp.y += sp.vy * dt; sp.z += sp.vz * dt;
+    sp.m.position.set(sp.x, sp.y, sp.z);
+    sp.m.scale.setScalar(Math.max(0.1, (1.0 - sp.t / sp.maxT) * 1.5));
   }
 
   // Update crossing pedestrians: walk across, hesitate/jump back when the bus approaches, never crashable.

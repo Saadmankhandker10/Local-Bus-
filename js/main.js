@@ -23,6 +23,7 @@ import {
   playNoNeed, playRallyCrowd, playStuntYooo, playHelperLaugh
 } from "./audio.js";
 import { startRunVideo, stopRunVideo } from "./newspaper.js";
+import { updateShaders, triggerLoadshedding } from "./shaders.js";
 import { ROUTE, TOTAL } from "./route.js";
 import { SHOUTS } from "./data/shouts.bn.js";
 import { HEAVY_HIT } from "./i18n.js";
@@ -186,7 +187,10 @@ on("processionPassed", e => {
 });
 on("pedScared", () => { helperSays(lineFrom("pedScared")); if (Math.random() < 0.35) playKiPagolami(); });
 on("board", () => boardDing());
-on("refuel", () => refuelSound());
+on("refuel", () => {
+  refuelSound();
+  triggerLoadshedding(4.5);
+});
 on("jamHorn", () => horn());
 on("mirrorHit", () => { mirrorSnap(); if (Math.random() < 0.4) playKajThikHoyni(); });
 on("carAlarm", () => carAlarmSound());
@@ -327,6 +331,7 @@ function render(dt) {
     ? clamp(1 - (crowd.gap - CFG.crowd.catchGap) / (CFG.crowd.cueGap - CFG.crowd.catchGap), 0, 1) : 0;
   updateAudio(game.speed, game.boostT > 0, close, game.running && !game.paused && !game.crashing && !game.caught);
 
+  updateShaders(dt);
   applyTimeOfDay(progress(game.prog));
   updateBusVisual(dt);
   updateCrowdVisual(dt);

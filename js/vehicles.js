@@ -10,18 +10,24 @@ import {
   createRickshawFilmTex,
   createDangerRingTex
 } from "./textures.js";
+import { createLEDMaterial, createLEDRowGeometry } from "./shaders.js";
 
 // Shared materials: one copy on the GPU, used by many meshes.
 const DARK = 0x263238, TYRE = 0x111111;
 /** Red warning light on top of heavy things. Shared, so every beacon pulses together. */
 export const beaconMat = new THREE.MeshBasicMaterial({ color: 0xff1a1a, transparent: true, opacity: 0.9 });
-/** Ground danger warning ring under heavy trucks & buses. */
+/** Ground danger warning ring under heavy trucks & buses with Additive Blending and PolygonOffset. */
 export const dangerRingMat = new THREE.MeshBasicMaterial({
   map: createDangerRingTex(),
   transparent: true,
-  opacity: 0.65,
+  opacity: 0.75,
+  blending: THREE.AdditiveBlending,
   depthWrite: false,
+  polygonOffset: true,
+  polygonOffsetFactor: -2.0,
+  polygonOffsetUnits: -4.0,
 });
+dangerRingMat.userData = { isShared: true };
 const beaconGeo = new THREE.SphereGeometry(.35, 10, 8);
 const vipBadge = plate("▲ ভিআইপি গাড়ি", 2.2, .48, "#4a148c", "#ffd54f");
 const policeSign = plate("পুলিশ · POLICE", 1.5, .34, "#1a237e", "#ffffff");
@@ -37,6 +43,14 @@ const rickshawFilmMat = new THREE.MeshBasicMaterial({
   opacity: 0.82,
   side: THREE.DoubleSide
 });
+
+const policeLightbarMat = createLEDMaterial({ police: true, speed: 11.0, gain: 2.8 });
+policeLightbarMat.userData = { isShared: true };
+const policeLightbarGeo = createLEDRowGeometry(8, 0.76, 0.14, [
+  0xff1744, 0xff1744, 0xff1744, 0xff1744,
+  0x00b0ff, 0x00b0ff, 0x00b0ff, 0x00b0ff
+]);
+policeLightbarGeo.userData = { isShared: true };
 
 function addMirrorsAndHazards(g, t, color) {
   const left = box(.22, .14, .18, color, -t.w * .56, t.h * .58, -t.l * .18);
@@ -82,14 +96,15 @@ function policeCar(t) {
   g.add(box(t.w + .02, .28, t.l + .02, 0x1a237e, 0, .58, 0));                // navy police stripe
   g.add(box(t.w * .86, t.h * .45, t.l * .48, DARK, 0, t.h * .82, -.1));      // cabin
   for (const s of [-1, 1]) g.add(box(.26, .52, t.l * .8, TYRE, s * t.w * .5, .3, 0));
-  // Flashing Red & Blue roof lightbar
-  const redBar = box(.48, .18, .28, 0xff1744, -.26, t.h + .22, -.1);
-  const blueBar = box(.48, .18, .28, 0x00b0ff, .26, t.h + .22, -.1);
-  g.add(redBar, blueBar);
+
+  // Asynchronous GPU LED strobe lightbar (Red left 4 bulbs, Blue right 4 bulbs)
+  const lightbar = new THREE.Mesh(policeLightbarGeo, policeLightbarMat);
+  lightbar.position.set(0, t.h + .22, -.1);
+  g.add(lightbar);
+
   const sign = policeSign.clone();
   sign.position.set(0, .82, t.l * .51);
   g.add(sign);
-  g.userData.siren = { red: redBar, blue: blueBar };
   addMirrorsAndHazards(g, t, 0x1a237e);
   return g;
 }
