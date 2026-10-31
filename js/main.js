@@ -199,8 +199,8 @@ on("refuel", () => {
   triggerLoadshedding(4.5);
 });
 on("jamHorn", () => horn());
-on("mirrorHit", () => { mirrorSnap(); if (Math.random() < 0.4) playKajThikHoyni(); });
-on("carAlarm", () => carAlarmSound());
+on("mirrorHit", pos => { mirrorSnap(pos); if (Math.random() < 0.4) playKajThikHoyni(pos); });
+on("carAlarm", pos => carAlarmSound(pos));
 on("rampJump", () => {
   rampFanfare();
   helperSays("ওস্তাদ! বাস তো রকেট বানায়া ফেলছেন! 🚀");
@@ -337,7 +337,7 @@ function render(dt) {
     prevWarn = game.warn;
     const close = (game.running && crowd.active)
       ? clamp(1 - (crowd.gap - CFG.crowd.catchGap) / (CFG.crowd.cueGap - CFG.crowd.catchGap), 0, 1) : 0;
-    updateAudio(game.speed, game.boostT > 0, close, game.running && !game.paused && !game.crashing && !game.caught);
+    updateAudio(game.speed, game.boostT > 0, close, game.running && !game.paused && !game.crashing && !game.caught, cam);
 
     updateShaders(dt);
     updateEffects(dt);

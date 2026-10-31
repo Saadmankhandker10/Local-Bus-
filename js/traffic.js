@@ -383,7 +383,7 @@ function launch(o) {
   // Cars, VIP SUVs, and Police cars set off hazard blinkers and car alarms!
   if (o.t.name === "car" || o.t.name === "vip" || o.t.name === "policeCar") {
     o.alarm = true;
-    emit("carAlarm");
+    emit("carAlarm", o.m.position);
   }
 
   // Stalls come apart: every part gets its own little launch.

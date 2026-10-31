@@ -6,7 +6,12 @@ import { pick, $ } from "./utils.js";
 import { DIALOGUE } from "./data/dialogue.bn.js";
 import { cam } from "./camera.js";
 import { bus } from "./bus.js";
-import { playMasud, playKiPagolami, playRagKorla, playKajThikHoyni, playNoNeed, playKhelaHobe } from "./audio.js";
+import {
+  playMasud, playKiPagolami, playRagKorla, playKajThikHoyni, playNoNeed, playKhelaHobe,
+  playOstadDane, playOstadBame, playChharaChhara, playSholoshoTaka, playBaperRasta,
+  playDhakaPolice, playShobaiUthun, playBharaDen, playGapNai, playBrakeFao,
+  playArKoto, playDirectGari, playChaiGorom
+} from "./audio.js";
 
 const S = CFG.speech;
 let subT = 0;     // seconds left before the subtitle hides
@@ -41,13 +46,26 @@ export function say(who, text, seconds = S.subtitleSeconds, onBus = false) {
   }
   $("subtitle").textContent = `${who}: ${text}`;
 
-  // Harmonized voice soundbite playback with bus megaphone DSP filter
+  // Harmonized voice soundbite playback with bus megaphone DSP filter & ducking
   if (text.includes("মাছুদ") || text.includes("ভালো হবা")) playMasud();
   else if (text.includes("পাগলামি")) playKiPagolami();
   else if (text.includes("রাগ করলা")) playRagKorla();
   else if (text.includes("কাজ ঠিক")) playKajThikHoyni();
   else if (text.includes("এক্সপ্লানেশন")) playNoNeed();
   else if (text.includes("খেলা হবে")) playKhelaHobe();
+  else if (text.includes("ডানে")) playOstadDane();
+  else if (text.includes("বামে")) playOstadBame();
+  else if (text.includes("ছাড়েন") || text.includes("ছাড়ো")) playChharaChhara();
+  else if (text.includes("১৬০০") || text.includes("টাকা")) playSholoshoTaka();
+  else if (text.includes("বাপের") || text.includes("রাস্তা")) playBaperRasta();
+  else if (text.includes("পুলিশ") || text.includes("সাইড কর")) playDhakaPolice();
+  else if (text.includes("সামনে আগান") || text.includes("সিট খালি")) playShobaiUthun();
+  else if (text.includes("ভাড়া")) playBharaDen();
+  else if (text.includes("গ্যাপ")) playGapNai();
+  else if (text.includes("ব্রেক")) playBrakeFao();
+  else if (text.includes("আর কত")) playArKoto();
+  else if (text.includes("ডিরেক্ট")) playDirectGari();
+  else if (text.includes("চা গরম")) playChaiGorom();
 
   $("subtitle").hidden = false;
   subT = mode === "compact" ? Math.min(1.4, seconds * 0.65) : Math.min(1.9, seconds);
