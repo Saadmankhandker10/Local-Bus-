@@ -2,7 +2,7 @@
 import { CFG } from "./config.js";
 import { game, resetGame } from "./state.js";
 import { on, emit } from "./events.js";
-import { renderer, scene, initWorld, resetWorld, updateWorld, setRenderQuality, sun } from "./world.js";
+import { renderer, scene, initWorld, resetWorld, updateWorld, setRenderQuality, sun, skyMesh } from "./world.js";
 import { initInput, pollInput, onTap, onAnyInput } from "./input.js";
 import { resetBus, updateBus, updateAutopilot, updateBusVisual, triggerHelperSlap } from "./bus.js";
 import { cam, updateCamera, resetCamera } from "./camera.js";
@@ -103,6 +103,7 @@ function helperSays(text) {
 
 /** Draw one fresh frame and keep it as a JPEG for the newspaper photo. */
 function snapshot() {
+  if (skyMesh) skyMesh.position.copy(cam.position);
   renderer.render(scene, cam);
   return renderer.domElement.toDataURL("image/jpeg", CFG.paper.photoQuality);
 }
@@ -356,6 +357,7 @@ function render(dt) {
     updateCrowdVisual(dt);
     updateSpeech(dt);
     const boostFx = updateCamera(dt);
+    if (skyMesh) skyMesh.position.copy(cam.position);
     renderer.render(scene, cam);
     updateHud(dt, boostFx);
     drawNav(dt);

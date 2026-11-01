@@ -12,7 +12,7 @@ import * as THREE from "three";
 
 export const MAP = {
   start: { x: 0, z: 0, heading: 90 },
-  width: 14,        // normal road width
+  width: 22.4,       // normal road width (6 lanes: 3 per direction, matching authentic Dhaka grand boulevards)
   sample: 2,        // distance between stored points (smaller = smoother, more memory)
 
   legs: [

@@ -89,12 +89,13 @@ const skyMat = new THREE.ShaderMaterial({
     void main() {
       vec3 d = normalize(vDir);
       float h = clamp(d.y, 0.0, 1.0);
-      vec3 c = mix(hor, top, pow(h, 0.5));
+      // Realistic atmospheric Rayleigh gradient
+      vec3 c = mix(hor, top, pow(h, 0.45));
       float s = max(dot(d, normalize(sunDir)), 0.0);
-      // Intense solar core disc + broad atmospheric corona
-      c += sunCol * (pow(s, 700.0) * 1.6 + pow(s, 10.0) * 0.35);
-      // Soft haze blend matching the horizon fog
-      c = mix(c, hor, smoothstep(0.25, 0.0, d.y) * 0.6);
+      // High-intensity core solar disc + broad atmospheric corona
+      c += sunCol * (pow(s, 650.0) * 1.8 + pow(s, 12.0) * 0.35 + pow(s, 2.5) * 0.08);
+      // Soft atmospheric haze smoothly blending into the horizon fog color
+      c = mix(c, hor, smoothstep(0.28, 0.0, d.y) * 0.65);
       gl_FragColor = vec4(c, 1.0);
       #include <tonemapping_fragment>
       #include <colorspace_fragment>
@@ -102,9 +103,10 @@ const skyMat = new THREE.ShaderMaterial({
   `,
   side: THREE.BackSide,
   depthWrite: false,
+  fog: false,
 });
 
-const skyGeo = new THREE.SphereGeometry(520, 24, 16);
+const skyGeo = new THREE.SphereGeometry(800, 24, 16);
 export const skyMesh = new THREE.Mesh(skyGeo, skyMat);
 skyMesh.frustumCulled = false;
 skyMesh.renderOrder = -1;
@@ -639,9 +641,12 @@ function buildRoads() {
       }
     }
 
-    // White dashed lane dividers.
+    // White dashed lane dividers: dual lines on each side creating 3 lanes per direction (6 lanes total).
     if (S.kind !== "street") {
-      for (const s of [-1, 1]) band(i, s * h * .52 - .08, s * h * .52 + .08, lift + .015, MATS.line, W.dash);
+      for (const s of [-1, 1]) {
+        band(i, s * h * .33 - .08, s * h * .33 + .08, lift + .015, MATS.line, W.dash);
+        band(i, s * h * .67 - .08, s * h * .67 + .08, lift + .015, MATS.line, W.dash);
+      }
     }
 
     // Yellow-and-black striped centre median island with low-poly trees and bushes,

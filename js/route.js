@@ -106,7 +106,7 @@ export const ROUTE = {
       skyTop: 0x3b6d9e, skyHor: 0xe8ad84,
       sunCol: 0xffd999, sunI: 2.05,
       hemiSky: 0xfff3e0, hemiGround: 0x6e5848, hemiI: 1.25,
-      fogNear: 55, fogFar: 180,
+      fogNear: 60, fogFar: 260,
       exposure: 1.24, ground: 0x6d5e4e,
       sunPos: [25, 42, -35]
     },
@@ -115,7 +115,7 @@ export const ROUTE = {
       skyTop: 0x226bb8, skyHor: 0x86c2e2,
       sunCol: 0xfffaea, sunI: 2.30,
       hemiSky: 0xffffff, hemiGround: 0x586b58, hemiI: 1.30,
-      fogNear: 60, fogFar: 190,
+      fogNear: 70, fogFar: 280,
       exposure: 1.20, ground: 0x6e6856,
       sunPos: [15, 68, -25]
     },
@@ -124,7 +124,7 @@ export const ROUTE = {
       skyTop: 0x3d6494, skyHor: 0xeb8b52,
       sunCol: 0xffa84d, sunI: 2.10,
       hemiSky: 0xffcca6, hemiGround: 0x563e2e, hemiI: 1.20,
-      fogNear: 52, fogFar: 180,
+      fogNear: 60, fogFar: 260,
       exposure: 1.22, ground: 0x624e40,
       sunPos: [-35, 34, -35]
     },
@@ -133,7 +133,7 @@ export const ROUTE = {
       skyTop: 0x242a54, skyHor: 0xc45645,
       sunCol: 0xff5e3d, sunI: 1.60,
       hemiSky: 0x8e5c6a, hemiGround: 0x3a242d, hemiI: 1.10,
-      fogNear: 48, fogFar: 168,
+      fogNear: 55, fogFar: 240,
       exposure: 1.25, ground: 0x483a34,
       sunPos: [-55, 18, -30]
     },
@@ -142,7 +142,7 @@ export const ROUTE = {
       skyTop: 0x080d1a, skyHor: 0x1a1f33,
       sunCol: 0x90b0f8, sunI: 0.75,
       hemiSky: 0x283254, hemiGround: 0x161522, hemiI: 0.85,
-      fogNear: 42, fogFar: 155,
+      fogNear: 50, fogFar: 220,
       exposure: 1.38, ground: 0x262326,
       sunPos: [-20, 42, 10]
     },

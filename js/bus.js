@@ -241,7 +241,7 @@ let lastMorKey = "";
 export function resetBus(progress = 0) {
   fromProgress(progress, here);
   here.prev = -1;
-  game.lat = -2.5;
+  game.lat = -4.6;
   game.yaw = 0;
   game.prog = progress;
   game.busY = 0;
@@ -290,7 +290,7 @@ export function updateAutopilot(dt) {
   game.speed = 16;
   game.boostT = 0;
   game.accel = 0;
-  const targetLat = -2.6 + Math.sin(game.time * 0.55) * 1.4;
+  const targetLat = -4.6 + Math.sin(game.time * 0.55) * 1.8;
   game.vx = (targetLat - game.lat) * 2.2;
   game.lat += game.vx * dt;
   game.yaw = clamp(game.vx * 0.04, -0.25, 0.25);

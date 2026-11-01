@@ -18,14 +18,14 @@ export const CFG = {
                          // so your hand can move to the steering keys
 
     // --- Turning (the bus has a real heading) ---
-    turnRadiusMin: 9,       // tightest turning circle, at walking speed
-    turnRadiusPerSpeed: 0.45, // the circle grows this much per unit of speed (heavy bus)
+    turnRadiusMin: 8.2,     // tightest turning circle, at walking speed
+    turnRadiusPerSpeed: 0.42, // the circle grows this much per unit of speed (heavy bus)
     alignRate: 1.8,         // with no steering, the bus lines up with the road at this rate
-    maxRelYaw: 0.5,         // the most the bus can point away from the road (radians)
+    maxRelYaw: 0.65,        // the most the bus can point away from the road (radians)
 
     // --- Road edge (soft bump instead of a wall) ---
-    edgeInset: 1.8,      // the kerb starts pushing this far inside the road edge
-    edgeHardInset: 1.2,  // the bus centre never gets closer to the edge than this
+    edgeInset: 2.2,      // the kerb starts pushing this far inside the road edge
+    edgeHardInset: 1.5,  // the bus centre never gets closer to the edge than this
     edgeYawPush: 0.6,    // how hard the kerb turns the nose back in
     edgeScrapeDrag: 8,   // speed lost per second while scraping
     edgeShake: 0.12,     // small camera shake while scraping
@@ -200,11 +200,11 @@ export const CFG = {
     intervalJitterMin: 0.7,
     intervalJitterMax: 1.3,
     spawnAhead: 150,      // how far ahead (along the road) vehicles appear
-    lanes: [-5, -2.5, 0, 2.5, 5],
-    laneWidth: 2.5,       // distance between two lanes (used when vehicles change lane)
+    lanes: [-7.6, -4.6, -1.6, 1.6, 4.6, 7.6],
+    laneWidth: 3.0,       // distance between two lanes (used when vehicles change lane)
     laneJitter: 0.4,
     clearZ: 12,           // don't spawn if another vehicle is this close (ahead/behind)...
-    clearX: 3,            // ...and this close sideways
+    clearX: 3.2,          // ...and this close sideways
     despawnBehind: 30,
     despawnAhead: -220,
     despawnSide: 30,      // removed when this far outside the road edge
@@ -305,7 +305,7 @@ export const CFG = {
     from: 0.14,                // traffic jam slowdown starts here (fraction of segment)
     to: 0.44,                  // traffic jam ends here
     barricadeAt: 0.324,        // fraction of segment where the student barricade stands
-    barricadeMinX: -2.2,       // barricade covers x from -2.2 to the right kerb, leaving the far-left lane open
+    barricadeMinX: -4.5,       // barricade covers x from -4.5 to the right kerb, leaving the far-left lane open
     barricadeHalfLen: 7.5,     // half-length of the barricade zone along the road
     maxTrafficSpeed: 3.5,      // vehicles inside the jam zone crawl at most this fast
     hornInterval: 2.4,         // seconds between ambient traffic horns in the jam
@@ -330,11 +330,11 @@ export const CFG = {
     first: 120,           // distance of the first bus stop
     gapMin: 250,          // distance between stops
     gapMax: 400,
-    edgeInset: 2,         // stop centre sits this far inside the road edge
+    edgeInset: 3.0,       // stop centre sits this far inside the road edge
     people: 5,            // passengers waiting at each stop
     boardMaxSpeed: 10,    // bus must be slower than this to board passengers
     boardInterval: 0.35,  // seconds between two passengers boarding
-    reachX: 2.4,          // how close (sideways) the bus must be to the stop
+    reachX: 3.2,          // how close (sideways) the bus must be to the stop
     reachZ: 8,            // how close (along the road)
     slowWarnCooldown: 1.5,
     despawnBehind: 25,
@@ -343,11 +343,11 @@ export const CFG = {
   // Road marks you must STOP on (be slower than stopSpeed while the bus is over them).
   // Both sit in an outer lane, on a random side.
   marks: {
-    edgeInset: 3,         // mark centre sits this far inside the road edge
+    edgeInset: 3.6,       // mark centre sits this far inside the road edge
     width: 3.6,
     length: 14,
     stopSpeed: 6,         // slower than this counts as "stopped on the mark"
-    reachX: 2.2,          // how far the bus centre may be from the mark centre (sideways)
+    reachX: 3.0,          // how far the bus centre may be from the mark centre (sideways)
     despawnBehind: 25,
   },
 
@@ -370,7 +370,7 @@ export const CFG = {
   },
 
   map: {
-    forkLat: 1.5,         // at a fork, be this far towards a side to take that branch
+    forkLat: 2.5,         // at a fork, be this far towards a side to take that branch
     altShare: 0.35,       // share of traffic that takes a side street or flyover
     forkWarn: 140,        // the helper calls the fork this far before it
   },
@@ -391,10 +391,10 @@ export const CFG = {
   },
 
   world: {
-    roadHalfWidth: 7,
-    skyColor: 0xcfe3ee,
-    fogNear: 50,
-    fogFar: 170,
+    roadHalfWidth: 11.2,
+    skyColor: 0x3b6d9e,
+    fogNear: 60,
+    fogFar: 260,
     dash: [3, 10],        // lane markings: 3 units of paint every 10 units
     stubWidth: 12,        // side roads at junctions (just scenery)
     stubLength: 70,
@@ -415,10 +415,10 @@ export const CFG = {
     followYaw: 0.5,       // how much the camera turns with the bus (1) or the road (0)
     yawSmoothing: 4,      // lower = camera swings round bends more lazily
     roadMargin: 1.5,      // the camera never goes further than this outside the road edge
-    height: 6.2,
-    distance: 13,
-    lookY: 1.5,
-    lookAhead: 14,        // the camera looks at a point this far ahead of the bus
+    height: 6.8,
+    distance: 14.2,
+    lookY: 1.6,
+    lookAhead: 16,        // the camera looks at a point this far ahead of the bus
     shakeDecay: 1.5,      // how fast shake fades
     shakeScale: 1,        // set to 0 to turn camera shake off
     boostFovKick: 9,      // extra field of view while boosting
@@ -426,7 +426,7 @@ export const CFG = {
     boostFxSmoothing: 4,  // how fast the boost effect fades in and out
     speedLinesOpacity: 0.5, // set to 0 to hide the boost speed lines
     introSeconds: 1.8,    // skippable morning pan at Mohammadpur Bus Stand on a fresh run
-    far: 300,
+    far: 1000,
   },
 
   input: {
