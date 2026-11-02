@@ -25,7 +25,7 @@
   }
   // Auto-purge any stale service workers or caches during local updates
   (function() {
-    var v = "4.3";
+    var v = "4.4";
     var isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
     if (isLocal || localStorage.getItem("lb_sw_v") !== v) {
       localStorage.setItem("lb_sw_v", v);
