@@ -13,6 +13,7 @@ import {
 import { createLEDMaterial, createLEDRowGeometry } from "./shaders.js";
 import { isBusModelReady, instantiateBusModel, BUS_OPERATORS } from "./busModel.js";
 import { isRickshawModelReady, instantiateRickshawModel, RICKSHAW_HOOD_COLORS } from "./rickshawModel.js";
+import { isCarModelReady, instantiateCarModel, DHAKA_CAR_COLORS } from "./carModel.js";
 
 // Shared materials: one copy on the GPU, used by many meshes.
 const DARK = 0x263238, TYRE = 0x111111;
@@ -77,6 +78,16 @@ function addMirrorsAndHazards(g, t, color) {
 }
 
 function car(t, c) {
+  if (t.name === "car" && isCarModelReady()) {
+    const inst = instantiateCarModel({
+      type: "car",
+      color: pick(DHAKA_CAR_COLORS),
+      w: t.w,
+      l: t.l,
+      h: t.h
+    });
+    if (inst) return inst;
+  }
   const g = new THREE.Group();
   g.add(box(t.w, t.h * .6, t.l, c, 0, t.h * .3 + .3, 0));
   g.add(box(t.w * .85, t.h * .45, t.l * .45, DARK, 0, t.h * .6 + .3 + t.h * .2, -t.l * .12));
@@ -86,6 +97,26 @@ function car(t, c) {
 }
 
 function vip(t, c) {
+  if (isCarModelReady()) {
+    const inst = instantiateCarModel({
+      type: "vip",
+      color: pick([0x111111, 0x1a1a1a, 0x0d1b2a, 0x212121]),
+      w: t.w,
+      l: t.l,
+      h: t.h
+    });
+    if (inst) {
+      // Front hood flagpole + miniature flag
+      inst.add(box(.05, .65, .05, 0xffd54f, -t.w * .38, t.h * .75, -t.l * .45));
+      inst.add(box(.28, .18, .04, 0x1f6b3a, -t.w * .38 + .14, t.h * .98, -t.l * .45));
+      // Floating overhead VIP marker
+      const badge = vipBadge.clone();
+      badge.position.set(0, t.h + 1.15, 0);
+      inst.add(badge);
+      inst.userData.vipBadge = badge;
+      return inst;
+    }
+  }
   const g = new THREE.Group();
   g.add(box(t.w, t.h * .62, t.l, c, 0, t.h * .32 + .3, 0));                  // sleek black SUV body
   g.add(box(t.w + .03, .12, t.l + .02, 0xffd54f, 0, .62, 0));                // gold luxury trim stripe
@@ -104,6 +135,26 @@ function vip(t, c) {
 }
 
 function policeCar(t) {
+  if (isCarModelReady()) {
+    const inst = instantiateCarModel({
+      type: "police",
+      color: 0xf5f5f5,
+      w: t.w,
+      l: t.l,
+      h: t.h
+    });
+    if (inst) {
+      // Asynchronous GPU LED strobe lightbar (Red left 4 bulbs, Blue right 4 bulbs)
+      const lightbar = new THREE.Mesh(policeLightbarGeo, policeLightbarMat);
+      lightbar.position.set(0, t.h + .22, -.1);
+      inst.add(lightbar);
+
+      const sign = policeSign.clone();
+      sign.position.set(0, .82, t.l * .51);
+      inst.add(sign);
+      return inst;
+    }
+  }
   const g = new THREE.Group();
   g.add(box(t.w, t.h * .58, t.l, 0xffffff, 0, t.h * .3 + .3, 0));            // white body
   g.add(box(t.w + .02, .28, t.l + .02, 0x1a237e, 0, .58, 0));                // navy police stripe

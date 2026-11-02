@@ -33,13 +33,14 @@ import { initEffects, resetEffects, updateEffects } from "./effects.js";
 import { trackEvent } from "./analytics.js";
 import { loadBusModel } from "./busModel.js";
 import { loadRickshawModel } from "./rickshawModel.js";
+import { loadCarModels } from "./carModel.js";
 import { loader } from "./loading.js";
 
 // Initialize branded loading screen controller
 loader.init();
 
-// Preload the authentic 3D Bangladeshi bus & rickshaw models at boot
-Promise.allSettled([loadBusModel(), loadRickshawModel()]).then(() => {
+// Preload the authentic 3D Bangladeshi bus, rickshaw & car models at boot
+Promise.allSettled([loadBusModel(), loadRickshawModel(), loadCarModels()]).then(() => {
   loader.setStage(2);
 });
 
