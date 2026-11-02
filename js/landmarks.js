@@ -69,6 +69,14 @@ const PREFABS = {
     }
     const p = sign("মোহাম্মদপুর বাসস্ট্যান্ড", 10, 1.3, "#0d47a1", "#fff"); p.position.set(x - side * 6.1, 6.6, 0);
     p.rotation.y = -side * FACE; g.add(p);
+    // Parked authentic rickshaw near the bus stand entrance
+    const rkType = CFG.traffic.types.find(t => t.name === "rickshaw");
+    if (rkType) {
+      const rk = makeVehicle(rkType);
+      rk.rotation.y = -side * Math.PI * 0.35;
+      rk.position.set(x - side * 4.5, 0, -18);
+      g.add(rk);
+    }
     // Morning crows perched on the shed roof; they lift off when the bus starts moving.
     const crows = [];
     for (let i = 0; i < 6; i++) {
@@ -101,6 +109,13 @@ const PREFABS = {
     g.add(box(3.6, .15, 4.6, pick([0xe53935, 0x1e88e5, 0x43a047]), x - side * .4, 2.7, 0)); // awning
     g.add(box(.6, .5, 3, 0x6d4c41, x - side * 2.2, .25, 0));                                 // bench
     const p = sign("চা-নাস্তা", 2.4, .6); p.position.set(x - side * 1.55, 2.2, 0); p.rotation.y = -side * FACE; g.add(p);
+    const rkType = CFG.traffic.types.find(t => t.name === "rickshaw");
+    if (rkType) {
+      const rk = makeVehicle(rkType);
+      rk.rotation.y = -side * 0.35;
+      rk.position.set(x - side * 1.8, 0, 3.2);
+      g.add(rk);
+    }
     return g;
   },
 

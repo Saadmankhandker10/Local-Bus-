@@ -32,18 +32,16 @@ import { updateHud, onStartPressed, onPauseButton, hideScreen, showPause, showRu
 import { initEffects, resetEffects, updateEffects } from "./effects.js";
 import { trackEvent } from "./analytics.js";
 import { loadBusModel } from "./busModel.js";
+import { loadRickshawModel } from "./rickshawModel.js";
 import { loader } from "./loading.js";
 
 // Initialize branded loading screen controller
 loader.init();
 
-// Preload the authentic 3D Bangladeshi bus model at boot and advance loader stage
-loadBusModel()
-  .then(() => loader.setStage(2))
-  .catch(err => {
-    console.warn("Bus model preload notice:", err);
-    loader.setStage(2);
-  });
+// Preload the authentic 3D Bangladeshi bus & rickshaw models at boot
+Promise.allSettled([loadBusModel(), loadRickshawModel()]).then(() => {
+  loader.setStage(2);
+});
 
 // Signal that all modules have evaluated and the engine is booting
 if (typeof window !== "undefined") {

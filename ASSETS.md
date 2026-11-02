@@ -5,6 +5,7 @@ All visual, 3D, text, and audio assets in **"Local Bus — Dhaka Route" (`লো
 | Category | Source / Implementation | License |
 | :--- | :--- | :--- |
 | **3D Engine** | [Three.js `v0.160.0`](https://threejs.org/) loaded via jsDelivr CDN importmap | MIT License |
+| **3D Cycle Rickshaw Model** | Authentic Dhaka cycle rickshaw GLB model (`models/rickshaw.glb`) converted from user-provided `rickshaw.fbx` with custom Rickshaw Art textures and animated lungi puller | CC-BY / User asset |
 | **3D Models (Bus, Vehicles, Landmarks, Metro Rail, Crowd)** | Procedurally built from `THREE.BoxGeometry`, `CylinderGeometry`, `SphereGeometry`, `IcosahedronGeometry`, and `CatmullRomCurve3` in `js/bus.js`, `js/vehicles.js`, `js/landmarks.js`, `js/world.js`, and `js/crowd.js` | Original code (Repository License) |
 | **2D Textures & Rickshaw Art** | Procedurally drawn at runtime onto HTML5 `<canvas>` (`THREE.CanvasTexture`) in `js/world.js`, `js/vehicles.js`, `js/marks.js`, and `js/bus.js` | Original code (Repository License) |
 | **Sound Effects & Engine Audio** | Synthesized in real time using the browser's native `AudioContext` (WebAudio API oscillators, noise buffers, and biquad filters) in `js/audio.js` | Original code (Repository License) |

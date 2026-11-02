@@ -1,6 +1,6 @@
 // Service worker: a small background script that saves a copy of the game's files in the
 // browser, so the game can open as an installed app and still work when the internet drops.
-const CACHE = "localbus-v4.0";
+const CACHE = "localbus-v4.1";
 
 self.addEventListener("install", e => {
   self.skipWaiting();
@@ -11,7 +11,9 @@ self.addEventListener("install", e => {
     "./css/style.css?v=4.0",
     "./css/menu.css?v=4.0",
     "./fonts/atma-700-bengali.woff2",
-    "./fonts/notosansbengali-bengali.woff2"
+    "./fonts/notosansbengali-bengali.woff2",
+    "./js/rickshawModel.js",
+    "./models/rickshaw.glb"
   ])));
 });
 

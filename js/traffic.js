@@ -528,9 +528,12 @@ export function updateTraffic(dt) {
       o.m.userData.siren.blue.visible = !redOn;
     }
 
-    // Animate wheels on 3D traffic buses
+    // Animate wheels on 3D traffic buses & rickshaws
     if (o.m.userData.busController) {
       o.m.userData.busController.roll(o.v || t.v, dt);
+    }
+    if (o.m.userData.rickshawController) {
+      o.m.userData.rickshawController.roll(o.v || t.v, dt);
     }
 
     if (game.running && !o.hit && !game.crashing && !game.caught && onBusRoad(o.seg)) {

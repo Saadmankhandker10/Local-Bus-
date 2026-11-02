@@ -12,6 +12,7 @@ import {
 } from "./textures.js";
 import { createLEDMaterial, createLEDRowGeometry } from "./shaders.js";
 import { isBusModelReady, instantiateBusModel, BUS_OPERATORS } from "./busModel.js";
+import { isRickshawModelReady, instantiateRickshawModel, RICKSHAW_HOOD_COLORS } from "./rickshawModel.js";
 
 // Shared materials: one copy on the GPU, used by many meshes.
 const DARK = 0x263238, TYRE = 0x111111;
@@ -122,6 +123,10 @@ function policeCar(t) {
 }
 
 function rickshaw(t, c) {
+  if (isRickshawModelReady()) {
+    const inst = instantiateRickshawModel({ color: c || pick(RICKSHAW_HOOD_COLORS) });
+    if (inst) return inst;
+  }
   const g = new THREE.Group();
   g.add(box(t.w, .25, t.l * .9, 0x5d4037, 0, .6, 0));             // frame
   g.add(box(t.w, .7, .9, c, 0, 1.1, t.l * .25));                  // painted seat back
