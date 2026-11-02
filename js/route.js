@@ -19,7 +19,7 @@ export const ROUTE = {
       nameIn: "মোহাম্মদপুরে", nameOf: "মোহাম্মদপুরের",   // "in X" and "of X" for headlines
       card: "মোহাম্মদপুর বাসস্ট্যান্ড",
       // Traffic: density multiplies how often vehicles appear; mix multiplies each type's chance.
-      traffic: { density: 0.85, heavy: 0.8, mix: { rickshaw: 1.3, bus: 1.6, truck: 1.0 } },
+      traffic: { density: 1.0, heavy: 0.8, mix: { car: 2.2, rickshaw: 1.4, cng: 1.2, bus: 1.4, truck: 1.0 } },
       marks: { cng: [450, 650], police: [700, 1000], stops: [250, 400] },
       stalls: 1.4,                        // more tea stalls
       buildings: { colors: [0xd7ccc8, 0xbcaaa4, 0xa1887f, 0xe0c9a6, 0x90a4ae], minH: 8, maxH: 22 },
@@ -57,7 +57,7 @@ export const ROUTE = {
       name: "শাহবাগ",
       nameIn: "শাহবাগে", nameOf: "শাহবাগের",
       card: "সায়েন্সল্যাব — নিউমার্কেট — শাহবাগ",
-      traffic: { density: 1.15, heavy: 1.1, mix: { rickshaw: 1.4, cng: 1.3, bus: 1.4 } },
+      traffic: { density: 1.15, heavy: 1.1, mix: { car: 1.8, rickshaw: 1.4, cng: 1.3, bus: 1.4 } },
       marks: { cng: [450, 700], police: [600, 900], stops: [220, 350] },
       stalls: 1.6,
       buildings: { colors: [0xffcc80, 0xef9a9a, 0xce93d8, 0x80cbc4, 0xfff59d], minH: 6, maxH: 18 },
@@ -82,7 +82,7 @@ export const ROUTE = {
       name: "ঢাকা বিশ্ববিদ্যালয়",
       nameIn: "ঢাকা বিশ্ববিদ্যালয়ে", nameOf: "ঢাকা বিশ্ববিদ্যালয়ের",
       card: "ঢাকা বিশ্ববিদ্যালয়",
-      traffic: { density: 0.9, heavy: 0.8, mix: { rickshaw: 2.4, bike: 1.3, truck: 0.4 } },
+      traffic: { density: 0.95, heavy: 0.8, mix: { car: 1.6, rickshaw: 2.2, bike: 1.3, truck: 0.4 } },
       marks: { cng: [500, 750], police: [700, 1000], stops: [250, 400] },
       stalls: 0.8,
       buildings: { colors: [0xb5543c, 0xa1887f, 0xc0694e, 0xd7ccc8], minH: 6, maxH: 14 },

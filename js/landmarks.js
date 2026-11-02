@@ -77,6 +77,14 @@ const PREFABS = {
       rk.position.set(x - side * 4.5, 0, -18);
       g.add(rk);
     }
+    // Parked authentic 3D Toyota Hiace microbus with Dhaka paint & number plate
+    const carType = CFG.traffic.types.find(t => t.name === "car");
+    if (carType) {
+      const hiaceCar = makeVehicle(carType);
+      hiaceCar.rotation.y = -side * Math.PI * 0.42;
+      hiaceCar.position.set(x - side * 4.4, 0, -7);
+      g.add(hiaceCar);
+    }
     // Morning crows perched on the shed roof; they lift off when the bus starts moving.
     const crows = [];
     for (let i = 0; i < 6; i++) {

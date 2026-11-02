@@ -10,7 +10,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "./GLTFLoader.js";
 import { clone as skeletonClone } from "./SkeletonUtils.js";
 import { pick, rnd } from "./utils.js";
-import { box, TYRE, DARK } from "./world.js";
+import { box } from "./world.js";
 
 const HIACE_PATH = "models/hiace.glb";
 const COROLLA_PATH = "models/corolla.glb";

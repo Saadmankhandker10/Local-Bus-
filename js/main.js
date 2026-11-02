@@ -42,6 +42,10 @@ loader.init();
 // Preload the authentic 3D Bangladeshi bus, rickshaw & car models at boot
 Promise.allSettled([loadBusModel(), loadRickshawModel(), loadCarModels()]).then(() => {
   loader.setStage(2);
+  if (!game.running) {
+    resetLandmarks(game.dist);
+    updateLandmarks();
+  }
 });
 
 // Signal that all modules have evaluated and the engine is booting
