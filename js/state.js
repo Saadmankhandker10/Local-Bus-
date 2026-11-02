@@ -36,6 +36,15 @@ export const game = {
   autopilot: true, // true while the menu background autopilot demo is running
   startStage: 0,   // 0 = Mohammadpur (default), 1..3 = specific stage, -1 = rotate automatically
   morName: "মোহাম্মদপুর বাসস্ট্যান্ড", // current Dhaka intersection / live TV location badge
+
+  // Free-roam driving state
+  freeRoam: true,     // active in free-roam mode
+  wx: 0,              // absolute world x position
+  wz: 0,              // absolute world z position
+  heading: 0,         // absolute world heading in radians (0 = North/-Z, PI/2 = East/+X)
+  steerAngle: 0,      // front wheel steering angle
+  signedSpeed: 0,     // signed velocity: negative = reverse, positive = forward
+  gear: "D",          // "D" = Drive, "R" = Reverse, "N" = Neutral
 };
 
 /** Reset the numbers for a fresh run. (Score and crowd are reset in their own modules.) */
@@ -44,6 +53,12 @@ export function resetGame() {
   game.crashT = 0;
   game.caught = false;
   game.speed = CFG.bus.startSpeed;
+  game.signedSpeed = CFG.bus.startSpeed;
+  game.gear = "D";
+  game.steerAngle = 0;
+  game.heading = 0;
+  game.wx = 0;
+  game.wz = 0;
   game.vx = 0;
   game.lat = -2.5; // start in the left (correct) lane of the two-way boulevard
   game.yaw = 0;

@@ -50,6 +50,27 @@ export const CFG = {
     autoHealRate: 15,    // HP recovered per second once auto-restore begins (smooth refill to 100)
   },
 
+  // Free-roam driving: kinematic bicycle physics, speed-dependent turning radius, reverse gear, and recovery
+  freeRoam: {
+    enabled: true,               // enables free-roam vehicle kinematics (also activated via ?dev=freeroam)
+    wheelbase: 4.8,              // distance between front and rear axles in world units
+    maxSteerAngle: 0.65,         // tight turning angle at slow speeds (~37.2 degrees for 3-point & U-turns)
+    steerSpeed: 4.5,             // steering wheel turn rate in radians per second
+    steerReturn: 5.2,            // self-centering rate when steering input is neutral
+    steerSpeedDecay: 0.038,      // scales down max steer angle as speed rises for highway stability
+    
+    // Reverse gear tuning
+    reverseSpeedRatio: 0.25,     // top reverse speed is 25% of forward top speed (~9.5 world units/s)
+    reverseAccel: 9.0,           // acceleration while reversing
+    reverseBrake: 32,            // braking force when moving in reverse
+    reverseBeeperInterval: 0.58, // seconds between Dhaka bus reverse safety beeps
+    reverseEngageThreshold: 0.2, // speed threshold below which holding brake engages reverse gear
+    
+    // Recovery action ("রাস্তায় ফিরুন")
+    recoveryFareCost: 20,        // fare deduction for resetting to road
+    recoveryHpCost: 5,           // HP/comfort deduction for resetting to road
+  },
+
   fuel: {
     max: 100,
     baseDrain: 0.8,      // fuel used per second even when slow

@@ -275,6 +275,65 @@ export function progressOf(seg, s) {
   return S.p0 + (s / S.len) * (S.p1 - S.p0);
 }
 
+/**
+ * Projects world coordinates (wx, wz) to the closest road segment among candidate segments.
+ * Writes { seg, s, lat, yaw } into out. Reuses out object to avoid memory allocations.
+ */
+export function projectToRoad(wx, wz, currentSeg = 0, out = {}) {
+  const candidates = [currentSeg];
+  const cur = SEGS[currentSeg];
+  if (cur) {
+    if (cur.next) for (const n of cur.next) candidates.push(n);
+    if (cur.alts) for (const a of cur.alts) candidates.push(a);
+    if (here.prev >= 0 && here.prev !== currentSeg) candidates.push(here.prev);
+  }
+
+  let bestD2 = Infinity;
+  let bestSeg = currentSeg, bestS = 0, bestLat = 0, bestYaw = 0;
+
+  for (const segIdx of candidates) {
+    const S = SEGS[segIdx];
+    if (!S) continue;
+    let minD2 = Infinity;
+    let minIdx = 0;
+    for (let i = 0; i < S.n; i++) {
+      const dx = wx - S.X[i];
+      const dz = wz - S.Z[i];
+      const d2 = dx * dx + dz * dz;
+      if (d2 < minD2) {
+        minD2 = d2;
+        minIdx = i;
+      }
+    }
+
+    const sEst = minIdx * S.step;
+    sample(segIdx, sEst, tmp);
+    const rx = Math.cos(tmp.yaw), rz = -Math.sin(tmp.yaw);
+    const fx = -Math.sin(tmp.yaw), fz = -Math.cos(tmp.yaw);
+    const dx = wx - tmp.x, dz = wz - tmp.z;
+    const lat = dx * rx + dz * rz;
+    const forwardOffset = dx * fx + dz * fz;
+    const sFinal = Math.max(0, Math.min(S.len, sEst + forwardOffset));
+
+    sample(segIdx, sFinal, tmp);
+    const rxF = Math.cos(tmp.yaw), rzF = -Math.sin(tmp.yaw);
+    const dFinal2 = (wx - tmp.x) ** 2 + (wz - tmp.z) ** 2;
+    if (dFinal2 < bestD2) {
+      bestD2 = dFinal2;
+      bestSeg = segIdx;
+      bestS = sFinal;
+      bestLat = (wx - tmp.x) * rxF + (wz - tmp.z) * rzF;
+      bestYaw = tmp.yaw;
+    }
+  }
+
+  out.seg = bestSeg;
+  out.s = bestS;
+  out.lat = bestLat;
+  out.yaw = bestYaw;
+  return out;
+}
+
 /** The main-road spot for a journey progress value. Writes { seg, s } into out. */
 export function fromProgress(p, out) {
   for (const i of MAIN) {

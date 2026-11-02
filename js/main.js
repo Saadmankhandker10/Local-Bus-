@@ -510,7 +510,10 @@ if (typeof document !== "undefined" && document.fonts && document.fonts.ready) {
   loader.setStage(5);
 }
 const devUrlParams = typeof window !== "undefined" && window.location ? new URLSearchParams(window.location.search) : null;
-if (devUrlParams && (devUrlParams.get("start") || devUrlParams.get("autostart"))) {
+if (devUrlParams && (devUrlParams.get("start") || devUrlParams.get("autostart") || devUrlParams.get("dev") === "freeroam" || devUrlParams.get("freeroam"))) {
+  if (devUrlParams.get("dev") === "freeroam" || devUrlParams.get("freeroam") === "1") {
+    game.freeRoam = true;
+  }
   setTimeout(() => startFresh(), 150);
 }
 const isLocalhost = Boolean(

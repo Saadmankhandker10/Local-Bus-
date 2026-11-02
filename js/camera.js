@@ -41,19 +41,36 @@ export function updateCamera(dt) {
   const boosting = game.running && game.boostT > 0;
   boostFx += ((boosting ? 1 : 0) - boostFx) * ease(C.boostFxSmoothing, dt);
 
-  // Lagging behind sideways moves makes the heavy bus visibly swing in the frame.
-  camLat += (game.lat * C.followX - camLat) * ease(C.followSmoothing, dt);
+  const isFreeRoam = game.freeRoam && CFG.freeRoam?.enabled !== false;
+  let ax, az, targetYaw;
   sample(here.seg, here.s, p);
-  const targetYaw = p.yaw - game.yaw * C.followYaw;
+
+  if (isFreeRoam) {
+    ax = bus.position.x;
+    az = bus.position.z;
+    const heading = game.heading !== undefined ? game.heading : -bus.rotation.y;
+    targetYaw = -heading;
+  } else {
+    // Lagging behind sideways moves makes the heavy bus visibly swing in the frame.
+    camLat += (game.lat * C.followX - camLat) * ease(C.followSmoothing, dt);
+    targetYaw = p.yaw - game.yaw * C.followYaw;
+    ax = p.x + Math.cos(p.yaw) * camLat;
+    az = p.z - Math.sin(p.yaw) * camLat;
+  }
+
   if (camYaw === null) camYaw = targetYaw;
+  // Seamless 360-degree angle unwrapping for U-turns and 3-point turns
+  while (targetYaw - camYaw > Math.PI) camYaw += 2 * Math.PI;
+  while (targetYaw - camYaw < -Math.PI) camYaw -= 2 * Math.PI;
   camYaw += (targetYaw - camYaw) * ease(C.yawSmoothing, dt);
 
-  // Anchor on the road at the bus, then step back and up along the camera's direction.
-  const ax = p.x + Math.cos(p.yaw) * camLat, az = p.z - Math.sin(p.yaw) * camLat;
   const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw); // forward on the ground
   // Pull camera back slightly in portrait mode (aspect < 1) so mobile players see the full 3-lane road
   const portraitBack = cam.aspect < 1.0 ? Math.min(3.2, (1.0 - cam.aspect) * 4.5) : 0;
-  const back = C.distance + portraitBack + boostFx * C.boostPullBack;
+  const isReversing = game.gear === "R" || (game.signedSpeed !== undefined && game.signedSpeed < -0.15);
+  const revBack = isReversing ? 2.5 : 0;
+  const revHeight = isReversing ? 0.8 : 0;
+  const back = C.distance + portraitBack + revBack + boostFx * C.boostPullBack;
   const trauma = game.shake;
   const shake = Math.min(1.2, trauma * trauma * 1.1) * C.shakeScale;
   let cx = ax - fx * back, cz = az - fz * back;
@@ -122,8 +139,8 @@ export function updateCamera(dt) {
     return 0;
   }
 
-  cam.position.set(cx + rnd(-1, 1) * shake, p.y + C.height + (game.busY || 0) * 0.45 + rnd(-1, 1) * shake, cz);
-  cam.lookAt(ax + fx * C.lookAhead, p.y + C.lookY + (game.busY || 0) * 0.65, az + fz * C.lookAhead);
+  cam.position.set(cx + rnd(-1, 1) * shake, p.y + C.height + revHeight + (game.busY || 0) * 0.45 + rnd(-1, 1) * shake, cz);
+  cam.lookAt(ax + fx * (isReversing ? -C.lookAhead * 0.4 : C.lookAhead), p.y + C.lookY + (game.busY || 0) * 0.65, az + fz * (isReversing ? -C.lookAhead * 0.4 : C.lookAhead));
   followGround(cam.position.x, cam.position.z);
 
   // Expand vertical FOV in portrait mode to keep the horizontal field of view wide on phones

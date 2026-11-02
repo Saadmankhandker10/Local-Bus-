@@ -40,11 +40,14 @@ export function say(who, text, seconds = S.subtitleSeconds, onBus = false) {
   if (!text) return;
   const mode = $("setSubtitles")?.value || (typeof localStorage !== "undefined" ? localStorage.getItem("lb_subtitles") : null) || "bottom";
   if (mode === "off") {
-    $("subtitle").hidden = true;
-    $("bubble").hidden = true;
+    if ($("subtitle")) $("subtitle").hidden = true;
+    if ($("bubble")) $("bubble").hidden = true;
     return;
   }
-  $("subtitle").textContent = `${who}: ${text}`;
+  if ($("subtitle")) {
+    $("subtitle").textContent = `${who}: ${text}`;
+    $("subtitle").hidden = false;
+  }
 
   // Harmonized voice soundbite playback with bus megaphone DSP filter & ducking
   if (text.includes("মাছুদ") || text.includes("ভালো হবা")) playMasud();
@@ -67,14 +70,16 @@ export function say(who, text, seconds = S.subtitleSeconds, onBus = false) {
   else if (text.includes("ডিরেক্ট")) playDirectGari();
   else if (text.includes("চা গরম")) playChaiGorom();
 
-  $("subtitle").hidden = false;
+  if ($("subtitle")) $("subtitle").hidden = false;
   subT = mode === "compact" ? Math.min(1.4, seconds * 0.65) : Math.min(1.9, seconds);
-  if (onBus && mode === "bubble") {
-    $("bubble").textContent = text;
-    $("bubble").hidden = false;
-    bubbleT = subT;
-  } else {
-    $("bubble").hidden = true;
+  if ($("bubble")) {
+    if (onBus && mode === "bubble") {
+      $("bubble").textContent = text;
+      $("bubble").hidden = false;
+      bubbleT = subT;
+    } else {
+      $("bubble").hidden = true;
+    }
   }
 }
 

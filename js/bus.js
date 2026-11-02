@@ -6,9 +6,10 @@ import { scene, box, plate } from "./world.js";
 import { input } from "./input.js";
 import { game } from "./state.js";
 import { emit } from "./events.js";
-import { SEGS, here, sample, place, fromProgress, progressOf } from "./map.js";
+import { SEGS, here, sample, place, fromProgress, progressOf, projectToRoad } from "./map.js";
 import { SLOGANS, COMPANIES, PLATES } from "./data/slogans.bn.js";
-import { playKhelaHobe } from "./audio.js";
+import { playKhelaHobe, playReverseBeep } from "./audio.js";
+import { say } from "./speech.js";
 import {
   boostFlameMat,
   boostCoreMat,
@@ -77,6 +78,8 @@ export function triggerHelperSlap() {
 const CRASHED = Object.freeze({ throttle: 0, brake: 1, steer: 0, boost: false });
 // One shared tail-light material, so both lights glow together when braking.
 const tailMat = new THREE.MeshLambertMaterial({ color: 0xff1111, emissive: 0xff0000, emissiveIntensity: 0.3 });
+// Shared reverse lights material: shines brilliant white when in reverse gear
+const revLightMat = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.0 });
 
 /** Procedural spiderweb crack texture drawn once and shared across window crack planes. */
 function makeCrackMat() {
@@ -141,6 +144,9 @@ function buildBus() {
 
     const tail = new THREE.Mesh(new THREE.BoxGeometry(.3, .25, .1), tailMat);
     tail.position.set(s * 1.0, 1.0, 3.52); body.add(tail);
+
+    const revLight = new THREE.Mesh(new THREE.BoxGeometry(.22, .22, .1), revLightMat);
+    revLight.position.set(s * 0.72, 1.0, 3.52); body.add(revLight);
 
     for (const z of [-2.3, 2.3]) {
       const w = new THREE.Group();               // spins around the axle (x axis)
@@ -235,7 +241,9 @@ buildBus();
 scene.add(bus);
 
 const pos = { x: 0, y: 0, z: 0, yaw: 0, k: 0 }; // reused road sample
+const projOut = { seg: 0, s: 0, lat: 0, yaw: 0 }; // reused road projection
 let lastMorKey = "";
+let revBeepTimer = 0;
 
 /** Put the bus on the main road at a journey progress value, facing along the road. */
 export function resetBus(progress = 0) {
@@ -249,6 +257,16 @@ export function resetBus(progress = 0) {
   game.wrongWay = false;
   lastMorKey = "";
   if (SEGS[here.seg]?.mor) game.morName = SEGS[here.seg].mor;
+  sample(here.seg, here.s, pos);
+  const rx = Math.cos(pos.yaw), rz = -Math.sin(pos.yaw);
+  game.wx = pos.x + rx * game.lat;
+  game.wz = pos.z - rz * game.lat;
+  game.heading = -pos.yaw; // world heading aligned with road direction
+  game.steerAngle = 0;
+  game.signedSpeed = CFG.bus.startSpeed;
+  game.prevV = CFG.bus.startSpeed;
+  game.gear = "D";
+
   body.rotation.set(0, 0, 0);
   body.position.set(0, 0, 0);
   if (companyBoard) { companyBoard.position.set(0, 2.96, 3.35); companyBoard.rotation.set(0, 0, 0); }
@@ -261,7 +279,12 @@ export function resetBus(progress = 0) {
 
 /** Move the 3D bus to its spot on the road (including airborne height game.busY). */
 function placeBus() {
-  place(bus, here.seg, here.s, game.lat, game.busY || 0, -game.yaw);
+  if (game.freeRoam && CFG.freeRoam?.enabled) {
+    bus.position.set(game.wx !== undefined ? game.wx : 0, game.busY || 0, game.wz !== undefined ? game.wz : 0);
+    bus.rotation.y = -(game.heading || 0);
+  } else {
+    place(bus, here.seg, here.s, game.lat, game.busY || 0, -game.yaw);
+  }
 }
 
 /**
@@ -315,90 +338,188 @@ export const updateAutopilot = updateMenuBackdrop;
  */
 export function updateBus(dt) {
   const F = CFG.fuel;
+  const FR = CFG.freeRoam || {};
+  const isFreeRoam = game.freeRoam && FR.enabled !== false;
   // After a heavy crash (or when surrounded) the driver has lost control: no steering, full brake.
   const ctl = game.crashing || game.caught ? CRASHED : input;
   const hasFuel = game.fuel > 0;
 
   // Boost: holding the key keeps the timer full; after release it runs out by itself.
-  if (ctl.boost && hasFuel) { if (game.boostT <= 0 && Math.random() < 0.3) playKhelaHobe(); game.boostT = B.boostHold; }
-  else game.boostT = Math.max(0, game.boostT - dt);
-  const boosting = game.boostT > 0 && hasFuel;
+  if (ctl.boost && hasFuel && game.gear !== "R") {
+    if (game.boostT <= 0 && Math.random() < 0.3) playKhelaHobe();
+    game.boostT = B.boostHold;
+  } else {
+    game.boostT = Math.max(0, game.boostT - dt);
+  }
+  const boosting = game.boostT > 0 && hasFuel && game.gear !== "R";
 
   // While boosting the bus drives itself, so the player only needs to steer.
   const throttle = boosting ? 1 : ctl.throttle;
   const top = boosting ? B.boostSpeed : B.maxSpeed;
-  const v = game.speed;
-  // Engine pull fades out near top speed, like a real heavy vehicle.
-  const pull = hasFuel ? (B.accel + (boosting ? B.boostAccel : 0)) * throttle * Math.max(0, 1 - (v / top) ** 3) : 0;
-  const drag = (hasFuel ? B.rollDrag : B.emptyTankDrag) + B.airDrag * v * v;
-  let speed = Math.max(0, v + (pull - B.brake * ctl.brake - drag) * dt);
-  // After a boost ends, ease back down to normal top speed instead of snapping.
-  if (!boosting && speed > B.maxSpeed) speed = Math.max(B.maxSpeed, speed - B.overSpeedDecel * dt);
-  game.accel = (speed - v) / dt;
-  game.speed = speed;
+  let ds = 0;
 
-  // Turning: the bus has a heading (game.yaw, measured from the road's direction).
-  // Steering turns it, faster at speed but with a wider turning circle, like a heavy bus.
-  // When the road bends, the road turns under the bus, so you must steer into the bend.
-  sample(here.seg, here.s, pos);
-  const radius = B.turnRadiusMin + speed * B.turnRadiusPerSpeed;
-  const turnRate = ctl.steer * speed / radius;
-  game.yaw += (turnRate - pos.k * speed * Math.cos(game.yaw)) * dt;
-  // Arcade help: with no steering the bus slowly lines up with the road again.
-  if (Math.abs(ctl.steer) < .1) game.yaw = approach(game.yaw, 0, B.alignRate, dt);
-  game.yaw = clamp(game.yaw, -B.maxRelYaw, B.maxRelYaw);
+  if (isFreeRoam) {
+    // ---- Arcade Free-Roam Vehicle Dynamics ----
+    const topRev = -B.maxSpeed * (FR.reverseSpeedRatio || 0.25);
+    let v = game.signedSpeed !== undefined ? game.signedSpeed : game.speed;
 
-  const S = SEGS[here.seg];
-  game.vx = speed * Math.sin(game.yaw);
-  let x = game.lat + game.vx * dt;
-  // Road edge: past the edge the kerb pushes the nose back and scrapes off some speed.
-  const edge = S.half - B.edgeInset, hard = S.half - B.edgeHardInset;
-  const over = Math.abs(x) - edge;
-  if (over > 0) {
-    game.yaw -= Math.sign(x) * B.edgeYawPush * over * dt;
-    game.speed = Math.max(0, game.speed - B.edgeScrapeDrag * dt);
-    game.shake = Math.max(game.shake, B.edgeShake);
-    if (speed > 8 && Math.random() < 0.45) {
-      spawnScrapeSparks(bus.position.x + Math.sign(x) * 1.3, 0.35, bus.position.z, 6, Math.sign(x), 0);
+    if (v > 0.15) {
+      game.gear = "D";
+      const pull = hasFuel ? (B.accel + (boosting ? B.boostAccel : 0)) * throttle * Math.max(0, 1 - (v / top) ** 3) : 0;
+      const drag = (hasFuel ? B.rollDrag : B.emptyTankDrag) + B.airDrag * v * v;
+      v = v + (pull - B.brake * ctl.brake - drag) * dt;
+      if (v < 0) v = 0;
+      if (!boosting && v > B.maxSpeed) v = Math.max(B.maxSpeed, v - B.overSpeedDecel * dt);
+    } else if (v < -0.15) {
+      game.gear = "R";
+      const revPull = hasFuel ? (FR.reverseAccel || 9.0) * ctl.brake * Math.max(0, 1 - (v / topRev) ** 2) : 0;
+      const fwdBrake = (FR.reverseBrake || 32) * throttle;
+      // In reverse, natural engine braking brings vehicle smoothly to rest when pedals are released
+      const coastDrag = (ctl.brake === 0 && throttle === 0) ? 6.5 : B.rollDrag;
+      const drag = (hasFuel ? coastDrag : B.emptyTankDrag) + B.airDrag * v * v;
+      v = v + (-revPull + fwdBrake + drag) * dt;
+      if (v > 0) v = 0;
+      if (v < topRev) v = Math.min(topRev, v + 12 * dt);
+    } else {
+      // Stopped / Transition zone (|v| <= 0.15): holding brake activates Reverse gear
+      if (ctl.brake > 0.1 && hasFuel) {
+        if (game.gear !== "R") {
+          game.gear = "R";
+          say("হেল্পার", "পিছনে ওস্তাদ, পিছনে! ডানে কাটেন!", 1.8, true);
+          playReverseBeep();
+        }
+        v -= (FR.reverseAccel || 9.0) * ctl.brake * dt * 0.8;
+      } else if (throttle > 0.1 && hasFuel) {
+        game.gear = "D";
+        v += (B.accel + (boosting ? B.boostAccel : 0)) * throttle * dt * 0.8;
+      } else {
+        v = 0;
+      }
     }
-  }
-  if (Math.abs(x) > hard) {
-    x = Math.sign(x) * hard;
-    if (Math.sign(game.yaw) === Math.sign(x)) game.yaw *= .5;
-  }
-  game.lat = x;
 
-  // Move along the road; at the end of a piece, continue on the next one (or the branch we chose).
-  const prevS = here.s;
-  const ds = game.speed * Math.cos(game.yaw) * dt;
-  here.s += ds;
-
-  // Check if we crossed a named Dhaka crossroad (মোড়) along the current segment.
-  for (const [ji, j] of (S.junctions || []).entries()) {
-    const js = j.at * S.len;
-    const key = `${here.seg}:${ji}`;
-    if (j.name && prevS < js && here.s >= js && lastMorKey !== key) {
-      lastMorKey = key;
-      game.morName = j.name;
-      emit("morPass", { name: j.name });
+    // Dhaka bus reverse safety beeper loop
+    if (game.gear === "R" || v < -0.15) {
+      revBeepTimer -= dt;
+      if (revBeepTimer <= 0) {
+        revBeepTimer = FR.reverseBeeperInterval || 0.58;
+        playReverseBeep(bus.position);
+      }
+    } else {
+      revBeepTimer = 0;
     }
-  }
 
-  while (here.s > SEGS[here.seg].len && SEGS[here.seg].next.length) {
-    here.s -= SEGS[here.seg].len;
-    here.prev = here.seg;
-    here.seg = chooseNext(SEGS[here.seg].next);
-    const nextSeg = SEGS[here.seg];
-    if (nextSeg.mor) {
-      game.morName = nextSeg.mor;
-      emit("morPass", { name: nextSeg.mor, turned: nextSeg.side !== 0 });
+    game.signedSpeed = v;
+    game.speed = Math.abs(v);
+    game.accel = (v - (game.prevV ?? v)) / dt;
+    game.prevV = v;
+
+    // Steering with speed decay for high-speed stability
+    const maxSteer = (FR.maxSteerAngle || 0.65) / (1 + Math.abs(v) * (FR.steerSpeedDecay || 0.038));
+    const targetSteer = ctl.steer * maxSteer;
+    const steerRate = Math.abs(ctl.steer) > 0.05 ? (FR.steerSpeed || 4.5) : (FR.steerReturn || 5.2);
+    game.steerAngle = approach(game.steerAngle || 0, targetSteer, steerRate, dt);
+
+    // Kinematic bicycle turning
+    const L = FR.wheelbase || 4.8;
+    const yawRate = (v / L) * Math.tan(game.steerAngle);
+    game.heading = (game.heading || 0) + yawRate * dt;
+
+    // Position integration in world space
+    const dx = v * Math.sin(game.heading) * dt;
+    const dz = -v * Math.cos(game.heading) * dt;
+    game.wx = (game.wx !== undefined ? game.wx : bus.position.x) + dx;
+    game.wz = (game.wz !== undefined ? game.wz : bus.position.z) + dz;
+
+    // Project world coordinates onto road network
+    projectToRoad(game.wx, game.wz, here.seg, projOut);
+    here.seg = projOut.seg;
+    here.s = projOut.s;
+    game.lat = projOut.lat;
+    game.yaw = clamp(game.heading + projOut.yaw, -Math.PI, Math.PI);
+    game.vx = v * Math.sin(game.yaw);
+    game.prog = progressOf(here.seg, here.s);
+    ds = Math.abs(v) * dt;
+    game.dist += ds;
+
+    // Wrong-way detection on two-way boulevards
+    game.wrongWay = SEGS[here.seg].half >= 6 && game.lat > 0.75;
+
+    // Check if we crossed a named Dhaka crossroad (মোড়)
+    const S = SEGS[here.seg];
+    for (const [ji, j] of (S.junctions || []).entries()) {
+      const js = j.at * S.len;
+      const key = `${here.seg}:${ji}`;
+      if (j.name && Math.abs(here.s - js) < 8 && lastMorKey !== key) {
+        lastMorKey = key;
+        game.morName = j.name;
+        emit("morPass", { name: j.name });
+      }
     }
-  }
-  here.s = Math.min(here.s, SEGS[here.seg].len);
-  game.prog = progressOf(here.seg, here.s);
+  } else {
+    // ---- Standard 1.5D Curvilinear Route Navigation ----
+    const v = game.speed;
+    const pull = hasFuel ? (B.accel + (boosting ? B.boostAccel : 0)) * throttle * Math.max(0, 1 - (v / top) ** 3) : 0;
+    const drag = (hasFuel ? B.rollDrag : B.emptyTankDrag) + B.airDrag * v * v;
+    let speed = Math.max(0, v + (pull - B.brake * ctl.brake - drag) * dt);
+    if (!boosting && speed > B.maxSpeed) speed = Math.max(B.maxSpeed, speed - B.overSpeedDecel * dt);
+    game.accel = (speed - v) / dt;
+    game.speed = speed;
+    game.signedSpeed = speed;
 
-  // Wrong-way detection: driving on the right side of the median island (oncoming traffic lanes).
-  game.wrongWay = SEGS[here.seg].half >= 6 && game.lat > 0.75;
+    sample(here.seg, here.s, pos);
+    const radius = B.turnRadiusMin + speed * B.turnRadiusPerSpeed;
+    const turnRate = ctl.steer * speed / radius;
+    game.yaw += (turnRate - pos.k * speed * Math.cos(game.yaw)) * dt;
+    if (Math.abs(ctl.steer) < .1) game.yaw = approach(game.yaw, 0, B.alignRate, dt);
+    game.yaw = clamp(game.yaw, -B.maxRelYaw, B.maxRelYaw);
+
+    const S = SEGS[here.seg];
+    game.vx = speed * Math.sin(game.yaw);
+    let x = game.lat + game.vx * dt;
+    const edge = S.half - B.edgeInset, hard = S.half - B.edgeHardInset;
+    const over = Math.abs(x) - edge;
+    if (over > 0) {
+      game.yaw -= Math.sign(x) * B.edgeYawPush * over * dt;
+      game.speed = Math.max(0, game.speed - B.edgeScrapeDrag * dt);
+      game.shake = Math.max(game.shake, B.edgeShake);
+      if (speed > 8 && Math.random() < 0.45) {
+        spawnScrapeSparks(bus.position.x + Math.sign(x) * 1.3, 0.35, bus.position.z, 6, Math.sign(x), 0);
+      }
+    }
+    if (Math.abs(x) > hard) {
+      x = Math.sign(x) * hard;
+      if (Math.sign(game.yaw) === Math.sign(x)) game.yaw *= .5;
+    }
+    game.lat = x;
+
+    const prevS = here.s;
+    ds = game.speed * Math.cos(game.yaw) * dt;
+    here.s += ds;
+
+    for (const [ji, j] of (S.junctions || []).entries()) {
+      const js = j.at * S.len;
+      const key = `${here.seg}:${ji}`;
+      if (j.name && prevS < js && here.s >= js && lastMorKey !== key) {
+        lastMorKey = key;
+        game.morName = j.name;
+        emit("morPass", { name: j.name });
+      }
+    }
+
+    while (here.s > SEGS[here.seg].len && SEGS[here.seg].next.length) {
+      here.s -= SEGS[here.seg].len;
+      here.prev = here.seg;
+      here.seg = chooseNext(SEGS[here.seg].next);
+      const nextSeg = SEGS[here.seg];
+      if (nextSeg.mor) {
+        game.morName = nextSeg.mor;
+        emit("morPass", { name: nextSeg.mor, turned: nextSeg.side !== 0 });
+      }
+    }
+    here.s = Math.min(here.s, SEGS[here.seg].len);
+    game.prog = progressOf(here.seg, here.s);
+    game.wrongWay = SEGS[here.seg].half >= 6 && game.lat > 0.75;
+  }
 
   // Airborne ramp jump / WASA trench vertical physics.
   if (game.busY > 0 || game.busVy !== 0) {
@@ -447,12 +568,18 @@ export function updateBusVisual(dt) {
     }
   }
 
+  const rollSpeed = game.signedSpeed !== undefined ? game.signedSpeed : game.speed;
+  const steerAng = game.steerAngle !== undefined ? game.steerAngle : game.yaw;
+
   if (playerBusInstance) {
-    playerBusInstance.roll(game.speed, dt);
-    playerBusInstance.steer(game.yaw);
+    playerBusInstance.roll(rollSpeed, dt);
+    playerBusInstance.steer(steerAng);
   } else {
-    const spin = game.speed * dt / B.wheelRadius; // rolling without slipping: angle = distance / radius
+    const spin = rollSpeed * dt / B.wheelRadius; // rolling without slipping: angle = distance / radius
     for (const w of wheels) w.rotation.x -= spin;
+    // Steer front procedural wheels
+    if (wheels[2]) wheels[2].rotation.y = steerAng;
+    if (wheels[3]) wheels[3].rotation.y = steerAng;
   }
 
   // Swinging rear tassels react to sideways steering and road vibration.
@@ -537,6 +664,9 @@ export function updateBusVisual(dt) {
   }
 
   tailMat.emissiveIntensity = input.brake > 0 && game.running ? B.brakeLightGlow : 0.3;
+  if (revLightMat) {
+    revLightMat.emissiveIntensity = (game.gear === "R" || (game.signedSpeed !== undefined && game.signedSpeed < -0.15)) ? 2.8 : 0.0;
+  }
 
   // Reveal staged window cracks as Bus HP drops.
   const thresholds = [75, 45, 20];
