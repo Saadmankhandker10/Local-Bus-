@@ -285,30 +285,29 @@ export function chooseNext(list) {
   return list[0];
 }
 
-/** Autopilot demo mode while the title screen is shown behind the menu. */
-export function updateAutopilot(dt) {
-  game.speed = 16;
+let menuSlapLoopTimer = 6.0;
+
+/** Menu backdrop mode: player's bus idling at the stand with diesel rumble & 6s helper door slaps. */
+export function updateMenuBackdrop(dt) {
+  game.speed = 0;
   game.boostT = 0;
   game.accel = 0;
-  const targetLat = -4.6 + Math.sin(game.time * 0.55) * 1.8;
-  game.vx = (targetLat - game.lat) * 2.2;
-  game.lat += game.vx * dt;
-  game.yaw = clamp(game.vx * 0.04, -0.25, 0.25);
-  const ds = game.speed * dt;
-  here.s += ds;
-  while (here.s > SEGS[here.seg].len) {
-    if (!SEGS[here.seg].next.length) {
-      fromProgress(0, here);
-      break;
-    }
-    here.s -= SEGS[here.seg].len;
-    here.prev = here.seg;
-    here.seg = SEGS[here.seg].next[0];
-  }
-  game.prog = progressOf(here.seg, here.s);
-  game.dist += ds;
+  game.vx = 0;
+  game.yaw = 0;
+  // Positioned along the curb (left side of road in Bangladesh)
+  game.lat = -3.8;
   placeBus();
+
+  // 6-second helper door-slap loop
+  menuSlapLoopTimer -= dt;
+  if (menuSlapLoopTimer <= 0) {
+    menuSlapLoopTimer = 6.0;
+    triggerHelperSlap();
+  }
 }
+
+/** Autopilot demo backward-compatibility alias. */
+export const updateAutopilot = updateMenuBackdrop;
 
 /**
  * One physics step for the bus: boost, speed, steering, road edge, fuel, moving along the road.
@@ -440,7 +439,12 @@ export function updateBusVisual(dt) {
     const targetPitch = clamp(game.accel * B.pitchPerAccel, -B.maxPitch, B.maxPitch) + airPitch;
     body.rotation.z = approach(body.rotation.z, game.vx * B.rollPerSideSpeed, k, dt);
     body.rotation.x = approach(body.rotation.x, targetPitch, k, dt);
-    body.position.y = game.running && game.busY === 0 ? Math.sin(game.dist * 1.9) * .025 : 0;
+    if (!game.running) {
+      body.position.y = Math.sin(game.time * 24) * 0.007;
+      body.rotation.x += Math.sin(game.time * 18) * 0.002;
+    } else {
+      body.position.y = game.busY === 0 ? Math.sin(game.dist * 1.9) * .025 : 0;
+    }
   }
 
   if (playerBusInstance) {
@@ -452,14 +456,14 @@ export function updateBusVisual(dt) {
   }
 
   // Swinging rear tassels react to sideways steering and road vibration.
-  const sway = clamp(-game.vx * .045, -.45, .45) + Math.sin(game.time * 7) * .06;
+  const sway = clamp(-game.vx * .045, -.45, .45) + Math.sin(game.time * (!game.running ? 3.5 : 7)) * .06;
   for (const t of tassels) {
     t.rotation.z = sway;
     t.rotation.x = .08 + Math.min(.35, game.speed * .006);
   }
 
-  // Front door opens at bus stops or while slow near the stand, and the helper slaps the side panel.
-  const doorOpen = (game.onMark === "stop" || (game.running && game.speed < CFG.stops.boardMaxSpeed && game.dist < 18)) ? 1.15 : 0.15;
+  // Front door opens at bus stops, while slow near the stand, or while idling in title menu.
+  const doorOpen = (!game.running || game.onMark === "stop" || (game.running && game.speed < CFG.stops.boardMaxSpeed && game.dist < 18)) ? 1.15 : 0.15;
   if (doorPivot) doorPivot.rotation.y = approach(doorPivot.rotation.y, doorOpen, 8, dt);
   if (helperGroup) {
     helperGroup.position.y = 0.52 + Math.abs(Math.sin(game.time * 5)) * .03;
@@ -473,10 +477,11 @@ export function updateBusVisual(dt) {
     }
   }
 
-  // Exhaust smoke puffs from the rear right tailpipe (faster when boosting or accelerating).
-  if (game.running && dt > 0) {
-    const boosting = game.boostT > 0;
-    const interval = boosting ? 0.045 : game.accel > 1 ? 0.09 : 0.18;
+  // Exhaust smoke puffs from the rear right tailpipe (faster when boosting, soft diesel puffs when idling in menu).
+  if (dt > 0) {
+    const boosting = game.running && game.boostT > 0;
+    const isIdling = !game.running || game.speed < 1;
+    const interval = boosting ? 0.045 : game.accel > 1 ? 0.09 : isIdling ? 0.24 : 0.18;
     smokeTimer -= dt;
     if (smokeTimer <= 0) {
       smokeTimer = interval;
@@ -484,11 +489,11 @@ export function updateBusVisual(dt) {
       if (p) {
         bus.updateMatrixWorld();
         tailWorld.set(0.95, 0.48, 3.65).applyMatrix4(bus.matrixWorld);
-        p.active = true; p.t = 0; p.maxT = boosting ? 0.55 : 0.42;
-        p.x = tailWorld.x + rnd(-.1, .1); p.y = tailWorld.y; p.z = tailWorld.z + rnd(-.1, .1);
-        p.vy = boosting ? 2.1 : 1.3;
+        p.active = true; p.t = 0; p.maxT = boosting ? 0.55 : isIdling ? 0.65 : 0.42;
+        p.x = tailWorld.x + rnd(-.08, .08); p.y = tailWorld.y; p.z = tailWorld.z + rnd(-.08, .08);
+        p.vy = boosting ? 2.1 : isIdling ? 0.75 : 1.3;
         p.m.position.set(p.x, p.y, p.z);
-        p.m.scale.setScalar(boosting ? 1.2 : 0.75);
+        p.m.scale.setScalar(boosting ? 1.2 : isIdling ? 0.55 : 0.75);
         p.m.visible = true;
       }
 

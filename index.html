@@ -14,16 +14,18 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/icon.svg">
-<link rel="stylesheet" href="https://fonts.maateen.me/kalpurush/font.css">
-<link rel="stylesheet" href="css/tokens.css">
-<link rel="stylesheet" href="css/style.css?v=3.8">
+<link rel="preload" href="fonts/atma-700-bengali.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/notosansbengali-bengali.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/tokens.css?v=4.0">
+<link rel="stylesheet" href="css/style.css?v=4.0">
+<link rel="stylesheet" href="css/menu.css?v=4.0">
 <script>
   if (location.protocol === "file:") {
     window.__isFileProtocol = true;
   }
   // Auto-purge any stale service workers or caches during local updates
   (function() {
-    var v = "3.8";
+    var v = "4.0";
     var isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
     if (isLocal || localStorage.getItem("lb_sw_v") !== v) {
       localStorage.setItem("lb_sw_v", v);
@@ -99,104 +101,167 @@
 <div id="msg"></div>
 <div id="dmgPop"></div>
 <div id="warn" hidden>⚠ সামনে বিপদ!</div>
+<!-- Branded Loading Screen (Phase 1) -->
+<div id="loadScreen" role="dialog" aria-modal="true" aria-label="গেম লোড হচ্ছে">
+  <div class="load-board">
+    <div class="load-plate">ঢাকা মেট্রো-ব ১১-৪২০৭ · রুট নং ৭</div>
+    <h1 class="load-title">লোকাল বাস — ঢাকা রুট</h1>
+    <div class="load-sub">ইঞ্জিন স্টার্ট হচ্ছে…</div>
+    
+    <div class="load-route-wrap">
+      <div class="load-track-line">
+        <div id="loadBusMarker" class="load-bus-marker">🚌</div>
+      </div>
+      <div class="load-stops-row">
+        <div class="load-stop-item lit" id="loadDot0"><div class="dot"></div><span>মোহাম্মদপুর</span></div>
+        <div class="load-stop-item" id="loadDot1"><div class="dot"></div><span>ধানমন্ডি</span></div>
+        <div class="load-stop-item" id="loadDot2"><div class="dot"></div><span>সায়েন্সল্যাব</span></div>
+        <div class="load-stop-item" id="loadDot3"><div class="dot"></div><span>শাহবাগ</span></div>
+        <div class="load-stop-item" id="loadDot4"><div class="dot"></div><span>ঢাবি</span></div>
+      </div>
+    </div>
+
+    <div class="load-helper-box">
+      <div id="loadHelperQuote" class="load-helper-quote" aria-live="polite">ওস্তাদ ইঞ্জিন গরম করছে…</div>
+    </div>
+
+    <div id="loadErrorBox" class="load-error-box" hidden>
+      <div id="loadErrorText"></div>
+      <button type="button" class="load-retry-btn" onclick="location.reload()">🔄 আবার চেষ্টা করুন</button>
+    </div>
+  </div>
+</div>
+
 <div id="subtitle" hidden></div>
 <div id="stagecard" hidden><div id="cardTitle"></div><div id="cardBody"></div></div>
 <div id="screen">
-  <div id="titleblock">
-    <div class="tinboard">
-      <div class="tinplate">ঢাকা মেট্রো-ব ১১-৪২০৭ · রুট নং ৭</div>
-      <h1 id="title" data-i18n="title">লোকাল বাস — ঢাকা রুট</h1>
-      <div id="route">মোহাম্মদপুর → ধানমন্ডি → সায়েন্সল্যাব → শাহবাগ → ঢাকা বিশ্ববিদ্যালয়</div>
-    </div>
-    <div class="start-meta">
-      <button type="button" id="startPlaceBtn" class="start-spot-pill" title="শুরুর এলাকা বদলাতে ক্লিক করুন">📍 মোহাম্মদপুর বাসস্ট্যান্ড ▾</button>
-      <div class="driver-card">
-        <span class="driver-badge">🏆 ওস্তাদ:</span>
-        <strong id="driverNameDisplay">কালা ওস্তাদ</strong>
-        <button type="button" id="editDriverBtn" class="sm-btn" title="নাম পরিবর্তন">✏</button>
+  <div class="menu-shell">
+    <!-- Top Block: Route Board & Primary Actions -->
+    <div id="titleblock" class="menu-header">
+      <div class="route-board-panel">
+        <div class="board-plate-row">
+          <span>ঢাকা মেট্রো-ব ১১-৪২০৭</span> · <span>রুট নং ৭</span>
+        </div>
+        <h1 id="title" class="board-main-title">লোকাল বাস — ঢাকা রুট</h1>
+        <div id="route" class="board-route-line">মোহাম্মদপুর ➔ ধানমন্ডি ➔ সায়েন্সল্যাব ➔ শাহবাগ ➔ ঢাকা বিশ্ববিদ্যালয়</div>
       </div>
-      <div id="bestBanner" hidden></div>
+
+      <!-- Action Row: Start Ticket + Stop Dropdown + Utility Buttons -->
+      <div class="menu-action-row">
+        <button id="go" class="ticket-start-btn" data-i18n="goStart">
+          <span class="ticket-icon">🎟</span> <span class="ticket-label">টিকিট কাটুন</span>
+        </button>
+
+        <div class="action-sub-row">
+          <div class="stop-select-wrap">
+            <select id="startPlaceSelect" class="stop-select" aria-label="শুরুর বাসস্ট্যান্ড নির্বাচন করুন">
+              <option value="0" selected>📍 মোহাম্মদপুর বাসস্ট্যান্ড (ভোর ৬:০০ · রুট শুরু)</option>
+              <option value="asadgate">📍 আসাদ গেট মোড় (সকাল ৭:০০ · ছাত্রদের মিছিল)</option>
+              <option value="1">📍 ধানমন্ডি ২৭ — রাপা প্লাজা (সকাল ৮:০০)</option>
+              <option value="2">📍 সায়েন্সল্যাব ক্রসিং (সকাল ৮:৩০ · বাটা মোড়)</option>
+              <option value="3">📍 শাহবাগ মোড় (সকাল ৯:০০ · পাবলিক লাইব্রেরি)</option>
+              <option value="-1">📍 অটো রোটেশন (প্রতিবার নতুন এলাকা)</option>
+            </select>
+          </div>
+
+          <button id="installBtn" class="install-icon-btn" hidden type="button" aria-label="অ্যাপ ইনস্টল করুন" title="অ্যাপ ইনস্টল">📲</button>
+          <button id="title4dMapBtn" class="install-icon-btn" type="button" aria-label="পুরো ঢাকা ম্যাপ" title="পুরো ঢাকা ম্যাপ">🗺</button>
+        </div>
+      </div>
+
+      <!-- Best score & challenge banner -->
+      <div id="bestBanner" class="best-score-badge" hidden></div>
+      <div id="dareBanner" hidden></div>
+
+      <!-- Legacy startPlaceBtn fallback for accessibility -->
+      <button type="button" id="startPlaceBtn" hidden>📍 শুরুর এলাকা</button>
     </div>
-    <div id="dareBanner" hidden></div>
+
+    <!-- Newspaper front page when a run ends (kept 100% intact) -->
+    <div id="paper" hidden>
+      <div id="pstamp"></div>
+      <div id="pname"></div>
+      <div id="ptag"></div>
+      <div class="pline"><span id="pdate"></span><span id="pprice"></span></div>
+      <div id="pkicker"></div>
+      <h2 id="phead"></h2>
+      <div class="pbody">
+        <figure><img id="pphoto" alt=""><figcaption id="pcap"></figcaption></figure>
+        <div>
+          <p id="pstory"></p>
+          <div id="pstats"></div>
+          <div id="ledger"></div>
+          <div id="npPriceBox"></div>
+        </div>
+      </div>
+      <div id="npDare" hidden></div>
+      <div id="inappNote" hidden>💡 ফেসবুক/মেসেঞ্জার ব্রাউজারে ছবি ডাউনলোড না হলে ওপরে ⋮ চেপে "Open in Browser"-এ খুলুন অথবা "স্কোর কপি" চাপুন।</div>
+      <div id="pnote"></div>
+
+      <!-- Run end action buttons -->
+      <div class="run-end-btns btns" style="margin-top:12px;display:flex;flex-wrap:wrap;justify-content:center;gap:8px;">
+        <button id="restart" hidden data-i18n="restartBtn">শুরু থেকে</button>
+        <button id="share" hidden data-i18n="shareBtn">📰 ছবি সেভ / শেয়ার</button>
+        <button id="fbShareBtn" hidden type="button" class="social-btn fb-btn">📘 ফেসবুকে শেয়ার</button>
+        <button id="instaCopyBtn" hidden type="button" class="social-btn insta-btn">📸 ইনস্টাগ্রাম ক্যাপশন কপি</button>
+        <button id="clipBtn" hidden type="button">🎬 ভিডিও সেভ / শেয়ার</button>
+        <button id="dareBtn" hidden type="button">🔥 চ্যালেঞ্জ লিংক কপি</button>
+        <button id="copyBtn" hidden data-i18n="copyBtn">📋 স্কোর কপি</button>
+        <button id="iosInstallBtn" hidden type="button" class="social-btn ios-btn">🍏 আইফোনে ইনস্টল</button>
+      </div>
+    </div>
+
+    <!-- Lower Block: Rules Card ("ভাড়ার তালিকা") & Footer -->
+    <div id="startInfo" class="rules-card-container">
+      <div class="rules-card">
+        <div id="rulesHead" class="rules-head" role="button" tabindex="0" aria-expanded="true" aria-controls="rulesBody">
+          <div class="rules-head-title">
+            <span>📜</span> <span>ভাড়ার তালিকা ও ট্রাফিক নিয়ম</span>
+          </div>
+          <button type="button" id="toggleRulesBtn" class="rules-toggle-btn">নিয়ম লুকান ▴</button>
+        </div>
+        <div id="rulesBody" class="rules-body">
+          <div class="rule-row"><span class="rule-icon">🚗</span><span class="rule-text">ছোট গাড়ি, বাইক ও রিকশায় ধাক্কা দিলে ড্যামেজ ও স্কোর বাড়ে</span></div>
+          <div class="rule-row"><span class="rule-icon">🛑</span><span class="rule-text">ভারী ট্রাক, দূরপাল্লার বাস ও মেট্রোর পিলারে লাগলে যাত্রা শেষ!</span></div>
+          <div class="rule-row"><span class="rule-icon">🏃</span><span class="rule-text">ধাক্কা দিয়ে পালালে ক্ষুব্ধ পাবলিক বাসের পিছে ধাওয়া করবে</span></div>
+          <div class="rule-row"><span class="rule-icon">⛽</span><span class="rule-text">হলুদ সিএনজি স্টেশনে ঢুকলে গ্যাস ও ফুয়েল রিফিল হবে</span></div>
+          <div class="rule-row"><span class="rule-icon">👮</span><span class="rule-text">গোলাপী পুলিশ পয়েন্টে দাঁড়ালে কেস ও জরিমানা নিষ্পত্তি হবে</span></div>
+          <div class="rule-row"><span class="rule-icon">🚏</span><span class="rule-text">নীল রঙের বাসস্ট্যান্ডে গতি কমালে যাত্রী উঠবে ও ভাড়া পাবেন</span></div>
+        </div>
+      </div>
+
+      <!-- Footer links and credits -->
+      <footer class="menu-footer">
+        <div class="footer-left">
+          <button type="button" id="footerWantedBtn" class="footer-tag">🚨 মোস্ট ওয়ান্টেড</button>
+          <button type="button" id="footerWeeklyBtn" class="footer-btn">🏆 সেরা ১০</button>
+          <span>নির্মাতা: সাদমান খন্দকার</span>
+        </div>
+        <div class="footer-right">
+          <button type="button" class="footer-btn linkbtn" data-info="howto">কীভাবে খেলবেন</button> ·
+          <button type="button" class="footer-btn linkbtn" data-info="about">গেম সম্পর্কে</button> ·
+          <button type="button" class="footer-btn linkbtn" data-info="disclaimer">সতর্কবার্তা</button> ·
+          <button type="button" class="footer-btn linkbtn" data-info="privacy">গোপনীয়তা</button>
+        </div>
+      </footer>
+      <div class="fiction" style="margin-top:6px;font-size:11.5px;color:rgba(255,255,255,0.5);">এটি একটি কাল্পনিক, ব্যঙ্গাত্মক গেম। বাস্তবে ট্রাফিক আইন মেনে নিরাপদে চালান।</div>
+
+      <!-- Preserved hidden elements for DOM compatibility -->
+      <div id="wantedBox" hidden><div id="wantedList"></div><div id="driverNameDisplay"></div><span id="weeklyTimeLeft"></span></div>
+      <div id="nlCard" hidden><form id="nlForm"><input id="nlEmail"><button id="nlSubmitBtn"></button></form></div>
+    </div>
   </div>
+</div>
 
-  <div class="btns">
-    <button id="go" class="ticket-btn" data-i18n="goStart">🎫 যাত্রা শুরু</button>
-    <button id="title4dMapBtn" type="button">🗺 পুরো ঢাকা ম্যাপ</button>
-    <button id="restart" hidden data-i18n="restartBtn">শুরু থেকে</button>
-    <button id="share" hidden data-i18n="shareBtn">📰 ছবি সেভ / শেয়ার</button>
-    <button id="fbShareBtn" hidden type="button" class="social-btn fb-btn">📘 ফেসবুকে শেয়ার</button>
-    <button id="instaCopyBtn" hidden type="button" class="social-btn insta-btn">📸 ইনস্টাগ্রাম ক্যাপশন কপি</button>
-    <button id="clipBtn" hidden type="button">🎬 ভিডিও সেভ / শেয়ার</button>
-    <button id="dareBtn" hidden type="button">🔥 চ্যালেঞ্জ লিংক কপি</button>
-    <button id="copyBtn" hidden data-i18n="copyBtn">📋 স্কোর কপি</button>
-    <button id="installBtn" hidden>📲 অ্যাপ ইনস্টল</button>
-    <button id="iosInstallBtn" hidden type="button" class="social-btn ios-btn">🍏 আইফোনে ইনস্টল</button>
+<!-- Pneumatic Bus Door Transition Overlay (Section 9) -->
+<div id="doorTransition" class="door-transition" aria-hidden="true">
+  <div class="door-leaf door-left">
+    <div class="door-window"></div>
+    <div class="door-seal"></div>
   </div>
-
-  <div id="paper" hidden>
-    <div id="pstamp"></div>
-    <div id="pname"></div>
-    <div id="ptag"></div>
-    <div class="pline"><span id="pdate"></span><span id="pprice"></span></div>
-    <div id="pkicker"></div>
-    <h2 id="phead"></h2>
-    <div class="pbody">
-      <figure><img id="pphoto" alt=""><figcaption id="pcap"></figcaption></figure>
-      <div>
-        <p id="pstory"></p>
-        <div id="pstats"></div>
-        <div id="ledger"></div>
-        <div id="npPriceBox"></div>
-      </div>
-    </div>
-    <div id="npDare" hidden></div>
-    <div id="inappNote" hidden>💡 ফেসবুক/মেসেঞ্জার ব্রাউজারে ছবি ডাউনলোড না হলে ওপরে ⋮ চেপে "Open in Browser"-এ খুলুন অথবা "স্কোর কপি" চাপুন।</div>
-    <div id="pnote"></div>
-  </div>
-
-  <div id="startInfo">
-    <div id="sub">
-      <div class="hud-ctrl-strip">
-        <span class="ctrl-pill">🕹 <b>W/↑</b> চালান</span>
-        <span class="ctrl-pill"><b>S/↓</b> ব্রেক</span>
-        <span class="ctrl-pill"><b>A/D</b> মোড়</span>
-        <span class="ctrl-pill"><b>Space</b> বুস্ট</span>
-        <span class="ctrl-pill"><b>H</b> হর্ন</span>
-        <span class="ctrl-pill"><b>Tab</b> বড় ম্যাপ</span>
-      </div>
-      <div class="hud-tip-strip">
-        💡 উল্টো লেনে ১.৫× বোনাস · র‍্যাম্পে উড়বে বাস 🚀 · ⛽ সিএনজিতে তেল নিন · 👮 পুলিশে জরিমানা
-      </div>
-    </div>
-
-    <div id="wantedBox">
-      <div class="wanted-head">🚨 মোস্ট ওয়ান্টেড ওস্তাদ তালিকা <small>· পুরস্কার: এক কাপ চা</small></div>
-      <div id="wantedList"></div>
-      <div class="weekly-bar">
-        <span id="weeklyResetTimer">⏳ চলতি সপ্তাহ: <b id="weeklyTimeLeft">...</b></span>
-        <button type="button" id="weeklyBoardBtn" class="sm-btn">🏆 সাপ্তাহিক সেরা ১০</button>
-      </div>
-    </div>
-
-    <div id="nlCard" class="nl-card">
-      <span class="nl-icon">📬</span>
-      <span class="nl-title">টুর্নামেন্ট রেজাল্ট:</span>
-      <form id="nlForm" class="nl-form">
-        <input type="email" id="nlEmail" placeholder="আপনার ইমেইল দিন" required>
-        <button type="submit" id="nlSubmitBtn">সাবস্ক্রাইব</button>
-      </form>
-      <div id="nlSuccess" hidden>✅ ধন্যবাদ! যুক্ত হয়েছেন।</div>
-    </div>
-
-    <div class="footer-links">
-      <button type="button" class="linkbtn" data-info="howto">কীভাবে খেলবেন</button> ·
-      <button type="button" class="linkbtn" data-info="about">গেম সম্পর্কে</button> ·
-      <button type="button" class="linkbtn" data-info="disclaimer">সতর্কবার্তা</button> ·
-      <button type="button" class="linkbtn" data-info="privacy">গোপনীয়তা</button>
-    </div>
-
-    <div class="fiction">এটি একটি কাল্পনিক, ব্যঙ্গাত্মক গেম। বাস্তবে নিরাপদে চালান।</div>
+  <div class="door-leaf door-right">
+    <div class="door-window"></div>
+    <div class="door-seal"></div>
   </div>
 </div>
 
@@ -365,7 +430,7 @@
     });
   };
 </script>
-<script type="module" src="js/main.js?v=3.8" onerror="window.__bootErrors.push({ msg: 'main.js লোড হতে পারেনি (CORS বা নেটওয়ার্ক ব্লক)' })"></script>
+<script type="module" src="js/main.js?v=3.9" onerror="window.__bootErrors.push({ msg: 'main.js লোড হতে পারেনি (CORS বা নেটওয়ার্ক ব্লক)' })"></script>
 <script>
   // Boot guard: if ES modules or WebGL fail to load within 6 seconds, show a helpful message and force-reload button.
   setTimeout(function () {

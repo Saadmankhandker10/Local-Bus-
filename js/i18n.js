@@ -83,14 +83,14 @@ const DOM_STRINGS = {
     lblDamage: "ড্যামেজ", lblFare: "ভাড়া", lblPass: "যাত্রী", lblSpd: "গতি", lblDist: "দূরত্ব",
     lblFuel: "⛽ তেল", lblHp: "🚌 বডি", lblComfort: "😊 স্বস্তি", lblCrowd: "🏃 পাবলিক",
     title: "লোকাল বাস — ঢাকা রুট",
-    goStart: "🎫 যাত্রা শুরু", restartBtn: "শুরু থেকে", shareBtn: "📰 ছবি সেভ / শেয়ার", copyBtn: "📋 স্কোর কপি",
+    goStart: "🎟 টিকিট কাটুন", restartBtn: "শুরু থেকে", shareBtn: "📰 ছবি সেভ / শেয়ার", copyBtn: "📋 স্কোর কপি",
     pauseTitle: "বিরতি", resumeBtn: "চালিয়ে যান", settingsTitle: "⚙ সেটিংস",
   },
   en: {
     lblDamage: "Damage", lblFare: "Fare", lblPass: "Pass.", lblSpd: "Speed", lblDist: "Dist.",
     lblFuel: "⛽ Fuel", lblHp: "🚌 Body", lblComfort: "😊 Comfort", lblCrowd: "🏃 Crowd",
     title: "Local Bus — Dhaka Route",
-    goStart: "🎫 Start Journey", restartBtn: "From Start", shareBtn: "📰 Save / Share PNG", copyBtn: "📋 Copy Score",
+    goStart: "🎟 Get Ticket", restartBtn: "From Start", shareBtn: "📰 Save / Share PNG", copyBtn: "📋 Copy Score",
     pauseTitle: "Paused", resumeBtn: "Resume", settingsTitle: "⚙ Settings",
   },
 };

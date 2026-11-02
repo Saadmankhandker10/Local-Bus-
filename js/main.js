@@ -24,7 +24,7 @@ import {
 } from "./audio.js";
 import { startRunVideo, stopRunVideo } from "./newspaper.js";
 import { updateShaders, triggerLoadshedding } from "./shaders.js";
-import { ROUTE, TOTAL } from "./route.js";
+import { ROUTE, TOTAL, STAGE_START } from "./route.js";
 import { SHOUTS } from "./data/shouts.bn.js";
 import { HEAVY_HIT } from "./i18n.js";
 import { pick, clamp, $ } from "./utils.js";
@@ -32,9 +32,18 @@ import { updateHud, onStartPressed, onPauseButton, hideScreen, showPause, showRu
 import { initEffects, resetEffects, updateEffects } from "./effects.js";
 import { trackEvent } from "./analytics.js";
 import { loadBusModel } from "./busModel.js";
+import { loader } from "./loading.js";
 
-// Preload the authentic 3D Bangladeshi bus model at boot
-loadBusModel().catch(err => console.warn("Bus model preload notice:", err));
+// Initialize branded loading screen controller
+loader.init();
+
+// Preload the authentic 3D Bangladeshi bus model at boot and advance loader stage
+loadBusModel()
+  .then(() => loader.setStage(2))
+  .catch(err => {
+    console.warn("Bus model preload notice:", err);
+    loader.setStage(2);
+  });
 
 // Signal that all modules have evaluated and the engine is booting
 if (typeof window !== "undefined") {
@@ -91,8 +100,51 @@ function start(fromCheckpoint) {
   }
 }
 
-const startMain = () => start(lastEnd === "fail");
-const startFresh = () => start(false);
+let isStarting = false;
+function triggerStartWithTransition(fromCheckpoint) {
+  if (isStarting) return;
+  isStarting = true;
+
+  const goBtn = $("go");
+  const doorEl = $("doorTransition");
+  const prefersReducedMotion = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  if (goBtn) {
+    goBtn.classList.add("punched");
+  }
+
+  const runGameStart = () => {
+    start(fromCheckpoint);
+    isStarting = false;
+    if (goBtn) goBtn.classList.remove("punched");
+  };
+
+  if (prefersReducedMotion || !doorEl) {
+    setTimeout(runGameStart, 180);
+    return;
+  }
+
+  // 180ms ticket punch animation, then 700ms pneumatic bus door slide-apart (Section 7.2, 9)
+  setTimeout(() => {
+    doorEl.classList.add("active", "sliding-shut");
+    hideScreen();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        doorEl.classList.remove("sliding-shut");
+        doorEl.classList.add("sliding-open");
+        start(fromCheckpoint);
+        setTimeout(() => {
+          doorEl.classList.remove("active", "sliding-open");
+          isStarting = false;
+          if (goBtn) goBtn.classList.remove("punched");
+        }, 720);
+      });
+    });
+  }, 180);
+}
+
+const startMain = () => triggerStartWithTransition(lastEnd === "fail");
+const startFresh = () => triggerStartWithTransition(false);
 
 /** The helper speaks from the door: bubble + subtitle + a slap on the bus side. */
 function helperSays(text) {
@@ -264,18 +316,61 @@ on("journeyComplete", () => {
   showRunEnd(runReport(saveBest(), isBestTime), photo, "");
 });
 
+/**
+ * Switch the live 3D menu scene to the selected route stage's scenery, sky, and time-of-day.
+ * Preloaded with existing pooled meshes for zero hitch.
+ * @param {string|number} stageKey
+ */
+export function setMenuSceneStage(stageKey) {
+  if (game.running) return;
+
+  let dist = 0;
+  let p = 0.0;
+  let stageIdx = 0;
+
+  if (stageKey === "asadgate") {
+    dist = 2205;
+    p = 0.20;
+    stageIdx = 0;
+  } else {
+    const num = Number(stageKey);
+    if (num >= 0 && num < ROUTE.stages.length) {
+      stageIdx = num;
+      const offsets = [0, 20, 95, 190];
+      dist = (STAGE_START[num] || 0) + (offsets[num] || 0);
+      const skyPresets = [0.00, 0.28, 0.55, 1.00];
+      p = skyPresets[num] !== undefined ? skyPresets[num] : progress(dist);
+    } else {
+      dist = 0;
+      p = 0.00;
+      stageIdx = 0;
+    }
+  }
+
+  game.prog = game.dist = dist;
+  journey.stage = stageIdx;
+  resetBus(dist);
+  resetLandmarks(dist);
+  resetWorld();
+  resetTraffic(dist);
+  resetCamera(false);
+  applyTimeOfDay(p);
+  updateWorld();
+  updateLandmarks();
+}
+
+on("startStageChanged", stageKey => setMenuSceneStage(stageKey));
+
 /** Advance the game by exactly one fixed step of dt seconds. */
 function step(dt) {
   game.time += dt;
   game.shake = Math.max(0, game.shake - dt * CFG.camera.shakeDecay);
   if (!game.running) {
-    // Live Autopilot demo behind the title menu!
-    if (game.autopilot) {
-      updateAutopilot(dt);
-      updateWorld();
-      updateLandmarks();
-      updateTraffic(dt);
-    }
+    // Live idling backdrop behind the title menu!
+    updateAutopilot(dt);
+    updateWorld();
+    updateLandmarks();
+    updateTraffic(dt);
     return;
   }
   game.journeyT += dt;
@@ -376,20 +471,19 @@ try {
 
 try {
   initWorld(sceneryAt);
+  loader.setStage(1);
   initEffects(scene);
-  // Behind the title screen: the bus stand at Mohammadpur, early morning.
-  resetBus(0);
-  resetCamera();
-  updateWorld();
-  resetLandmarks(0);
-  updateLandmarks();
-  resetTraffic(0);
+  loader.setStage(3);
+  // Behind the title screen: set up backdrop scene at selected or saved start stop
+  const initialStop = $("startPlaceSelect")?.value || game.startStage || 0;
+  setMenuSceneStage(initialStop);
 } catch (err) {
   console.warn("Initial scene layout warning:", err);
 }
 
 try {
   initInput(onPauseInput);
+  loader.setStage(4);
   onAnyInput(unlockAudio);
   onTap("horn", doHorn);
   onTap("shout", doShout);
@@ -402,6 +496,15 @@ try {
   document.addEventListener("visibilitychange", () => { if (document.hidden) setPaused(true); });
 } catch (err) {
   console.error("Input setup warning:", err);
+}
+
+// Check fonts and finalize loading stage
+if (typeof document !== "undefined" && document.fonts && document.fonts.ready) {
+  document.fonts.ready
+    .then(() => loader.setStage(5))
+    .catch(() => loader.setStage(5));
+} else {
+  loader.setStage(5);
 }
 const devUrlParams = typeof window !== "undefined" && window.location ? new URLSearchParams(window.location.search) : null;
 if (devUrlParams && (devUrlParams.get("start") || devUrlParams.get("autostart"))) {
@@ -432,11 +535,21 @@ const STEP = 1 / CFG.loop.hz;
 let acc = 0;
 let last = performance.now();
 let slowFrameAcc = 0;
+let menuSlowFrameAcc = 0;
+
 (function loop(now) {
   requestAnimationFrame(loop);
+
+  // Pause rendering when tab is hidden to save GPU & battery (Section 9)
+  if (typeof document !== "undefined" && document.hidden) {
+    last = now;
+    return;
+  }
+
   // Cap the frame time so a long freeze can't trigger hundreds of catch-up steps.
   const frameDt = Math.min(CFG.loop.maxFrameDt, Math.max(0, now - last) / 1000);
   last = now;
+
   // Auto-quality watchdog: if a phone struggles below ~28 FPS for 3 s, step down pixel ratio to 1 and disable shadows.
   if (game.running && !game.paused && $("setQuality")?.value === "auto" && (renderer.getPixelRatio() > 1 || renderer.shadowMap.enabled)) {
     slowFrameAcc = frameDt > 0.036 ? slowFrameAcc + frameDt : Math.max(0, slowFrameAcc - frameDt * .5);
@@ -444,6 +557,12 @@ let slowFrameAcc = 0;
       renderer.setPixelRatio(1);
       renderer.shadowMap.enabled = false;
       sun.castShadow = false;
+    }
+  } else if (!game.running && $("setQuality")?.value === "auto" && renderer.getPixelRatio() > 1) {
+    // Menu frame-rate protection: if device drops below 30 FPS during menu, reduce pixel ratio
+    menuSlowFrameAcc = frameDt > 0.033 ? menuSlowFrameAcc + frameDt : Math.max(0, menuSlowFrameAcc - frameDt * .5);
+    if (menuSlowFrameAcc > 2.5) {
+      renderer.setPixelRatio(1);
     }
   }
   pollInput();

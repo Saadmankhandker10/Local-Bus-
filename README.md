@@ -15,16 +15,31 @@ A satirical 3D browser arcade driving game built with **Three.js** and vanilla E
 
 ## 🗂 Where Everything Lives
 
-- `index.html` — Page layout, HUD boxes, newspaper template, Settings/Info modals, and Three.js importmap.
-- `css/tokens.css` & `css/style.css` — Dhaka local-bus colour palette, HUD cards, newspaper front page, and mobile touch buttons.
+- `index.html` — Page layout, HUD boxes, startup menu shell, newspaper template, Settings/Info modals, and Three.js importmap.
+- `css/tokens.css` — **Design Tokens**: authentic Dhaka bus colours (`--bus-green`, `--signal-yellow`, `--brick-red`, `--cream`, `--asphalt`), typography scale, spacing, radii, elevation, and motion timing.
+- `css/menu.css` — **Startup Experience**: authentic Dhaka route board header, ticket-shaped start button with perforation notches, ruled-paper "ভাড়ার তালিকা" fare chart, and pneumatic bus door transition.
+- `css/style.css` — In-game HUD cards, newspaper front page, touch buttons, and modals.
+- `fonts/` — Self-hosted, subsetted open-license WOFF2 fonts (`Atma`, `Noto Sans Bengali`, `Noto Serif Bengali`).
+- `js/loading.js` — Real asset load controller with 5-stop animated route progress line and humorous Bangla helper lines.
+- `js/data/menu.bn.js` — **Menu Strings**: easily tweak all startup menu titles, ticket labels, funny loading messages, and rules without touching code.
 - `js/config.js` — **Every tunable number** (speeds, fuel drain, traffic density, comfort meter, metro rail, camera).
 - `js/map.js` & `js/route.js` — Curved Catmull-Rom road network, flyover & side-alley forks (`কলাবাগানের গলি`, `কাঁটাবনের গলি`), stages, and time-of-day sky keyframes.
-- `js/bus.js` — Player bus 3D model, rear truck-art slogans, 3D helper at the front door, folding door, staged window cracks, and pooled exhaust puffs.
+- `js/bus.js` — Player bus 3D model, rear truck-art slogans, 3D helper at the front door, folding door, staged window cracks, idling exhaust puffs, and engine rumble.
+- `js/camera.js` — Smooth chase camera and cinematic slow orbital camera drift during main menu.
 - `js/traffic.js` & `js/vehicles.js` — Rickshaws, bikes, CNGs, cars, trucks, rival buses, tea stalls, folk-art flyover/metro pillars, crossing pedestrians, and the Shahbagh traffic jam.
 - `js/landmarks.js` — Mohammadpur Bus Stand (with morning crows), Dhanmondi Lake, footbridges, elevated Metro Rail stations & moving 4-car train, Shahbagh flower shops, Student Demonstration barricade, Curzon Hall, Shaheed Minar, and TSC.
 - `js/crowd.js` — Instanced chasing crowd (`InstancedMesh`) + pooled thrown cartoon items (bricks, helmets, sandals, bottles, tea cups) and `"ঘেরাও"` surround ring.
 - `js/audio.js` — 100% WebAudio procedural sounds (engine hum, দুই-নোট হর্ন, door slap, metro pass, glass crack, crash thud, combo chime, boarding bell, refuel tone).
 - `js/data/*.bn.js` — All Bangla headlines (`headlines.bn.js`), dialogue (`dialogue.bn.js`), helper shouts (`shouts.bn.js`), rear bus slogans (`slogans.bn.js`), student banners (`banners.bn.js`), and news ticker (`ticker.bn.js`).
+
+---
+
+## 🎨 How to Tweak Visuals & Text (Beginner Friendly)
+
+- **Change colours or sizes**: Open `css/tokens.css` and tweak variables like `--signal-yellow`, `--bus-green`, or `--text-56`.
+- **Change menu text or funny loading lines**: Open `js/data/menu.bn.js` and edit strings directly inside the quotes.
+- **Change game rules**: Edit the `rules.items` array inside `js/data/menu.bn.js`.
+- **Change gameplay numbers**: Open `js/config.js` and change speed, fuel drain, or spawn rates.
 
 ---
 

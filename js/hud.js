@@ -4,7 +4,7 @@ import * as THREE from "three";
 import { CFG } from "./config.js";
 import { $, clamp } from "./utils.js";
 import { game } from "./state.js";
-import { on } from "./events.js";
+import { on, emit } from "./events.js";
 import { stats, comboMult, bestScore, bestTime, getWantedList, saveWantedEntry } from "./score.js";
 import { crowd } from "./crowd.js";
 import { ROUTE, TOTAL } from "./route.js";
@@ -61,7 +61,7 @@ export function refreshBestBanner() {
   if (!el) return;
   if (!b && !t) { el.hidden = true; return; }
   const parts = [];
-  if (b) parts.push(`🏆 সেরা স্কোর: ${bnNum(b)}`);
+  if (b) parts.push(`🏆 সর্বোচ্চ ড্যামেজ: ৳${bnNum(b.toLocaleString("en-IN"))}`);
   if (t) parts.push(`⏱ সেরা সময়: ${clock(t)}`);
   el.textContent = parts.join("   ·   ");
   el.hidden = false;
@@ -263,6 +263,73 @@ export function onStartPressed(main, fromStart) {
       msg(ok ? "📋 স্কোর কপি হয়েছে!" : "কপি করা যায়নি", 1400);
     };
   }
+
+  // Route-stop selector dropdown
+  const sel = $("startPlaceSelect");
+  if (sel) {
+    try {
+      const urlParams = typeof window !== "undefined" && window.location ? new URLSearchParams(window.location.search) : null;
+      const spotParam = urlParams ? (urlParams.get("spot") || urlParams.get("stage")) : null;
+      const savedSpot = spotParam !== null ? spotParam : localStorage.getItem("lb_start_spot");
+      if (savedSpot !== null) {
+        sel.value = savedSpot;
+        game.startStage = savedSpot === "asadgate" ? "asadgate" : Number(savedSpot);
+      }
+    } catch {}
+    // Sync initial backdrop stage if stored
+    if (sel.value && sel.value !== "0") {
+      emit("startStageChanged", sel.value);
+    }
+
+    sel.onchange = () => {
+      const val = sel.value;
+      game.startStage = val === "asadgate" ? "asadgate" : Number(val);
+      try { localStorage.setItem("lb_start_spot", val); } catch {}
+      emit("startStageChanged", val);
+    };
+  }
+
+  // Rules card ("ভাড়ার তালিকা") collapsible toggle
+  const rulesHead = $("rulesHead");
+  const toggleRulesBtn = $("toggleRulesBtn");
+  const rulesBody = $("rulesBody");
+  if (rulesHead && rulesBody) {
+    const setRulesOpen = (open) => {
+      rulesBody.classList.toggle("collapsed", !open);
+      rulesHead.setAttribute("aria-expanded", String(open));
+      if (toggleRulesBtn) toggleRulesBtn.textContent = open ? "নিয়ম লুকান ▴" : "নিয়মাবলী ▾";
+      try { localStorage.setItem("lb_rules_open", open ? "1" : "0"); } catch {}
+    };
+    try {
+      const savedOpen = localStorage.getItem("lb_rules_open");
+      if (savedOpen === "0") setRulesOpen(false);
+    } catch {}
+
+    const toggle = () => setRulesOpen(rulesBody.classList.contains("collapsed"));
+    rulesHead.onclick = (e) => {
+      if (e.target !== toggleRulesBtn) toggle();
+    };
+    if (toggleRulesBtn) toggleRulesBtn.onclick = toggle;
+    rulesHead.onkeydown = (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        toggle();
+      }
+    };
+  }
+
+  // Footer modal shortcuts
+  if ($("footerWantedBtn")) {
+    $("footerWantedBtn").onclick = () => {
+      if ($("driverModal")) $("driverModal").hidden = false;
+    };
+  }
+  if ($("footerWeeklyBtn")) {
+    $("footerWeeklyBtn").onclick = () => {
+      if ($("weeklyModal")) $("weeklyModal").hidden = false;
+    };
+  }
+
   if ($("startPlaceBtn")) {
     const spots = [
       { idx: 0,  label: "মোহাম্মদপুর বাসস্ট্যান্ড (শুরু থেকে)" },
@@ -277,6 +344,7 @@ export function onStartPressed(main, fromStart) {
       cur = (cur + 1) % spots.length;
       game.startStage = spots[cur].idx;
       $("startPlaceBtn").textContent = `📍 শুরুর এলাকা: ${spots[cur].label}`;
+      if (sel) sel.value = String(spots[cur].idx);
     };
   }
 }

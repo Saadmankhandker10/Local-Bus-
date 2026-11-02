@@ -100,11 +100,26 @@ export function updateCamera(dt) {
     return boostFx;
   }
 
-  // Menu Autopilot demo camera: gentle cinematic sway behind the cruising bus.
+  // Menu backdrop camera: gentle cinematic slow drift around the idling bus
   if (!game.running) {
-    const sway = Math.sin(game.time * 0.45) * 3.2;
-    cx += rx * sway;
-    cz += rz * sway;
+    const t = game.time * 0.18;
+    const isPortrait = cam.aspect < 1.0;
+    // Drift gently around the left-rear and side profile of the bus
+    const driftSide = -4.2 + Math.sin(t) * 1.6;
+    const driftBack = (isPortrait ? 8.6 : 7.0) + Math.cos(t * 0.8) * 1.1;
+    const driftHeight = C.height * 0.88 + Math.sin(t * 1.1) * 0.32;
+
+    const menuCx = ax + rx * driftSide - fx * driftBack;
+    const menuCz = az + rz * driftSide - fz * driftBack;
+
+    cam.position.set(menuCx, p.y + driftHeight, menuCz);
+    cam.lookAt(ax - rx * 0.35 + fx * 1.2, p.y + 1.45, az - rz * 0.35 + fz * 1.2);
+    followGround(cam.position.x, cam.position.z);
+
+    const targetFov = C.baseFov + (isPortrait ? Math.min(18, (1.0 - cam.aspect) * 28) : 0);
+    fov += (targetFov - fov) * ease(C.fovSmoothing, dt);
+    if (Math.abs(cam.fov - fov) > .05) { cam.fov = fov; cam.updateProjectionMatrix(); }
+    return 0;
   }
 
   cam.position.set(cx + rnd(-1, 1) * shake, p.y + C.height + (game.busY || 0) * 0.45 + rnd(-1, 1) * shake, cz);

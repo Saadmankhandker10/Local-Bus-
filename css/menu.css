@@ -1,0 +1,879 @@
+/* Startup Experience Redesign — "Local Bus: Dhaka Route"
+   Covers: Branded Loading Screen, Live 3D Menu Layout Skeleton,
+   Route-Board Title, Perforated Start Ticket, Ruled Paper Fare Chart,
+   and Responsive Adaptations across all 5 viewports. */
+
+/* ==========================================================
+   1. BRANDED LOADING SCREEN (Section 8)
+   ========================================================== */
+#loadScreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--asphalt-dark, #0f1214);
+  color: var(--cream, #f6efdd);
+  padding: var(--sp-4, 16px);
+  transition: opacity var(--dur-door, 700ms) var(--ease-out), visibility var(--dur-door, 700ms);
+}
+
+#loadScreen.loaded {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.load-board {
+  width: 100%;
+  max-width: 540px;
+  background: linear-gradient(180deg, #18221c 0%, #0d1410 100%);
+  border: 3px solid var(--signal-yellow, #ffc21a);
+  border-radius: var(--rad-lg, 20px);
+  padding: var(--sp-6, 24px) var(--sp-4, 16px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(0, 0, 0, 0.5);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Metallic rivet corner bolts */
+.load-board::before,
+.load-board::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 15%, #888 60%, #333 100%);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+.load-board::before { left: 12px; }
+.load-board::after { right: 12px; }
+
+.load-plate {
+  display: inline-block;
+  background: #000;
+  color: var(--signal-yellow, #ffc21a);
+  border: 1px solid var(--signal-yellow, #ffc21a);
+  border-radius: var(--rad-sm, 8px);
+  padding: 2px 10px;
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-12, 12px);
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  margin-bottom: var(--sp-2, 8px);
+}
+
+.load-title {
+  margin: 0 0 var(--sp-1, 4px);
+  font-family: var(--font-heading, 'Atma', sans-serif);
+  font-size: clamp(24px, 5vw, 36px);
+  font-weight: 700;
+  line-height: var(--lh-display, 1.15);
+  color: var(--signal-yellow, #ffc21a);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
+}
+
+.load-sub {
+  color: var(--cream, #f6efdd);
+  font-family: var(--font-ui, sans-serif);
+  font-size: var(--text-14, 14px);
+  opacity: 0.85;
+  margin-bottom: var(--sp-6, 24px);
+}
+
+/* 5-Stop Route Progress Track */
+.load-route-wrap {
+  position: relative;
+  margin: var(--sp-6, 24px) 16px var(--sp-4, 16px);
+}
+
+.load-track-line {
+  position: relative;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  overflow: visible;
+}
+
+.load-bus-marker {
+  position: absolute;
+  top: -18px;
+  left: 0%;
+  transform: translateX(-50%);
+  font-size: 26px;
+  line-height: 1;
+  transition: left 400ms var(--ease-out);
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
+  user-select: none;
+}
+
+.load-stops-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 14px;
+}
+
+.load-stop-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 60px;
+  font-family: var(--font-ui, sans-serif);
+  font-size: var(--text-12, 12px);
+  color: rgba(255, 255, 255, 0.55);
+  transition: color 300ms ease;
+}
+
+.load-stop-item .dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #333;
+  border: 2px solid #555;
+  margin-bottom: 6px;
+  transition: all 300ms ease;
+}
+
+.load-stop-item.lit {
+  color: var(--signal-yellow, #ffc21a);
+  font-weight: 700;
+}
+
+.load-stop-item.lit .dot {
+  background: var(--signal-yellow, #ffc21a);
+  border-color: #fff;
+  box-shadow: 0 0 10px var(--signal-yellow, #ffc21a);
+  transform: scale(1.2);
+}
+
+/* Helper Rotating Chatter Line */
+.load-helper-box {
+  margin-top: var(--sp-6, 24px);
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: var(--rad-md, 12px);
+  border: 1px dashed rgba(255, 194, 26, 0.4);
+}
+
+.load-helper-quote {
+  font-family: var(--font-ui, sans-serif);
+  font-size: var(--text-14, 14px);
+  color: var(--led-teal, #35e0c2);
+  line-height: var(--lh-body, 1.35);
+  min-height: 24px;
+  transition: opacity 180ms ease;
+}
+
+/* Error fallback state */
+.load-error-box {
+  margin-top: var(--sp-4, 16px);
+  padding: 12px;
+  background: rgba(184, 50, 42, 0.85);
+  border-radius: var(--rad-md, 12px);
+  color: #fff;
+  font-family: var(--font-ui, sans-serif);
+  font-size: var(--text-14, 14px);
+}
+
+.load-retry-btn {
+  margin-top: 10px;
+  background: var(--signal-yellow, #ffc21a);
+  color: var(--asphalt-dark, #0f1214);
+  font-family: var(--font-heading, sans-serif);
+  font-size: var(--text-16, 16px);
+  font-weight: 700;
+  border: none;
+  border-radius: var(--rad-sm, 8px);
+  padding: 8px 20px;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+
+/* ==========================================================
+   2. MAIN MENU CONTAINER & 3D BACKDROP (Section 5 & 9)
+   ========================================================== */
+#screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  /* Dark bottom-to-top gradient guaranteeing contrast while keeping 3D scene open */
+  background: linear-gradient(
+    to top,
+    rgba(10, 14, 12, 0.94) 0%,
+    rgba(10, 14, 12, 0.72) 35%,
+    rgba(10, 14, 12, 0.15) 65%,
+    transparent 100%
+  );
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--sp-4, 16px) var(--sp-4, 16px) calc(var(--sp-4, 16px) + env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+  z-index: 25;
+  pointer-events: auto;
+}
+
+/* Ensure canvas behind menu receives camera updates and hide in-game HUD */
+body.in-game #screen {
+  display: none !important;
+}
+
+body:not(.in-game) #hud,
+body:not(.in-game) #nav,
+body:not(.in-game) #touch,
+body:not(.in-game) #speedlines,
+body:not(.in-game) #vignette,
+body:not(.in-game) #crowdcue {
+  display: none !important;
+}
+
+.action-sub-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2, 8px);
+}
+
+.menu-shell {
+  width: 100%;
+  max-width: 1100px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+/* ==========================================================
+   3. TITLE BLOCK: ROUTE BOARD (Section 7.1)
+   ========================================================== */
+.menu-header,
+#titleblock.menu-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  max-width: none;
+  order: unset;
+}
+
+.route-board-panel {
+  width: 100%;
+  max-width: 640px;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, var(--bus-green, #1f6b3a) 0%, var(--bus-green-dark, #134625) 100%);
+  border: 3px double var(--signal-yellow, #ffc21a);
+  border-radius: var(--rad-md, 12px);
+  padding: 8px 14px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  margin-bottom: var(--sp-2, 8px);
+}
+
+.board-plate-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-12, 12px);
+  color: var(--cream, #f6efdd);
+  opacity: 0.92;
+  letter-spacing: 0.6px;
+  line-height: var(--lh-display, 1.15);
+}
+
+.board-main-title {
+  margin: 2px 0 3px;
+  font-family: var(--font-heading, 'Atma', sans-serif);
+  font-size: clamp(22px, 4.8vw, 34px);
+  font-weight: 700;
+  line-height: var(--lh-display, 1.15);
+  color: var(--signal-yellow, #ffc21a);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+  letter-spacing: 0.4px;
+  animation: ledPowerOn 550ms ease-out 1;
+}
+
+@keyframes ledPowerOn {
+  0% { opacity: 0.2; text-shadow: none; }
+  22% { opacity: 0.9; text-shadow: 0 0 10px rgba(255, 194, 26, 0.8); }
+  38% { opacity: 0.35; text-shadow: none; }
+  58% { opacity: 1; text-shadow: 0 0 14px rgba(255, 194, 26, 0.9); }
+  72% { opacity: 0.8; }
+  100% { opacity: 1; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8); }
+}
+
+.board-route-line {
+  font-family: var(--font-ui, sans-serif);
+  font-size: clamp(12px, 2.5vw, 14px);
+  font-weight: 600;
+  color: var(--cream, #f6efdd);
+  line-height: var(--lh-body, 1.35);
+  opacity: 0.95;
+}
+
+/* ==========================================================
+   4. PRIMARY ACTION ROW & TICKET BUTTON (Section 7.2 - 7.5)
+   ========================================================== */
+.menu-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3, 12px);
+  margin-top: var(--sp-2, 8px);
+  width: 100%;
+}
+
+/* Authentic Dhaka Bus Ticket Button */
+.ticket-start-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  min-width: 220px;
+  padding: 0 var(--sp-6, 24px);
+  background-color: var(--signal-yellow, #ffc21a);
+  color: var(--asphalt-dark, #0f1214);
+  font-family: var(--font-heading, 'Atma', sans-serif);
+  font-size: clamp(20px, 3.8vw, 24px);
+  font-weight: 700;
+  text-decoration: none;
+  border: none;
+  border-radius: var(--rad-sm, 8px);
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  transition: transform var(--dur-tap, 120ms) ease, box-shadow var(--dur-tap, 120ms) ease;
+  user-select: none;
+  /* Circular side cutouts */
+  background-image:
+    radial-gradient(circle at 0 50%, transparent 8px, var(--signal-yellow, #ffc21a) 9px),
+    radial-gradient(circle at 100% 50%, transparent 8px, var(--signal-yellow, #ffc21a) 9px);
+}
+
+.ticket-start-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(255, 194, 26, 0.4);
+}
+
+.ticket-start-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+.ticket-start-btn:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+
+/* Hanging tag/icon swing (Section 9) */
+.ticket-icon {
+  display: inline-block;
+  transform-origin: top center;
+  animation: tagSwing 3.6s ease-in-out infinite;
+}
+
+@keyframes tagSwing {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(4deg); }
+  75% { transform: rotate(-4deg); }
+}
+
+/* Ticket punch hole animation (180ms - Section 7.2) */
+.ticket-start-btn.punched {
+  animation: punchTicket 180ms ease-out forwards;
+}
+
+.ticket-start-btn.punched::before {
+  content: "";
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%) scale(0);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--asphalt-dark, #0f1214);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.9);
+  animation: punchCircle 180ms ease-out forwards;
+}
+
+@keyframes punchTicket {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.96) translateY(2px); }
+  100% { transform: scale(0.98); }
+}
+
+@keyframes punchCircle {
+  0% { transform: translateY(-50%) scale(0); opacity: 0; }
+  60% { transform: translateY(-50%) scale(1.25); opacity: 1; }
+  100% { transform: translateY(-50%) scale(1); opacity: 1; }
+}
+
+/* Start-Stop Dropdown (Section 7.4) */
+.stop-select-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.stop-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--stop-blue, #1f5fae);
+  color: #fff;
+  font-family: var(--font-ui, sans-serif);
+  font-size: var(--text-14, 14px);
+  font-weight: 600;
+  min-height: 48px;
+  padding: 0 36px 0 14px;
+  border: 1.5px solid rgba(255, 255, 255, 0.5);
+  border-radius: var(--rad-sm, 8px);
+  cursor: pointer;
+  box-shadow: var(--elev-card);
+  line-height: var(--lh-body, 1.35);
+}
+
+.stop-select:focus-visible {
+  outline: 3px solid var(--signal-yellow, #ffc21a);
+  outline-offset: 2px;
+}
+
+.stop-select-wrap::after {
+  content: "▾";
+  position: absolute;
+  right: 12px;
+  color: #fff;
+  font-size: 16px;
+  pointer-events: none;
+}
+
+/* Install PWA Icon Button (Section 7.3) */
+.install-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  min-height: 48px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  border-radius: var(--rad-sm, 8px);
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.install-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.install-icon-btn:focus-visible {
+  outline: 3px solid var(--signal-yellow, #ffc21a);
+}
+
+/* Best Score Line (Section 7.5) */
+.best-score-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: var(--sp-2, 8px);
+  padding: 4px 14px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 194, 26, 0.4);
+  border-radius: var(--rad-lg, 20px);
+  color: var(--signal-yellow, #ffc21a);
+  font-family: var(--font-ui, sans-serif);
+  font-size: var(--text-14, 14px);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==========================================================
+   5. RULES CARD: "ভাড়ার তালিকা" (Section 7.6)
+   ========================================================== */
+.rules-card-container,
+#startInfo.rules-card-container {
+  width: 100%;
+  max-width: 720px;
+  margin: var(--sp-4, 16px) auto var(--sp-2, 8px);
+  order: unset;
+}
+
+.rules-card {
+  background: var(--cream, #f6efdd);
+  color: var(--ink-dark, #181a1b);
+  border-radius: var(--rad-md, 12px);
+  border-left: 5px solid var(--brick-red, #b8322a);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.65);
+  overflow: hidden;
+  font-family: var(--font-fare, 'Noto Serif Bengali', serif);
+  /* Authentic ruled paper lines */
+  background-image: linear-gradient(rgba(180, 165, 145, 0.2) 1px, transparent 1px);
+  background-size: 100% 30px;
+}
+
+.rules-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(31, 107, 58, 0.1);
+  border-bottom: 1.5px solid rgba(184, 50, 42, 0.25);
+  cursor: pointer;
+  user-select: none;
+}
+
+.rules-head-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-heading, sans-serif);
+  font-size: var(--text-16, 16px);
+  font-weight: 700;
+  color: var(--bus-green-dark, #134625);
+}
+
+.rules-toggle-btn {
+  background: none;
+  border: 1px solid var(--bus-green, #1f6b3a);
+  border-radius: var(--rad-sm, 8px);
+  color: var(--bus-green-dark, #134625);
+  font-family: var(--font-ui, sans-serif);
+  font-size: var(--text-12, 12px);
+  font-weight: 600;
+  padding: 2px 10px;
+  cursor: pointer;
+}
+
+.rules-body {
+  padding: 10px 16px;
+  max-height: 220px;
+  overflow-y: auto;
+  line-height: var(--lh-body, 1.35);
+}
+
+.rules-body.collapsed {
+  display: none;
+}
+
+.rule-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: var(--text-14, 14px);
+  padding: 5px 0;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.1);
+}
+
+.rule-row:last-child {
+  border-bottom: none;
+}
+
+.rule-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+  line-height: 1.3;
+}
+
+.rule-text {
+  flex-grow: 1;
+}
+
+/* ==========================================================
+   6. FOOTER (Section 7.7)
+   ========================================================== */
+.menu-footer {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: var(--font-ui, sans-serif);
+  font-size: var(--text-12, 12px);
+  color: rgba(255, 255, 255, 0.75);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-top: 8px;
+}
+
+.footer-left,
+.footer-right {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.footer-btn {
+  background: none;
+  border: none;
+  color: var(--led-teal, #35e0c2);
+  font-family: var(--font-ui, sans-serif);
+  font-size: var(--text-12, 12px);
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 4px 6px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.footer-btn:focus-visible {
+  outline: 2px solid var(--signal-yellow, #ffc21a);
+}
+
+.footer-tag {
+  background: rgba(184, 50, 42, 0.3);
+  border: 1px solid var(--brick-red, #b8322a);
+  border-radius: var(--rad-sm, 8px);
+  color: #ff8a80;
+  padding: 2px 8px;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+
+/* ==========================================================
+   7. RESPONSIVE VIEWPORT ADAPTATIONS (Section 5)
+   ========================================================== */
+
+/* Phone Portrait (< 600px) */
+@media (max-width: 599px) {
+  #screen {
+    padding: 6px 6px calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+  .route-board-panel {
+    padding: 4px 6px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  .board-plate-row {
+    font-size: 10.5px;
+    gap: 4px;
+  }
+  .board-main-title {
+    font-size: clamp(17px, 5.2vw, 22px);
+    margin: 1px 0 2px;
+  }
+  .board-route-line {
+    font-size: clamp(9.5px, 2.7vw, 11.5px);
+    word-break: break-word;
+  }
+  .menu-action-row {
+    flex-direction: column;
+    width: 100%;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .action-sub-row {
+    width: 100%;
+    justify-content: center;
+    max-width: 320px;
+    gap: 6px;
+    min-width: 0;
+  }
+  .ticket-start-btn {
+    width: 100%;
+    max-width: 320px;
+    min-height: 48px;
+    font-size: 18px;
+    box-sizing: border-box;
+  }
+  .stop-select-wrap {
+    flex-grow: 1;
+    min-width: 0;
+    max-width: calc(100% - 84px);
+  }
+  .stop-select {
+    width: 100%;
+    min-width: 0;
+    font-size: 11.5px;
+    min-height: 40px;
+    padding: 0 24px 0 8px;
+    box-sizing: border-box;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .install-icon-btn {
+    min-width: 40px;
+    min-height: 40px;
+    font-size: 16px;
+  }
+  .rules-card-container,
+  #startInfo.rules-card-container {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin: 6px 0;
+  }
+  .rules-card {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .rules-head {
+    padding: 5px 8px;
+  }
+  .rules-head-title {
+    font-size: 13px;
+  }
+  .rules-body {
+    padding: 4px 8px;
+    max-height: 160px;
+  }
+  .rule-row {
+    font-size: 11px;
+    gap: 5px;
+    padding: 2.5px 0;
+  }
+  .rule-icon {
+    font-size: 13px;
+  }
+  .menu-footer {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 3px;
+    font-size: 10.5px;
+    padding-top: 4px;
+  }
+  .footer-btn,
+  .footer-tag {
+    min-height: 36px;
+    padding: 2px 6px;
+    font-size: 10.5px;
+  }
+}
+
+/* Phone Landscape (height < 500px) */
+@media (max-height: 500px) {
+  #screen {
+    padding: 6px 12px;
+  }
+  .menu-shell {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .menu-header {
+    width: 48%;
+    align-items: flex-start;
+    text-align: left;
+  }
+  .rules-card-container {
+    width: 50%;
+    margin: 0;
+  }
+  .rules-body {
+    max-height: 140px;
+  }
+  .menu-action-row {
+    justify-content: flex-start;
+  }
+  .menu-footer {
+    width: 100%;
+    margin-top: 6px;
+    padding-top: 4px;
+  }
+}
+
+/* ==========================================================
+   PNEUMATIC BUS DOOR TRANSITION (Section 9)
+   ========================================================== */
+.door-transition {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  pointer-events: none;
+  display: flex;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 120ms ease, visibility 0s 750ms;
+}
+
+.door-transition.active {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity 120ms ease, visibility 0s 0s;
+}
+
+.door-leaf {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  background: linear-gradient(135deg, var(--bus-green, #1f6b3a) 0%, #134625 100%);
+  box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--dur-door, 700ms) var(--ease-out, cubic-bezier(0.2, 0.8, 0.2, 1));
+  will-change: transform;
+}
+
+.door-left {
+  transform: translateX(-100%);
+  border-right: 4px solid #111;
+}
+
+.door-right {
+  transform: translateX(100%);
+  border-left: 4px solid #111;
+}
+
+.door-window {
+  width: min(150px, 38%);
+  height: min(260px, 42vh);
+  background: rgba(180, 225, 240, 0.15);
+  border: 4px solid #37474f;
+  border-radius: var(--rad-sm, 8px);
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.4);
+  position: relative;
+  backdrop-filter: blur(2px);
+}
+
+.door-window::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 20%;
+  width: 25%;
+  height: 100%;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transform: skewX(-15deg);
+}
+
+.door-transition.sliding-shut .door-left,
+.door-transition.sliding-shut .door-right {
+  transform: translateX(0%);
+}
+
+.door-transition.sliding-open .door-left {
+  transform: translateX(-100%);
+}
+
+.door-transition.sliding-open .door-right {
+  transform: translateX(100%);
+}
+
+/* High contrast & reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

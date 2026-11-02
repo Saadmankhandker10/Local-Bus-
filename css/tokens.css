@@ -1,36 +1,129 @@
-/* Design tokens for "Local Bus — Dhaka Route".
-   Inspired by painted Dhaka local buses, brass ticket plates, LED destination boards, and newsprint. */
+/* Design tokens for "Local Bus — Dhaka Route" (লোকাল বাস — ঢাকা রুট)
+   Authentic visual identity built around a Dhaka local bus:
+   Route board, ticket, fare chart (ভাড়ার তালিকা), bus-stop sign, number plate. */
 
+/* --- Headings: Atma (Bold / 700) --- */
+@font-face {
+  font-family: 'Atma';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../fonts/atma-700-bengali.woff2') format('woff2');
+  unicode-range: U+0951-0952, U+0964-0965, U+0980-09FE, U+1CD0, U+1CD2, U+1CD5-1CD6, U+1CD8, U+1CE1, U+1CEA, U+1CED, U+1CF2, U+1CF5-1CF7, U+200C-200D, U+20B9, U+25CC, U+A8F1, U+11DF0-11DF1;
+}
+@font-face {
+  font-family: 'Atma';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../fonts/atma-700-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* --- UI & Controls: Noto Sans Bengali (400..700 Variable) --- */
+@font-face {
+  font-family: 'Noto Sans Bengali';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('../fonts/notosansbengali-bengali.woff2') format('woff2');
+  unicode-range: U+0951-0952, U+0964-0965, U+0980-09FE, U+1CD0, U+1CD2, U+1CD5-1CD6, U+1CD8, U+1CE1, U+1CEA, U+1CED, U+1CF2, U+1CF5-1CF7, U+200C-200D, U+20B9, U+25CC, U+A8F1, U+11DF0-11DF1;
+}
+
+/* --- Fare Chart: Noto Serif Bengali (SemiBold / 600) --- */
+@font-face {
+  font-family: 'Noto Serif Bengali';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('../fonts/notoserifbengali-600-bengali.woff2') format('woff2');
+  unicode-range: U+0951-0952, U+0964-0965, U+0980-09FE, U+1CD0, U+1CD2, U+1CD5-1CD6, U+1CD8, U+1CE1, U+1CEA, U+1CED, U+1CF2, U+1CF5-1CF7, U+200C-200D, U+20B9, U+25CC, U+A8F1, U+11DF0-11DF1;
+}
+
+/* Optional Kalpurush fallback */
 @font-face {
   font-family: 'Kalpurush';
   src: local('Kalpurush'), local('Kalpurush ANSI'),
-       url('https://fonts.maateen.me/kalpurush/font.woff2') format('woff2'),
-       url('https://fonts.maateen.me/kalpurush/font.woff') format('woff'),
-       url('https://fonts.maateen.me/kalpurush/font.ttf') format('truetype');
+       url('https://fonts.maateen.me/kalpurush/font.woff2') format('woff2');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
 
 :root {
+  /* --- Colour Tokens --- */
   --bus-green: #1f6b3a;
   --bus-green-dark: #134625;
-  --signal-yellow: #ffc21a;
+  --signal-yellow: #ffc21a;     /* Loudest visual element */
   --brick-red: #b8322a;
+  --cream: #f6efdd;
   --cream-paper: #f6efdd;
-  --asphalt-dark: #1a1d1f;
-  --bus-stop-blue: #1f5fae;
-  --teal-led: #35e0c2;
+  --asphalt: #1a1d1f;
+  --asphalt-dark: #0f1214;
+  --stop-blue: #1f5fae;
+  --led-teal: #35e0c2;
+  --led-amber: #ffaa00;
   --gold-border: #ffd600;
   --ink-dark: #181a1b;
 
-  --font-bn: 'Kalpurush', 'Noto Sans Bengali', 'Nirmala UI', system-ui, sans-serif;
-  --font-serif: 'Kalpurush', 'Noto Serif Bengali', Georgia, serif;
+  /* --- Typography Families --- */
+  --font-heading: 'Atma', 'Noto Sans Bengali', 'Kalpurush', system-ui, sans-serif;
+  --font-ui: 'Noto Sans Bengali', 'Kalpurush', system-ui, -apple-system, sans-serif;
+  --font-fare: 'Noto Serif Bengali', 'Kalpurush', Georgia, serif;
   --font-mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --font-bn: var(--font-ui);
+  --font-serif: var(--font-fare);
 
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --shadow-card: 0 6px 20px rgba(0, 0, 0, 0.55);
+  /* --- Type Scale (px) --- */
+  --text-12: 12px;
+  --text-14: 14px;
+  --text-16: 16px;
+  --text-18: 18px;
+  --text-22: 22px;
+  --text-28: 28px;
+  --text-40: 40px;
+  --text-56: 56px;
+
+  /* Line heights (essential: 1.35 for body & 1.15 for display so vowel marks are never clipped) */
+  --lh-body: 1.35;
+  --lh-display: 1.15;
+
+  /* --- Spacing Scale (px) --- */
+  --sp-4: 4px;
+  --sp-8: 8px;
+  --sp-12: 12px;
+  --sp-16: 16px;
+  --sp-24: 24px;
+  --sp-32: 32px;
+  --sp-48: 48px;
+
+  /* --- Radii (px) --- */
+  --rad-sm: 8px;
+  --rad-md: 12px;
+  --rad-lg: 20px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+
+  /* --- Elevation --- */
+  --elev-none: none;
+  --elev-card: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --elev-floating: 0 10px 30px rgba(0, 0, 0, 0.65);
+  --shadow-card: var(--elev-card);
+
+  /* --- Motion Tokens --- */
+  --dur-tap: 120ms;
+  --dur-panel: 240ms;
+  --dur-flip: 600ms;
+  --dur-door: 700ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-tap: 0ms;
+    --dur-panel: 150ms;
+    --dur-flip: 150ms;
+    --dur-door: 200ms;
+  }
+}

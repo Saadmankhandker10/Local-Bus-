@@ -195,6 +195,9 @@ function underFlyover(seg, s) {
 }
 
 function spawn(dt) {
+  // Draw call budget control during title menu (Section 9): max 4 active background vehicles
+  if (!game.running && objs.length >= 4) return;
+
   // Traffic: vehicles come more often the further you drive, up to a limit.
   spawnTimer -= dt;
   if (spawnTimer <= 0) {
@@ -530,7 +533,7 @@ export function updateTraffic(dt) {
       o.m.userData.busController.roll(o.v || t.v, dt);
     }
 
-    if (!o.hit && !game.crashing && !game.caught && onBusRoad(o.seg)) {
+    if (game.running && !o.hit && !game.crashing && !game.caught && onBusRoad(o.seg)) {
       const hitNow = sweptHit(bx, B.hitHalfWidth, o.x, t.w / 2, zPrev, o.z, B.hitHalfLength + t.l / 2);
       if (hitNow && game.busY < 1.8) {
         if (t.isRamp) {

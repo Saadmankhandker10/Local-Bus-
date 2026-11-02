@@ -9,6 +9,9 @@ All visual, 3D, text, and audio assets in **"Local Bus — Dhaka Route" (`লো
 | **2D Textures & Rickshaw Art** | Procedurally drawn at runtime onto HTML5 `<canvas>` (`THREE.CanvasTexture`) in `js/world.js`, `js/vehicles.js`, `js/marks.js`, and `js/bus.js` | Original code (Repository License) |
 | **Sound Effects & Engine Audio** | Synthesized in real time using the browser's native `AudioContext` (WebAudio API oscillators, noise buffers, and biquad filters) in `js/audio.js` | Original code (Repository License) |
 | **Bangla Dialogue, Headlines, Slogans & Banners** | Original fictional, satirical Bangla writing in `js/data/dialogue.bn.js`, `js/data/headlines.bn.js`, `js/data/shouts.bn.js`, `js/data/slogans.bn.js`, `js/data/banners.bn.js`, and `js/data/ticker.bn.js` | Original work (Repository License) |
+| **Typography: Headings (`Atma`)** | Self-hosted subsetted woff2 (`fonts/atma-700-*.woff2`) | SIL Open Font License (OFL-1.1) |
+| **Typography: UI & Controls (`Noto Sans Bengali`)** | Self-hosted subsetted woff2 (`fonts/notosansbengali-bengali.woff2`) | SIL Open Font License (OFL-1.1) |
+| **Typography: Fare Chart (`Noto Serif Bengali`)** | Self-hosted subsetted woff2 (`fonts/notoserifbengali-600-bengali.woff2`) | SIL Open Font License (OFL-1.1) |
 | **App Icon** | Custom inline SVG vector (`icons/icon.svg`) | Original work (Repository License) |
 
 No external copyrighted images, 3D models, fonts, or audio files are bundled or copied from any other game.
