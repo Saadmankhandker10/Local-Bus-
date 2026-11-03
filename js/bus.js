@@ -577,32 +577,79 @@ export function updateBus(dt) {
     }
   } else {
     // ---- Standard 1.5D Curvilinear Route Navigation ----
-    const v = game.speed;
-    const pull = hasFuel ? (B.accel + (boosting ? B.boostAccel : 0)) * throttle * Math.max(0, 1 - (v / top) ** 3) : 0;
-    const drag = (hasFuel ? B.rollDrag : B.emptyTankDrag) + B.airDrag * v * v;
-    let speed = Math.max(0, v + (pull - B.brake * ctl.brake - drag) * dt);
-    if (!boosting && speed > B.maxSpeed) speed = Math.max(B.maxSpeed, speed - B.overSpeedDecel * dt);
-    game.accel = (speed - v) / dt;
-    game.speed = speed;
-    game.signedSpeed = speed;
+    let v = game.signedSpeed !== undefined ? game.signedSpeed : game.speed;
+    const topRev = -B.maxSpeed * (FR.reverseSpeedRatio || 0.28);
+
+    if (v > 0.15) {
+      game.gear = "D";
+      const pull = hasFuel ? (B.accel + (boosting ? B.boostAccel : 0)) * throttle * Math.max(0, 1 - (v / top) ** 3) : 0;
+      const drag = (hasFuel ? B.rollDrag : B.emptyTankDrag) + B.airDrag * v * v;
+      v = Math.max(0, v + (pull - B.brake * ctl.brake - drag) * dt);
+      if (!boosting && v > B.maxSpeed) v = Math.max(B.maxSpeed, v - B.overSpeedDecel * dt);
+    } else if (v < -0.15) {
+      game.gear = "R";
+      const revPull = hasFuel ? (FR.reverseAccel || 9.0) * ctl.brake * Math.max(0, 1 - (v / topRev) ** 2) : 0;
+      const fwdBrake = (FR.reverseBrake || 32) * throttle;
+      const coastDrag = (ctl.brake === 0 && throttle === 0) ? 6.5 : B.rollDrag;
+      const drag = (hasFuel ? coastDrag : B.emptyTankDrag) + B.airDrag * v * v;
+      v = Math.min(0, v - (revPull - fwdBrake - drag) * dt);
+      if (v < topRev) v = Math.min(topRev, v + 12 * dt);
+    } else {
+      // Stopped / Transition zone (|v| <= 0.15): holding brake activates Reverse gear
+      if (ctl.brake > 0.1 && hasFuel) {
+        if (game.gear !== "R") {
+          game.gear = "R";
+          if (reverseVoiceTimer <= 0) {
+            reverseVoiceTimer = 8.0;
+            say("হেল্পার", "পিছনে ওস্তাদ, পিছনে! ডানে কাটেন!", 1.8, true);
+          }
+          playReverseBeep();
+        }
+        v -= (FR.reverseAccel || 9.0) * ctl.brake * dt * 0.8;
+      } else if (throttle > 0.1 && hasFuel) {
+        game.gear = "D";
+        v += (B.accel + (boosting ? B.boostAccel : 0)) * throttle * dt * 0.8;
+      } else {
+        v = approach(v, 0, 8.0, dt);
+      }
+    }
+
+    // Dhaka bus reverse safety beeper loop
+    if (game.gear === "R" || v < -0.15) {
+      revBeepTimer -= dt;
+      if (revBeepTimer <= 0) {
+        revBeepTimer = FR.reverseBeeperInterval || 0.58;
+        playReverseBeep(bus.position);
+      }
+    } else {
+      revBeepTimer = 0;
+    }
+
+    const prevSpeed = game.speed;
+    game.accel = (Math.abs(v) - prevSpeed) / dt;
+    game.signedSpeed = v;
+    game.speed = Math.abs(v);
 
     sample(here.seg, here.s, pos);
-    const radius = B.turnRadiusMin + speed * B.turnRadiusPerSpeed;
-    const turnRate = ctl.steer * speed / radius;
-    game.yaw += (turnRate - pos.k * speed * Math.cos(game.yaw)) * dt;
+    const radius = B.turnRadiusMin + game.speed * B.turnRadiusPerSpeed;
+    const steerDir = v < -0.1 ? -1 : 1;
+    const turnRate = steerDir * ctl.steer * (game.speed / radius);
+    game.yaw += (turnRate - pos.k * v * Math.cos(game.yaw)) * dt;
     if (Math.abs(ctl.steer) < .1) game.yaw = approach(game.yaw, 0, B.alignRate, dt);
     game.yaw = clamp(game.yaw, -B.maxRelYaw, B.maxRelYaw);
 
     const S = SEGS[here.seg];
-    game.vx = speed * Math.sin(game.yaw);
+    game.vx = v * Math.sin(game.yaw);
     let x = game.lat + game.vx * dt;
     const edge = S.half - B.edgeInset, hard = S.half - B.edgeHardInset;
     const over = Math.abs(x) - edge;
     if (over > 0) {
       game.yaw -= Math.sign(x) * B.edgeYawPush * over * dt;
-      game.speed = Math.max(0, game.speed - B.edgeScrapeDrag * dt);
+      v = Math.sign(v) * Math.max(0, Math.abs(v) - B.edgeScrapeDrag * dt);
+      game.signedSpeed = v;
+      game.speed = Math.abs(v);
       game.shake = Math.max(game.shake, B.edgeShake);
-      if (speed > 8 && Math.random() < 0.45) {
+      if (Math.abs(v) > 8 && Math.random() < 0.45) {
         spawnScrapeSparks(bus.position.x + Math.sign(x) * 1.3, 0.35, bus.position.z, 6, Math.sign(x), 0);
       }
     }
@@ -613,8 +660,21 @@ export function updateBus(dt) {
     game.lat = x;
 
     const prevS = here.s;
-    ds = game.speed * Math.cos(game.yaw) * dt;
+    ds = v * Math.cos(game.yaw) * dt;
     here.s += ds;
+
+    // Handle reversing past start of segment
+    if (here.s < 0) {
+      if (here.seg > 0) {
+        here.seg -= 1;
+        here.s += SEGS[here.seg].len;
+      } else {
+        here.s = 0;
+        v = 0;
+        game.signedSpeed = 0;
+        game.speed = 0;
+      }
+    }
 
     for (const [ji, j] of (S.junctions || []).entries()) {
       const js = j.at * S.len;

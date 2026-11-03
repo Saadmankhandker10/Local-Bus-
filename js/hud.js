@@ -231,6 +231,16 @@ export function updateHud(dt, boostFx) {
 export function onStartPressed(main, fromStart) {
   $("go").onclick = main;
   $("restart").onclick = fromStart;
+  if ($("playAgainBtn")) $("playAgainBtn").onclick = fromStart;
+  if ($("checkpointRetryBtn")) $("checkpointRetryBtn").onclick = main;
+  if ($("toMenuBtn")) {
+    $("toMenuBtn").onclick = () => {
+      hidePaper();
+      $("screen").style.display = "flex";
+      if ($("titleblock")) $("titleblock").hidden = false;
+      if ($("startInfo")) $("startInfo").hidden = false;
+    };
+  }
   $("share").onclick = () => savePaperImage();
   if ($("fbShareBtn")) {
     $("fbShareBtn").onclick = () => {
@@ -623,12 +633,23 @@ export function showRunEnd(run, photo, checkpointName) {
   if ($("copyBtn")) $("copyBtn").hidden = false;
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   if (isIOS && $("iosInstallBtn")) $("iosInstallBtn").hidden = false;
+  if ($("playAgainBtn")) $("playAgainBtn").hidden = false;
+  if ($("toMenuBtn")) $("toMenuBtn").hidden = false;
   if (run.cause === "complete") {
     $("go").textContent = "🎫 আবার যাত্রা";
     $("restart").hidden = true;
+    if ($("checkpointRetryBtn")) $("checkpointRetryBtn").hidden = true;
   } else {
     const pct = Math.round(CFG.journey.checkpointPenalty * 100);
     $("go").textContent = checkpointName ? `🎫 ${checkpointName} থেকে আবার (স্কোর −${bnNum(pct)}%)` : "🎫 আবার চালান";
-    $("restart").hidden = !checkpointName;
+    $("restart").hidden = true;
+    if ($("checkpointRetryBtn")) {
+      if (checkpointName) {
+        $("checkpointRetryBtn").textContent = `🎫 ${checkpointName} থেকে আবার (স্কোর −${bnNum(pct)}%)`;
+        $("checkpointRetryBtn").hidden = false;
+      } else {
+        $("checkpointRetryBtn").hidden = true;
+      }
+    }
   }
 }

@@ -58,6 +58,17 @@ export function initInput(pauseHandler) {
   onPause = pauseHandler;
 
   addEventListener("keydown", e => {
+    const paper = $("paper");
+    if (paper && !paper.hidden && (e.code === "Space" || e.code === "Enter")) {
+      e.preventDefault();
+      const cpBtn = $("checkpointRetryBtn");
+      if (cpBtn && !cpBtn.hidden) {
+        cpBtn.click();
+      } else {
+        $("playAgainBtn")?.click() || $("restart")?.click();
+      }
+      return;
+    }
     if (KEY_MAP[e.code]) { held[KEY_MAP[e.code]] = true; e.preventDefault(); }
     else if (PAUSE_KEYS.includes(e.code) && !e.repeat) onPause(false);
     else if (TAP_KEYS[e.code] && !e.repeat) tapHandlers[TAP_KEYS[e.code]]?.();

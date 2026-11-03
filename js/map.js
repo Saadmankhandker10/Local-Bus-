@@ -12,7 +12,7 @@ import * as THREE from "three";
 
 export const MAP = {
   start: { x: 0, z: 0, heading: 90 },
-  width: 22.4,       // normal road width (6 lanes: 3 per direction, matching authentic Dhaka grand boulevards)
+  width: 28.8,       // normal road width (6 wide lanes: 3 per direction, matching authentic Dhaka grand boulevards)
   sample: 2,        // distance between stored points (smaller = smoother, more memory)
 
   legs: [
@@ -23,7 +23,7 @@ export const MAP = {
         { at: 0.35, type: "X", name: "তাজমহল রোড মোড়" },
         { at: 0.72, type: "X", name: "টাউন হল মোড়" },
       ],
-      alt: { id: "townhall-bazaar", mor: "টাউন হল বাজার গলি", side: -1, bulge: 24, width: 14, kind: "street" }
+      alt: { id: "townhall-bazaar", mor: "টাউন হল বাজার গলি", side: -1, bulge: 24, width: 18.0, kind: "street" }
     },
     { id: "mohammadpur-flyover", mor: "শ্যামলী — লালমাটিয়া মোড়", stage: 0,
       path: [["s", 200], ["r", 10, 450], ["s", 420], ["l", 10, 450], ["s", 200]],
@@ -39,7 +39,7 @@ export const MAP = {
       uturns: [
         { at: 0.12, name: "আসাদগেট ইউ-টার্ন" }
       ],
-      alt: { id: "asad-detour", mor: "আসাদগেট বাইপাস গলি", side: 1, bulge: 28, width: 14, kind: "street" }
+      alt: { id: "asad-detour", mor: "আসাদগেট বাইপাস গলি", side: 1, bulge: 28, width: 18.0, kind: "street" }
     },
 
     // ---- Stage 2: Dhanmondi (heading south) ----
@@ -57,7 +57,7 @@ export const MAP = {
       junctions: [
         { at: 0.5, type: "T", side: 1, name: "কলাবাগান মাঠ মোড়" },
       ],
-      alt: { id: "dhanmondi-lake-road", mor: "ধানমন্ডি লেক রোড", side: 1, bulge: 26, width: 14, kind: "street" }
+      alt: { id: "dhanmondi-lake-road", mor: "ধানমন্ডি লেক রোড", side: 1, bulge: 26, width: 18.0, kind: "street" }
     },
     { id: "dhanmondi-south", mor: "ধানমন্ডি ২ — সিটি কলেজ মোড়", stage: 1,
       path: [["s", 320], ["l", 10, 320], ["s", 420]],
@@ -73,14 +73,14 @@ export const MAP = {
         { at: 0.35, type: "X", name: "সায়েন্সল্যাব — নিউমার্কেট মোড়" },
         { at: 0.72, type: "X", name: "বাটা সিগন্যাল — এলিফ্যান্ট রোড মোড়" },
       ],
-      alt: { id: "elephant-road-market", mor: "এলিফ্যান্ট রোড মার্কেট গলি", side: 1, bulge: 25, width: 14, kind: "street" }
+      alt: { id: "elephant-road-market", mor: "এলিফ্যান্ট রোড মার্কেট গলি", side: 1, bulge: 25, width: 18.0, kind: "street" }
     },
     { id: "shahbag-approach", mor: "শাহবাগ মোড়", stage: 2,
       path: [["s", 420], ["l", 6, 600], ["s", 320]],
       junctions: [
         { at: 0.88, type: "X", name: "শাহবাগ জাতীয় জাদুঘর মোড়" },
       ],
-      alt: { id: "katabon-detour", mor: "কাঁটাবন গলি বাইপাস", side: -1, bulge: 28, width: 14, kind: "street" }
+      alt: { id: "katabon-detour", mor: "কাঁটাবন গলি বাইপাস", side: -1, bulge: 28, width: 18.0, kind: "street" }
     },
 
     // ---- Stage 4: Dhaka University (heading south) ----
@@ -89,7 +89,7 @@ export const MAP = {
       junctions: [
         { at: 0.65, type: "X", name: "টিএসসি রাজু ভাস্কর্য মোড়" },
       ],
-      alt: { id: "charukola-lane", mor: "চারুকলা বকুলতলা গলি", side: -1, bulge: 22, width: 14, kind: "street" }
+      alt: { id: "charukola-lane", mor: "চারুকলা বকুলতলা গলি", side: -1, bulge: 22, width: 18.0, kind: "street" }
     },
     { id: "du-campus", mor: "কার্জন হল — দোয়েল চত্বর মোড়", stage: 3,
       path: [["s", 320], ["r", 20, 260], ["s", 420], ["l", 20, 260], ["s", 320]],

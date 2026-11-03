@@ -381,7 +381,7 @@ function step(dt) {
   const d = updateBus(dt);
   // Passengers on board keep paying while the bus moves.
   game.fare += game.pass * game.speed * CFG.fare.travelRate * dt;
-  game.dist += d;
+  game.dist = Math.max(0, game.dist + d);
 
   // Passenger comfort / patience: drops on hard braking or crawling in a jam, recovers on smooth driving.
   const C = CFG.comfort;

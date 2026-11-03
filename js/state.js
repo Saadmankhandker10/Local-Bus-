@@ -38,7 +38,7 @@ export const game = {
   morName: "মোহাম্মদপুর বাসস্ট্যান্ড", // current Dhaka intersection / live TV location badge
 
   // Free-roam driving state
-  freeRoam: true,     // active in free-roam mode
+  freeRoam: false,    // classic stage-based curvilinear progression restored by default
   wx: 0,              // absolute world x position
   wz: 0,              // absolute world z position
   heading: 0,         // absolute world heading in radians (0 = North/-Z, PI/2 = East/+X)

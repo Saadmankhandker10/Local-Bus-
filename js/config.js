@@ -52,7 +52,7 @@ export const CFG = {
 
   // Free-roam driving: kinematic bicycle physics, speed-dependent turning radius, reverse gear, and recovery
   freeRoam: {
-    enabled: true,               // enables free-roam vehicle kinematics (also activated via ?dev=freeroam)
+    enabled: false,              // classic stage-based curvilinear progression restored by default
     wheelbase: 4.8,              // distance between front and rear axles in world units
     maxSteerAngle: 0.65,         // tight turning angle at slow speeds (~37.2 degrees for 3-point & U-turns)
     steerSpeed: 4.5,             // steering wheel turn rate in radians per second
@@ -238,15 +238,15 @@ export const CFG = {
     intervalJitterMin: 0.7,
     intervalJitterMax: 1.3,
     spawnAhead: 150,      // how far ahead (along the road) vehicles appear
-    lanes: [-7.6, -4.6, -1.6, 1.6, 4.6, 7.6],
-    laneWidth: 3.0,       // distance between two lanes (used when vehicles change lane)
-    laneJitter: 0.4,
-    clearZ: 12,           // don't spawn if another vehicle is this close (ahead/behind)...
-    clearX: 3.2,          // ...and this close sideways
+    lanes: [-10.8, -6.6, -2.4, 2.4, 6.6, 10.8],
+    laneWidth: 4.2,       // distance between two lanes (wide Dhaka grand boulevard lanes for smooth overtaking)
+    laneJitter: 0.3,
+    clearZ: 14,           // don't spawn if another vehicle is this close (ahead/behind)...
+    clearX: 4.2,          // ...and this close sideways
     despawnBehind: 30,
     despawnAhead: -220,
     despawnSide: 30,      // removed when this far outside the road edge
-    followGap: 6,         // a vehicle slows down if another is this close in front of it
+    followGap: 7,         // a vehicle slows down if another is this close in front of it
     speedResponse: 2,     // how quickly vehicles change speed
     laneResponse: 1.5,    // how quickly vehicles slide into a new lane
     avoidDist: 30,        // vehicles change lane this far before a pillar
