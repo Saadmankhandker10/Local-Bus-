@@ -9,6 +9,7 @@ import { CFG } from "./config.js";
 import { rnd, pick, clamp } from "./utils.js";
 import { scene, box, person, animatePerson } from "./world.js";
 import { game } from "./state.js";
+import { bus } from "./bus.js";
 import { emit, on } from "./events.js";
 import { sweptHit, sideGap } from "./physics.js";
 import { makeVehicle, makeStall, makeThela, makeFishStall, makePillar, makeManhole, makeTrench, makeRamp, beaconMat, dangerRingMat } from "./vehicles.js";
@@ -23,7 +24,7 @@ import {
   spawnGroundSplat
 } from "./effects.js";
 import { currentStage } from "./journey.js";
-import { SEGS, here, ahead, walk, place, lanesOf } from "./map.js";
+import { SEGS, MAIN, here, ahead, walk, place, lanesOf } from "./map.js";
 import { PROCESSION_EVENTS } from "./data/events.js";
 
 const T = CFG.traffic, B = CFG.bus, I = CFG.impact, W = CFG.warning, J = CFG.jam, PED = CFG.pedestrians, HZ = CFG.hazards;
@@ -85,9 +86,58 @@ const ease = (rate, dt) => 1 - Math.exp(-rate * dt);
 /** At a fork, most traffic keeps to the main road; some takes the side street or flyover. */
 const pickBranch = list => (Math.random() < CFG.map.altShare ? list[list.length - 1] : list[0]);
 
-/** Is (seg) part of the bus's own road right now (same piece, the next one, or the last one)? */
+/** Is (seg) part of the bus's own road right now (same piece, next one, last one, or sister branch/detour)? */
 function onBusRoad(seg) {
-  return seg === here.seg || seg === here.prev || SEGS[here.seg].next.includes(seg);
+  if (seg === here.seg || seg === here.prev) return true;
+  const cur = SEGS[here.seg];
+  if (cur) {
+    if (cur.next && cur.next.includes(seg)) return true;
+    if (cur.alts && cur.alts.includes(seg)) return true;
+    if (!cur.main && cur.from !== undefined) {
+      const pMain = MAIN[cur.from];
+      if (seg === pMain) return true;
+      if (SEGS[pMain]?.alts?.includes(seg)) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Exact 2D Oriented Bounding Box (OBB) intersection using the Separating Axis Theorem (SAT).
+ * Zero memory allocations, fully symmetric, handles arbitrary vehicle yaw angles & high speeds.
+ */
+function obbIntersect(x1, z1, rot1, hw1, hl1, x2, z2, rot2, hw2, hl2) {
+  const dx = x2 - x1, dz = z2 - z1;
+  const maxR = Math.hypot(hw1, hl1) + Math.hypot(hw2, hl2);
+  if (dx * dx + dz * dz > maxR * maxR) return false;
+
+  const u1x = Math.cos(rot1), u1z = -Math.sin(rot1);
+  const v1x = -Math.sin(rot1), v1z = -Math.cos(rot1);
+
+  const u2x = Math.cos(rot2), u2z = -Math.sin(rot2);
+  const v2x = -Math.sin(rot2), v2z = -Math.cos(rot2);
+
+  // Axis 1: box 1 local X (u1)
+  const d1 = Math.abs(dx * u1x + dz * u1z);
+  const r1 = hw1 + hw2 * Math.abs(u2x * u1x + u2z * u1z) + hl2 * Math.abs(v2x * u1x + v2z * u1z);
+  if (d1 > r1) return false;
+
+  // Axis 2: box 1 local Z (v1)
+  const d2 = Math.abs(dx * v1x + dz * v1z);
+  const r2 = hl1 + hw2 * Math.abs(u2x * v1x + u2z * v1z) + hl2 * Math.abs(v2x * v1x + v2z * v1z);
+  if (d2 > r2) return false;
+
+  // Axis 3: box 2 local X (u2)
+  const d3 = Math.abs(dx * u2x + dz * u2z);
+  const r3 = hw2 + hw1 * Math.abs(u1x * u2x + u1z * u2z) + hl1 * Math.abs(v1x * u2x + v1z * u2z);
+  if (d3 > r3) return false;
+
+  // Axis 4: box 2 local Z (v2)
+  const d4 = Math.abs(dx * v2x + dz * v2z);
+  const r4 = hl2 + hw1 * Math.abs(u1x * v2x + u1z * v2z) + hl1 * Math.abs(v1x * v2x + v1z * v2z);
+  if (d4 > r4) return false;
+
+  return true;
 }
 
 /** Remove everything and restart all spawn counters from this odometer distance. */
@@ -504,6 +554,7 @@ export function updateTraffic(dt) {
 
   let warn = false;
   const bx = game.lat;
+  const isFreeRoam = game.freeRoam && CFG.freeRoam?.enabled !== false && bus;
 
   for (let i = objs.length - 1; i >= 0; i--) {
     const o = objs[i], t = o.t;
@@ -513,8 +564,16 @@ export function updateTraffic(dt) {
     const zPrev = o.z;
     const alive = advance(o, dt);
     o.z = -ahead(o.seg, o.s);
-    // Gone: off the end of the map, on a road the bus is not near, or too far ahead/behind.
-    if (!alive || Number.isNaN(o.z) || o.z > T.despawnBehind || o.z < T.despawnAhead || Math.abs(o.x) > SEGS[o.seg].half + T.despawnSide) {
+
+    // Despawn check: in free-roam mode, use 2D distance to prevent premature despawning on side streets/turns
+    let despawn = false;
+    if (isFreeRoam) {
+      const d2 = (o.m.position.x - bus.position.x) ** 2 + (o.m.position.z - bus.position.z) ** 2;
+      despawn = !alive || Math.abs(o.x) > SEGS[o.seg].half + T.despawnSide * 3 || d2 > (T.despawnAhead * 1.35) ** 2;
+    } else {
+      despawn = !alive || Number.isNaN(o.z) || o.z > T.despawnBehind || o.z < T.despawnAhead || Math.abs(o.x) > SEGS[o.seg].half + T.despawnSide;
+    }
+    if (despawn) {
       scene.remove(o.m);
       if (o.hit) disposeHierarchy(o.m);
       objs.splice(i, 1);
@@ -539,8 +598,21 @@ export function updateTraffic(dt) {
       o.m.userData.carController.roll(o.v || t.v, dt);
     }
 
-    if (game.running && !o.hit && !game.crashing && !game.caught && onBusRoad(o.seg)) {
-      const hitNow = sweptHit(bx, B.hitHalfWidth, o.x, t.w / 2, zPrev, o.z, B.hitHalfLength + t.l / 2);
+    if (game.running && !o.hit && !game.crashing && !game.caught) {
+      let hitNow = false;
+      if (isFreeRoam) {
+        // High-speed sweep prevention
+        const speedSweep = Math.abs(game.signedSpeed !== undefined ? game.signedSpeed : game.speed) * dt * 0.5;
+        hitNow = obbIntersect(
+          bus.position.x, bus.position.z, bus.rotation.y,
+          B.hitHalfWidth, B.hitHalfLength + speedSweep,
+          o.m.position.x, o.m.position.z, o.m.rotation.y,
+          t.w / 2, t.l / 2
+        );
+      } else if (onBusRoad(o.seg)) {
+        hitNow = sweptHit(bx, B.hitHalfWidth, o.x, t.w / 2, zPrev, o.z, B.hitHalfLength + t.l / 2);
+      }
+
       if (hitNow && game.busY < 1.8) {
         if (t.isRamp) {
           // Wooden stunt ramp: launch the bus into the air!
@@ -548,6 +620,7 @@ export function updateTraffic(dt) {
           game.busVy = 12.2;
           game.busY = 0.25;
           game.speed = Math.max(game.speed, 34);
+          if (game.signedSpeed !== undefined) game.signedSpeed = Math.max(game.signedSpeed, 34);
           game.invulnT = 1.6;
           emit("rampJump", { type: "ramp", damage: t.damage, x: o.m.position.x, y: o.m.position.y + 1.5, z: o.m.position.z });
         } else if (t.hazard) {
@@ -561,6 +634,17 @@ export function updateTraffic(dt) {
         } else if (!t.heavy) {
           launch(o);
           game.invulnT = CFG.hit.invulnTime;
+          // Free-roam mass ratio impulse response
+          if (isFreeRoam) {
+            const mass = t.mass || 0.3;
+            const impulse = CFG.freeRoam?.npcMassImpulse || 0.15;
+            if (game.signedSpeed !== undefined) {
+              game.signedSpeed *= Math.max(0.65, 1.0 - mass * impulse);
+              game.speed = Math.abs(game.signedSpeed);
+            } else {
+              game.speed *= Math.max(0.65, 1.0 - mass * impulse);
+            }
+          }
           emitSparks(o.m.position.x, o.m.position.y + 1.2, o.m.position.z, 8);
           emit("crash", {
             type: t.name,
@@ -569,8 +653,19 @@ export function updateTraffic(dt) {
             y: o.m.position.y + 1.4,
             z: o.m.position.z,
           });
-        // Right after a light crash the bus may be shoved into something big: forgive that.
-        } else if (game.invulnT <= 0) {
+        // Right after a light crash the bus may be shoved into something big: forgive that or bounce
+        } else if (game.invulnT > 0) {
+          if (isFreeRoam) {
+            const bounce = CFG.freeRoam?.npcHeavyBounce || 0.4;
+            if (game.signedSpeed !== undefined) {
+              game.signedSpeed = -game.signedSpeed * bounce;
+              game.speed = Math.abs(game.signedSpeed);
+            } else {
+              game.speed = -game.speed * bounce;
+            }
+          }
+          emitSparks(o.m.position.x, o.m.position.y + 1.4, o.m.position.z, 10);
+        } else {
           emitSparks(o.m.position.x, o.m.position.y + 1.4, o.m.position.z, 12);
           spawnCrashEffects({
             x: o.m.position.x,
@@ -583,11 +678,30 @@ export function updateTraffic(dt) {
           emit("heavyHit", { type: t.name });
         }
       } else if (!t.heavy && !t.isRamp && !t.hazard && o.m.userData.mirrors) {
-        // Side-mirror grazing: passing super close beside a car/VIP/policeCar snaps off its side mirror!
-        const sGap = sideGap(bx, B.hitHalfWidth, o.x, t.w / 2);
-        const zOverlap = Math.min(zPrev, o.z) < B.hitHalfLength + t.l / 2 && Math.max(zPrev, o.z) > -(B.hitHalfLength + t.l / 2);
-        if (zOverlap && sGap >= 0 && sGap < 0.58) {
-          const busOnLeft = bx < o.x;
+        // Side-mirror grazing: passing super close snaps off side mirror
+        let mirrorClip = false;
+        let busOnLeft = false;
+        if (isFreeRoam) {
+          const dx = o.m.position.x - bus.position.x, dz = o.m.position.z - bus.position.z;
+          const localX = dx * Math.cos(bus.rotation.y) - dz * Math.sin(bus.rotation.y);
+          const localZ = -dx * Math.sin(bus.rotation.y) - dz * Math.cos(bus.rotation.y);
+          if (Math.abs(localZ) < B.hitHalfLength + t.l / 2) {
+            const gap = Math.abs(localX) - (B.hitHalfWidth + t.w / 2);
+            if (gap >= 0 && gap < 0.58) {
+              mirrorClip = true;
+              busOnLeft = localX > 0;
+            }
+          }
+        } else {
+          const sGap = sideGap(bx, B.hitHalfWidth, o.x, t.w / 2);
+          const zOverlap = Math.min(zPrev, o.z) < B.hitHalfLength + t.l / 2 && Math.max(zPrev, o.z) > -(B.hitHalfLength + t.l / 2);
+          if (zOverlap && sGap >= 0 && sGap < 0.58) {
+            mirrorClip = true;
+            busOnLeft = bx < o.x;
+          }
+        }
+
+        if (mirrorClip) {
           if (busOnLeft && o.mirrorL) {
             o.mirrorL = false;
             o.m.userData.mirrors.left.visible = false;
@@ -620,11 +734,21 @@ export function updateTraffic(dt) {
 
       // Heavy thing ahead and in our path? Light its beacon and warn the HUD.
       if (t.heavy) {
-        const closing = game.speed - o.v;
-        const warnDist = Math.max(W.minDist, closing * W.time);
-        const aheadGap = -o.z - B.hitHalfLength - t.l / 2;
-        const inPath = sideGap(bx, B.hitHalfWidth, o.x, t.w / 2) < W.sideMargin;
-        const danger = aheadGap > -t.l && aheadGap < warnDist && inPath && closing > 0;
+        let danger = false;
+        if (isFreeRoam) {
+          const dx = o.m.position.x - bus.position.x, dz = o.m.position.z - bus.position.z;
+          const fwd = -dx * Math.sin(bus.rotation.y) - dz * Math.cos(bus.rotation.y);
+          const lat = dx * Math.cos(bus.rotation.y) - dz * Math.sin(bus.rotation.y);
+          const closing = (game.signedSpeed !== undefined ? game.signedSpeed : game.speed) - o.v;
+          const warnDist = Math.max(W.minDist, closing * W.time);
+          danger = fwd > 0 && fwd < warnDist && Math.abs(lat) < B.hitHalfWidth + t.w / 2 + W.sideMargin && closing > 0;
+        } else {
+          const closing = game.speed - o.v;
+          const warnDist = Math.max(W.minDist, closing * W.time);
+          const aheadGap = -o.z - B.hitHalfLength - t.l / 2;
+          const inPath = sideGap(bx, B.hitHalfWidth, o.x, t.w / 2) < W.sideMargin;
+          danger = aheadGap > -t.l && aheadGap < warnDist && inPath && closing > 0;
+        }
         o.m.userData.beacon.visible = danger;
         if (o.m.userData.dangerRing) {
           o.m.userData.dangerRing.visible = danger;
@@ -666,7 +790,14 @@ export function updateTraffic(dt) {
   // Update pedestrians: authentic state machine, knockdown physics, getting up, and limb animation.
   for (let i = peds.length - 1; i >= 0; i--) {
     const p = peds[i], S = SEGS[p.seg], a = ahead(p.seg, p.s);
-    if (Number.isNaN(a) || a < -T.despawnBehind || a > -T.despawnAhead) {
+    let pedDespawn = false;
+    if (isFreeRoam) {
+      const pedDist2 = (p.m.position.x - bus.position.x) ** 2 + (p.m.position.z - bus.position.z) ** 2;
+      pedDespawn = pedDist2 > (T.despawnAhead * 1.35) ** 2;
+    } else {
+      pedDespawn = Number.isNaN(a) || a < -T.despawnBehind || a > -T.despawnAhead;
+    }
+    if (pedDespawn) {
       scene.remove(p.m); peds.splice(i, 1);
       continue;
     }
@@ -748,7 +879,17 @@ export function updateTraffic(dt) {
     }
 
     // 5. Collision with Bus: High-speed knock or low-speed leap
-    if (onBusRoad(p.seg) && a > -2.2 && a < 5.4 && Math.abs(p.x - bx) < B.hitHalfWidth + 0.65) {
+    let pedHit = false;
+    if (isFreeRoam) {
+      const dx = p.m.position.x - bus.position.x, dz = p.m.position.z - bus.position.z;
+      const localX = dx * Math.cos(bus.rotation.y) - dz * Math.sin(bus.rotation.y);
+      const localZ = -dx * Math.sin(bus.rotation.y) - dz * Math.cos(bus.rotation.y);
+      pedHit = Math.abs(localX) < B.hitHalfWidth + 0.65 && Math.abs(localZ) < B.hitHalfLength + 0.65;
+    } else {
+      pedHit = onBusRoad(p.seg) && a > -2.2 && a < 5.4 && Math.abs(p.x - bx) < B.hitHalfWidth + 0.65;
+    }
+
+    if (pedHit) {
       if (game.speed > 7.5) {
         // High speed impact: Launches pedestrian into tumbling knockdown physics!
         p.state = "tumble";
@@ -786,7 +927,17 @@ export function updateTraffic(dt) {
     }
 
     // Oncoming bus scare detection
-    if (!p.scared && onBusRoad(p.seg) && a > 0 && a < PED.scareDist && Math.abs(p.x - bx) < PED.scareWidth && game.speed > 4) {
+    let pedScare = false;
+    if (isFreeRoam) {
+      const dx = p.m.position.x - bus.position.x, dz = p.m.position.z - bus.position.z;
+      const fwd = -dx * Math.sin(bus.rotation.y) - dz * Math.cos(bus.rotation.y);
+      const lat = dx * Math.cos(bus.rotation.y) - dz * Math.sin(bus.rotation.y);
+      pedScare = !p.scared && fwd > 0 && fwd < PED.scareDist && Math.abs(lat) < PED.scareWidth && game.speed > 4;
+    } else {
+      pedScare = !p.scared && onBusRoad(p.seg) && a > 0 && a < PED.scareDist && Math.abs(p.x - bx) < PED.scareWidth && game.speed > 4;
+    }
+
+    if (pedScare) {
       p.scared = true;
       const safeSide = (p.x >= bx ? 1 : -1);
       p.targetX = safeSide * (S.half + 1.2);
@@ -824,22 +975,45 @@ export function eachTraffic(fn) {
 }
 
 on("horn", () => {
+  const isFreeRoam = game.freeRoam && CFG.freeRoam?.enabled !== false && bus;
   const bx = game.lat;
   for (const o of objs) {
-    if (o.hit || o.isStatic || o.t.heavy || !onBusRoad(o.seg)) continue;
-    const a = -o.z;
-    if (a > 0 && a < CFG.horn.reach && Math.abs(o.x - bx) < B.hitHalfWidth + o.t.w / 2 + .5) {
-      const lanes = lanesOf(o.seg, T.lanes);
-      o.targetX = clamp(o.x >= bx ? o.x + T.laneWidth : o.x - T.laneWidth, lanes[0], lanes[lanes.length - 1]);
+    if (o.hit || o.isStatic || o.t.heavy) continue;
+    if (isFreeRoam) {
+      const dx = o.m.position.x - bus.position.x, dz = o.m.position.z - bus.position.z;
+      const fwd = -dx * Math.sin(bus.rotation.y) - dz * Math.cos(bus.rotation.y);
+      const lat = dx * Math.cos(bus.rotation.y) - dz * Math.sin(bus.rotation.y);
+      if (fwd > 0 && fwd < CFG.horn.reach && Math.abs(lat) < B.hitHalfWidth + o.t.w / 2 + 1.2) {
+        const lanes = lanesOf(o.seg, T.lanes);
+        o.targetX = clamp(lat >= 0 ? o.x + T.laneWidth : o.x - T.laneWidth, lanes[0], lanes[lanes.length - 1]);
+      }
+    } else {
+      if (!onBusRoad(o.seg)) continue;
+      const a = -o.z;
+      if (a > 0 && a < CFG.horn.reach && Math.abs(o.x - bx) < B.hitHalfWidth + o.t.w / 2 + .5) {
+        const lanes = lanesOf(o.seg, T.lanes);
+        o.targetX = clamp(o.x >= bx ? o.x + T.laneWidth : o.x - T.laneWidth, lanes[0], lanes[lanes.length - 1]);
+      }
     }
   }
   for (const p of peds) {
-    if (!onBusRoad(p.seg)) continue;
-    const a = ahead(p.seg, p.s);
-    if (a > 0 && a < CFG.horn.reach + 10) {
-      p.scared = true;
-      const safeSide = (p.x >= bx ? 1 : -1);
-      p.targetX = safeSide * (SEGS[p.seg].half + 1.2);
+    if (isFreeRoam) {
+      const dx = p.m.position.x - bus.position.x, dz = p.m.position.z - bus.position.z;
+      const fwd = -dx * Math.sin(bus.rotation.y) - dz * Math.cos(bus.rotation.y);
+      const lat = dx * Math.cos(bus.rotation.y) - dz * Math.sin(bus.rotation.y);
+      if (fwd > 0 && fwd < CFG.horn.reach + 10 && Math.abs(lat) < B.hitHalfWidth + 3.0) {
+        p.scared = true;
+        const safeSide = lat >= 0 ? 1 : -1;
+        p.targetX = safeSide * (SEGS[p.seg].half + 1.2);
+      }
+    } else {
+      if (!onBusRoad(p.seg)) continue;
+      const a = ahead(p.seg, p.s);
+      if (a > 0 && a < CFG.horn.reach + 10) {
+        p.scared = true;
+        const safeSide = (p.x >= bx ? 1 : -1);
+        p.targetX = safeSide * (SEGS[p.seg].half + 1.2);
+      }
     }
   }
 });

@@ -6,7 +6,8 @@ import { CFG } from "./config.js";
 import { rnd } from "./utils.js";
 import { game } from "./state.js";
 import { SEGS, here, sample } from "./map.js";
-import { followGround } from "./world.js";
+import { followGround, active as activeBuildings } from "./world.js";
+import { bus } from "./bus.js";
 import { input } from "./input.js";
 
 const C = CFG.camera;
@@ -34,6 +35,54 @@ export function resetCamera(withIntro = false) {
   camLat = game.lat * C.followX;
   introT = withIntro ? C.introSeconds : 0;
   orbitAng = 0;
+}
+
+/** Prevents chase camera from clipping inside building facades by raycasting against active buildings. */
+function testBuildingCollision(ax, az, cx, cz) {
+  let bestDist = Math.hypot(cx - ax, cz - az);
+  if (bestDist < 0.001) return { cx, cz, dist: bestDist };
+  const ux = (cx - ax) / bestDist;
+  const uz = (cz - az) / bestDist;
+  const margin = CFG.freeRoam?.cameraCollisionMargin || 1.2;
+  const minDist = CFG.freeRoam?.cameraMinDist || 4.2;
+
+  for (const p of activeBuildings) {
+    if (!p.mesh || !p.mesh.visible) continue;
+    const minX = p.wx - p.w / 2 - margin;
+    const maxX = p.wx + p.w / 2 + margin;
+    const minZ = p.wz - p.d / 2 - margin;
+    const maxZ = p.wz + p.d / 2 + margin;
+
+    // Fast reject if bus and camera are both on one side
+    if ((ax < minX && cx < minX) || (ax > maxX && cx > maxX) ||
+        (az < minZ && cz < minZ) || (az > maxZ && cz > maxZ)) continue;
+
+    // Ray clipping against AABB
+    let tminX = (minX - ax) / ux;
+    let tmaxX = (maxX - ax) / ux;
+    if (tminX > tmaxX) { const temp = tminX; tminX = tmaxX; tmaxX = temp; }
+
+    let tminZ = (minZ - az) / uz;
+    let tmaxZ = (maxZ - az) / uz;
+    if (tminZ > tmaxZ) { const temp = tminZ; tminZ = tmaxZ; tmaxZ = temp; }
+
+    const tEnter = Math.max(tminX, tminZ);
+    const tExit = Math.min(tmaxX, tmaxZ);
+
+    if (tEnter <= tExit && tExit >= 0 && tEnter < bestDist) {
+      // Ray penetrates building facade
+      const hitDist = Math.max(minDist, tEnter - 0.4);
+      if (hitDist < bestDist) {
+        bestDist = hitDist;
+      }
+    }
+  }
+
+  return {
+    cx: ax + ux * bestDist,
+    cz: az + uz * bestDist,
+    dist: bestDist,
+  };
 }
 
 /** Place the camera for this frame. @returns {number} boost effect strength 0..1 */
@@ -75,16 +124,25 @@ export function updateCamera(dt) {
   const shake = Math.min(1.2, trauma * trauma * 1.1) * C.shakeScale;
   let cx = ax - fx * back, cz = az - fz * back;
 
-  // In a bend the camera can swing out over the pavement and into a building. Find the
-  // road point behind the bus and keep the camera within the road's width there.
   let seg = here.seg, s = here.s - back;
   if (s < 0 && here.prev >= 0) { seg = here.prev; s += SEGS[seg].len; }
-  sample(seg, s, q);
+  sample(seg, Math.max(0, s), q);
   const rx = Math.cos(q.yaw), rz = -Math.sin(q.yaw);
-  const side = (cx - q.x) * rx + (cz - q.z) * rz, limit = SEGS[seg].half + C.roadMargin;
-  if (Math.abs(side) > limit) {
-    const push = side - Math.sign(side) * limit;
-    cx -= rx * push; cz -= rz * push;
+
+  let heightBoost = 0;
+  if (isFreeRoam) {
+    const safeCam = testBuildingCollision(ax, az, cx, cz);
+    cx = safeCam.cx;
+    cz = safeCam.cz;
+    heightBoost = Math.max(0, (1 - safeCam.dist / back) * 2.2);
+  } else {
+    // In a bend the camera can swing out over the pavement and into a building. Find the
+    // road point behind the bus and keep the camera within the road's width there.
+    const side = (cx - q.x) * rx + (cz - q.z) * rz, limit = SEGS[seg].half + C.roadMargin;
+    if (Math.abs(side) > limit) {
+      const push = side - Math.sign(side) * limit;
+      cx -= rx * push; cz -= rz * push;
+    }
   }
 
   // Skippable 1.8 s morning camera sweep (gentle straight pull-back at other stages, wide sweep at Mohammadpur Stand).
@@ -139,7 +197,7 @@ export function updateCamera(dt) {
     return 0;
   }
 
-  cam.position.set(cx + rnd(-1, 1) * shake, p.y + C.height + revHeight + (game.busY || 0) * 0.45 + rnd(-1, 1) * shake, cz);
+  cam.position.set(cx + rnd(-1, 1) * shake, p.y + C.height + revHeight + heightBoost + (game.busY || 0) * 0.45 + rnd(-1, 1) * shake, cz);
   cam.lookAt(ax + fx * (isReversing ? -C.lookAhead * 0.4 : C.lookAhead), p.y + C.lookY + (game.busY || 0) * 0.65, az + fz * (isReversing ? -C.lookAhead * 0.4 : C.lookAhead));
   followGround(cam.position.x, cam.position.z);
 

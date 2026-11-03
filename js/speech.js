@@ -56,7 +56,7 @@ export function say(who, text, seconds = S.subtitleSeconds, onBus = false) {
   else if (text.includes("কাজ ঠিক")) playKajThikHoyni();
   else if (text.includes("এক্সপ্লানেশন")) playNoNeed();
   else if (text.includes("খেলা হবে")) playKhelaHobe();
-  else if (text.includes("ডানে")) playOstadDane();
+  else if (text.includes("ডানে") || text.includes("ডাইনে")) playOstadDane();
   else if (text.includes("বামে")) playOstadBame();
   else if (text.includes("ছাড়েন") || text.includes("ছাড়ো")) playChharaChhara();
   else if (text.includes("১৬০০") || text.includes("টাকা")) playSholoshoTaka();

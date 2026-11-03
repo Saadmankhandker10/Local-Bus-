@@ -518,7 +518,7 @@ if (devUrlParams && (devUrlParams.get("start") || devUrlParams.get("autostart") 
   if (devUrlParams.get("dev") === "freeroam" || devUrlParams.get("freeroam") === "1") {
     game.freeRoam = true;
   }
-  setTimeout(() => startFresh(), 150);
+  setTimeout(() => start(false), 250);
 }
 const isLocalhost = Boolean(
   typeof window !== "undefined" && (

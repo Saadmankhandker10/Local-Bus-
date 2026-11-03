@@ -77,6 +77,12 @@ export const CFG = {
     sidewalkWidth: 3.8,          // width of pedestrian footpath before solid buildings begin
     buildingBounce: 0.22,        // restitution / elasticity when colliding with solid building walls
     mapEdgeMaxDist: 48.0,        // maximum allowed excursion from any road before hitting the invisible map boundary
+
+    // Phase 3: Systems re-anchoring & camera collision avoidance
+    cameraCollisionMargin: 1.2,  // buffer distance between chase camera and building facades
+    cameraMinDist: 4.2,          // closest camera distance when pulled in by buildings
+    npcMassImpulse: 0.15,        // bus deceleration scaling when hitting light traffic (rickshaw, CNG, car)
+    npcHeavyBounce: 0.40,        // rebound velocity ratio when bumping heavy obstacles while invulnerable
     scrapeSoundInterval: 0.45,   // minimum cooldown in seconds between sidewalk kerb scrape sounds
     bumpyVibrationScale: 0.12,   // amplitude of vertical chassis oscillation on rough dirt/footpaths
   },

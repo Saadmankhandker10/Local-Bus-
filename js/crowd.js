@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { CFG } from "./config.js";
 import { rnd, pick } from "./utils.js";
 import { scene, box, person } from "./world.js";
+import { bus } from "./bus.js";
 import { SEGS, here, sample } from "./map.js";
 import { game } from "./state.js";
 import { on, emit } from "./events.js";
@@ -105,6 +106,18 @@ function spawnShards(lat, back) {
  * back = distance behind the bus along the road (it may be on the previous road piece).
  */
 function toWorld(lat, back, up) {
+  if (game.freeRoam && CFG.freeRoam?.enabled !== false && bus) {
+    const rotY = bus.rotation.y;
+    const fx = -Math.sin(rotY), fz = -Math.cos(rotY);
+    const rx = Math.cos(rotY), rz = -Math.sin(rotY);
+    dummy.position.set(
+      bus.position.x + rx * lat - fx * back,
+      bus.position.y + up,
+      bus.position.z + rz * lat - fz * back
+    );
+    dummy.rotation.y = rotY;
+    return;
+  }
   let seg = here.seg, s = here.s - back;
   if (s < 0 && here.prev >= 0) { seg = here.prev; s += SEGS[seg].len; }
   sample(seg, s, rp);
@@ -163,7 +176,11 @@ export function updateCrowd(dt) {
     if (p.u >= 1) {
       p.active = false;
       p.m.visible = false;
-      if (!game.caught && !game.crashing && Math.abs(game.lat - p.tx) <= CFG.bus.hitHalfWidth + .35) {
+      const isFree = game.freeRoam && CFG.freeRoam?.enabled !== false && bus;
+      const hit = isFree
+        ? Math.hypot(p.m.position.x - bus.position.x, p.m.position.z - bus.position.z) <= CFG.bus.hitHalfLength + 1.2
+        : Math.abs(game.lat - p.tx) <= CFG.bus.hitHalfWidth + .35;
+      if (!game.caught && !game.crashing && hit) {
         spawnShards(p.tx, 2.2);
         emit("projectileHit", { item: p.itemName });
       }

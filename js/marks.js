@@ -7,6 +7,7 @@ import * as THREE from "three";
 import { CFG } from "./config.js";
 import { rnd, pick } from "./utils.js";
 import { scene, box, plate, person } from "./world.js";
+import { bus } from "./bus.js";
 
 import { game } from "./state.js";
 import { emit } from "./events.js";
@@ -221,9 +222,16 @@ function spawn() {
 
 /** Work out where a stop/mark is relative to the bus and move its 3D model. @returns {boolean} still useful */
 function track(o) {
+  const isFreeRoam = game.freeRoam && CFG.freeRoam?.enabled !== false && bus;
   o.z = -ahead(o.seg, o.s);
-  if (Number.isNaN(o.z) || o.z > M.despawnBehind) return false;
   place(o.m, o.seg, o.s, o.x);
+  if (isFreeRoam) {
+    const d2 = (o.m.position.x - bus.position.x) ** 2 + (o.m.position.z - bus.position.z) ** 2;
+    if (d2 > (AHEAD * 1.5) ** 2) return false;
+    o.onRoad = true;
+    return true;
+  }
+  if (Number.isNaN(o.z) || o.z > M.despawnBehind) return false;
   // Only marks on the bus's own road count (not the road next to a side street).
   o.onRoad = o.seg === here.seg || o.seg === here.prev || SEGS[here.seg].next.includes(o.seg);
   return true;
@@ -256,10 +264,21 @@ export function eachMark(fn) {
 /** Distance ahead (in world units) and side (-1 left, +1 right) of the nearest upcoming CNG mark, or null. */
 export function nearestCng() {
   let best = null;
+  const isFreeRoam = game.freeRoam && CFG.freeRoam?.enabled !== false && bus;
   for (const k of marks) {
-    if (k.kind !== "cng" || !k.onRoad) continue;
-    const d = -k.z;
-    if (d > -4 && (!best || d < best.d)) best = { d: Math.max(0, d), side: Math.sign(k.x) };
+    if (k.kind !== "cng") continue;
+    if (isFreeRoam) {
+      const d = Math.hypot(k.m.position.x - bus.position.x, k.m.position.z - bus.position.z);
+      if (!best || d < best.d) {
+        const dx = k.m.position.x - bus.position.x, dz = k.m.position.z - bus.position.z;
+        const localX = dx * Math.cos(bus.rotation.y) - dz * Math.sin(bus.rotation.y);
+        best = { d: Math.max(0, d), side: Math.sign(localX) || 1 };
+      }
+    } else {
+      if (!k.onRoad) continue;
+      const d = -k.z;
+      if (d > -4 && (!best || d < best.d)) best = { d: Math.max(0, d), side: Math.sign(k.x) };
+    }
   }
   return best;
 }
@@ -277,6 +296,8 @@ function hint(text) {
 export function updateMarks(dt) {
   spawn();
   const bx = game.lat;
+  const isFreeRoam = game.freeRoam && CFG.freeRoam?.enabled !== false && bus;
+  const curSpeed = Math.abs(game.signedSpeed !== undefined ? game.signedSpeed : game.speed);
   game.onMark = "";
 
   for (let i = stops.length - 1; i >= 0; i--) {
@@ -285,9 +306,18 @@ export function updateMarks(dt) {
     if (s.m.userData && s.m.userData.badge) {
       s.m.userData.badge.position.y = s.m.userData.baseY + Math.sin(game.time * 3.2 + (s.s || 0) * 0.1) * 0.22;
     }
-    const atStop = s.onRoad && Math.abs(bx - s.x) < S.reachX && Math.abs(s.z) < S.reachZ;
+    let atStop = false;
+    if (isFreeRoam) {
+      const dx = bus.position.x - s.m.position.x, dz = bus.position.z - s.m.position.z;
+      const cosY = Math.cos(s.m.rotation.y), sinY = Math.sin(s.m.rotation.y);
+      const localX = dx * cosY - dz * sinY;
+      const localZ = -dx * sinY - dz * cosY;
+      atStop = Math.abs(localX) < S.reachX && Math.abs(localZ) < S.reachZ;
+    } else {
+      atStop = s.onRoad && Math.abs(bx - s.x) < S.reachX && Math.abs(s.z) < S.reachZ;
+    }
     if (atStop && s.people.length) {
-      if (game.speed < S.boardMaxSpeed) {
+      if (curSpeed < S.boardMaxSpeed) {
         game.onMark = "stop";
         // Passengers board one by one while the bus waits at the stop.
         boardT -= dt;
@@ -317,8 +347,17 @@ export function updateMarks(dt) {
       }
     }
     // "On the mark" means the bus centre is over it, with some room at both ends.
-    const on = k.onRoad && Math.abs(bx - k.x) < M.reachX && Math.abs(k.z) < M.length / 2 - 1;
-    const stopped = game.speed < M.stopSpeed;
+    let on = false;
+    if (isFreeRoam) {
+      const dx = bus.position.x - k.m.position.x, dz = bus.position.z - k.m.position.z;
+      const cosY = Math.cos(k.m.rotation.y), sinY = Math.sin(k.m.rotation.y);
+      const localX = dx * cosY - dz * sinY;
+      const localZ = -dx * sinY - dz * cosY;
+      on = Math.abs(localX) < M.reachX && Math.abs(localZ) < (M.length / 2 - 1);
+    } else {
+      on = k.onRoad && Math.abs(bx - k.x) < M.reachX && Math.abs(k.z) < M.length / 2 - 1;
+    }
+    const stopped = curSpeed < M.stopSpeed;
 
     if (on && k.kind === "cng") {
       if (stopped) {

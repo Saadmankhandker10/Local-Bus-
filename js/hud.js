@@ -553,6 +553,10 @@ export function hideScreen() {
   if ($("dareBtn")) $("dareBtn").hidden = true;
   if ($("copyBtn")) $("copyBtn").hidden = true;
   $("screen").style.display = "none";
+  if ($("loadScreen")) {
+    $("loadScreen").classList.add("loaded");
+    $("loadScreen").style.display = "none";
+  }
   document.body.classList.add("in-game");
   $("pausebtn").hidden = false;
   if ($("backToRoadBtn")) $("backToRoadBtn").hidden = false;
