@@ -24,10 +24,20 @@ let fov = C.fov;    // smoothed field of view
 let boostFx = 0;    // 0..1, how strong the boost effect is right now
 let introT = 0;     // seconds left in the skippable morning bus-stand camera sweep
 let orbitAng = 0;   // angle for the "গণধোলাই" cutscene orbit camera
+let curCamDist = null;         // smoothed chase distance (glides in/out smoothly around obstacles)
+let curLookAhead = C.lookAhead;// smoothed lookAt distance ahead of bus
+let curRevBack = 0;            // smoothed extra distance pulled back in reverse
+let curRevHeight = 0;          // smoothed extra camera elevation in reverse
+let curHeightBoost = 0;        // smoothed camera lift when pulled in near walls
 const p = { x: 0, y: 0, z: 0, yaw: 0, k: 0 }, q = { x: 0, y: 0, z: 0, yaw: 0, k: 0 };
 
 /** Same smoothing as in bus.js: frame-rate independent ease towards a target. */
 const ease = (rate, dt) => 1 - Math.exp(-rate * dt);
+
+/** Smoothly move `current` towards `target`. */
+function approach(current, target, rate, dt) {
+  return current + (target - current) * (1 - Math.exp(-rate * dt));
+}
 
 /** Snap the camera behind the bus (new run, checkpoint). */
 export function resetCamera(withIntro = false) {
@@ -35,58 +45,87 @@ export function resetCamera(withIntro = false) {
   camLat = game.lat * C.followX;
   introT = withIntro ? C.introSeconds : 0;
   orbitAng = 0;
+  curCamDist = null;
+  curLookAhead = C.lookAhead;
+  curRevBack = 0;
+  curRevHeight = 0;
+  curHeightBoost = 0;
 }
 
-/** Prevents chase camera from clipping inside building facades by raycasting against active buildings. */
-function testBuildingCollision(ax, az, cx, cz) {
-  let bestDist = Math.hypot(cx - ax, cz - az);
-  if (bestDist < 0.001) return { cx, cz, dist: bestDist };
-  const ux = (cx - ax) / bestDist;
-  const uz = (cz - az) / bestDist;
-  const margin = CFG.freeRoam?.cameraCollisionMargin || 1.2;
-  const minDist = CFG.freeRoam?.cameraMinDist || 4.2;
+/**
+ * Prevents chase camera from clipping inside building facades by raycasting
+ * an oriented bounding box (OBB) in building-local space against active buildings.
+ * 
+ * @param {number} ax - bus world x
+ * @param {number} az - bus world z
+ * @param {number} camDirX - unit ray x pointing from bus towards camera
+ * @param {number} camDirZ - unit ray z pointing from bus towards camera
+ * @param {number} maxDist - ideal unoccluded camera chase distance
+ * @returns {number} safe camera distance (>= minDist)
+ */
+function testBuildingCollision(ax, az, camDirX, camDirZ, maxDist) {
+  let nearestHit = maxDist;
+  const margin = CFG.freeRoam?.cameraCollisionMargin || 1.0;
+  const minDist = CFG.freeRoam?.cameraMinDist || 7.2;
 
-  for (const p of activeBuildings) {
-    if (!p.mesh || !p.mesh.visible) continue;
-    // Fast spatial distance reject: camera ray length is at most bestDist (~15 units)
-    if (Math.abs(p.wx - ax) > (bestDist + p.w / 2 + margin) ||
-        Math.abs(p.wz - az) > (bestDist + p.d / 2 + margin)) continue;
+  for (const bldg of activeBuildings) {
+    if (!bldg.mesh || !bldg.mesh.visible) continue;
 
-    const minX = p.wx - p.w / 2 - margin;
-    const maxX = p.wx + p.w / 2 + margin;
-    const minZ = p.wz - p.d / 2 - margin;
-    const maxZ = p.wz + p.d / 2 + margin;
+    // Fast spherical distance reject: camera ray length is at most maxDist (~18 units)
+    const dax = ax - bldg.wx;
+    const daz = az - bldg.wz;
+    const bldgRadius = Math.hypot(bldg.w, bldg.d) * 0.5 + margin;
+    const distToCenter = Math.hypot(dax, daz);
+    if (distToCenter > maxDist + bldgRadius) continue;
 
-    // Fast reject if bus and camera are both on one side
-    if ((ax < minX && cx < minX) || (ax > maxX && cx > maxX) ||
-        (az < minZ && cz < minZ) || (az > maxZ && cz > maxZ)) continue;
+    // Transform bus origin and camera ray into building-local 2D space
+    const yaw = bldg.mesh.rotation.y || 0;
+    const cosY = Math.cos(yaw);
+    const sinY = Math.sin(yaw);
 
-    // Ray clipping against AABB
-    let tminX = (minX - ax) / ux;
-    let tmaxX = (maxX - ax) / ux;
-    if (tminX > tmaxX) { const temp = tminX; tminX = tmaxX; tmaxX = temp; }
+    // Vector from building center to bus in local space
+    const lax = dax * cosY - daz * sinY;
+    const laz = dax * sinY + daz * cosY;
 
-    let tminZ = (minZ - az) / uz;
-    let tmaxZ = (maxZ - az) / uz;
-    if (tminZ > tmaxZ) { const temp = tminZ; tminZ = tmaxZ; tmaxZ = temp; }
+    // Ray direction in building-local space
+    const lux = camDirX * cosY - camDirZ * sinY;
+    const luz = camDirX * sinY + camDirZ * cosY;
 
-    const tEnter = Math.max(tminX, tminZ);
-    const tExit = Math.min(tmaxX, tmaxZ);
+    const hx = bldg.w * 0.5 + margin;
+    const hz = bldg.d * 0.5 + margin;
 
-    if (tEnter <= tExit && tExit >= 0 && tEnter < bestDist) {
-      // Ray penetrates building facade
-      const hitDist = Math.max(minDist, tEnter - 0.4);
-      if (hitDist < bestDist) {
-        bestDist = hitDist;
+    let tmin = -Infinity, tmax = Infinity;
+
+    if (Math.abs(lux) > 1e-6) {
+      let t1 = (-hx - lax) / lux;
+      let t2 = (hx - lax) / lux;
+      if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
+      tmin = Math.max(tmin, t1);
+      tmax = Math.min(tmax, t2);
+    } else if (lax < -hx || lax > hx) {
+      continue;
+    }
+
+    if (Math.abs(luz) > 1e-6) {
+      let t1 = (-hz - laz) / luz;
+      let t2 = (hz - laz) / luz;
+      if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
+      tmin = Math.max(tmin, t1);
+      tmax = Math.min(tmax, t2);
+    } else if (laz < -hz || laz > hz) {
+      continue;
+    }
+
+    // Only real obstacle intersections outside the bus body perimeter (> 2.4m) trigger pull-in
+    if (tmin <= tmax && tmax > 0 && tmin > 2.4 && tmin < nearestHit) {
+      const safeDist = Math.max(minDist, tmin - 0.6);
+      if (safeDist < nearestHit) {
+        nearestHit = safeDist;
       }
     }
   }
 
-  return {
-    cx: ax + ux * bestDist,
-    cz: az + uz * bestDist,
-    dist: bestDist,
-  };
+  return nearestHit;
 }
 
 /** Place the camera for this frame. @returns {number} boost effect strength 0..1 */
@@ -115,30 +154,52 @@ export function updateCamera(dt) {
   // Seamless 360-degree angle unwrapping for U-turns and 3-point turns
   while (targetYaw - camYaw > Math.PI) camYaw += 2 * Math.PI;
   while (targetYaw - camYaw < -Math.PI) camYaw -= 2 * Math.PI;
-  camYaw += (targetYaw - camYaw) * ease(C.yawSmoothing, dt);
+
+  const yawRate = isFreeRoam
+    ? (Math.abs(game.steerAngle || 0) > 0.08 || Math.abs(game.signedSpeed || 0) < 6.0 ? 7.5 : 5.0)
+    : C.yawSmoothing;
+  camYaw += (targetYaw - camYaw) * ease(yawRate, dt);
 
   const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw); // forward on the ground
+  const camDirX = -fx, camDirZ = -fz;                   // ray from bus towards rear chase camera
+
   // Pull camera back slightly in portrait mode (aspect < 1) so mobile players see the full 3-lane road
   const portraitBack = cam.aspect < 1.0 ? Math.min(3.2, (1.0 - cam.aspect) * 4.5) : 0;
   const isReversing = game.gear === "R" || (game.signedSpeed !== undefined && game.signedSpeed < -0.15);
-  const revBack = isReversing ? 2.5 : 0;
-  const revHeight = isReversing ? 0.8 : 0;
-  const back = C.distance + portraitBack + revBack + boostFx * C.boostPullBack;
+
+  // Smooth transitions into and out of reverse gear
+  const targetRevBack = isReversing ? 2.5 : 0;
+  const targetRevHeight = isReversing ? 1.2 : 0;
+  const targetLookAhead = isReversing ? (C.lookAhead * 0.35) : C.lookAhead;
+
+  curRevBack = approach(curRevBack, targetRevBack, 5.0, dt);
+  curRevHeight = approach(curRevHeight, targetRevHeight, 5.0, dt);
+  curLookAhead = approach(curLookAhead, targetLookAhead, 6.0, dt);
+
+  const idealDist = C.distance + portraitBack + curRevBack + boostFx * C.boostPullBack;
   const trauma = game.shake;
   const shake = Math.min(1.2, trauma * trauma * 1.1) * C.shakeScale;
-  let cx = ax - fx * back, cz = az - fz * back;
 
-  let seg = here.seg, s = here.s - back;
+  let targetCamDist = idealDist;
+  let cx = ax + camDirX * idealDist, cz = az + camDirZ * idealDist;
+
+  let seg = here.seg, s = here.s - idealDist;
   if (s < 0 && here.prev >= 0) { seg = here.prev; s += SEGS[seg].len; }
   sample(seg, Math.max(0, s), q);
   const rx = Math.cos(q.yaw), rz = -Math.sin(q.yaw);
 
-  let heightBoost = 0;
   if (isFreeRoam) {
-    const safeCam = testBuildingCollision(ax, az, cx, cz);
-    cx = safeCam.cx;
-    cz = safeCam.cz;
-    heightBoost = Math.max(0, (1 - safeCam.dist / back) * 2.2);
+    targetCamDist = testBuildingCollision(ax, az, camDirX, camDirZ, idealDist);
+    if (curCamDist === null) curCamDist = targetCamDist;
+    if (targetCamDist < curCamDist) {
+      curCamDist = approach(curCamDist, targetCamDist, 14.0, dt);
+    } else {
+      curCamDist = approach(curCamDist, targetCamDist, 4.5, dt);
+    }
+    cx = ax + camDirX * curCamDist;
+    cz = az + camDirZ * curCamDist;
+    const lift = Math.max(0, (1 - curCamDist / idealDist) * 2.4);
+    curHeightBoost = approach(curHeightBoost, lift, 6.0, dt);
   } else {
     // In a bend the camera can swing out over the pavement and into a building. Find the
     // road point behind the bus and keep the camera within the road's width there.
@@ -147,6 +208,7 @@ export function updateCamera(dt) {
       const push = side - Math.sign(side) * limit;
       cx -= rx * push; cz -= rz * push;
     }
+    curHeightBoost = 0;
   }
 
   // Skippable 1.8 s morning camera sweep (gentle straight pull-back at other stages, wide sweep at Mohammadpur Stand).
@@ -201,8 +263,12 @@ export function updateCamera(dt) {
     return 0;
   }
 
-  cam.position.set(cx + rnd(-1, 1) * shake, p.y + C.height + revHeight + heightBoost + (game.busY || 0) * 0.45 + rnd(-1, 1) * shake, cz);
-  cam.lookAt(ax + fx * (isReversing ? -C.lookAhead * 0.4 : C.lookAhead), p.y + C.lookY + (game.busY || 0) * 0.65, az + fz * (isReversing ? -C.lookAhead * 0.4 : C.lookAhead));
+  const baseY = isFreeRoam ? (bus.position.y || 0) : p.y;
+  const cy = baseY + C.height + curRevHeight + curHeightBoost + (isFreeRoam ? 0 : (game.busY || 0) * 0.45);
+  const lookTargetY = baseY + C.lookY + (isFreeRoam ? 0 : (game.busY || 0) * 0.65);
+
+  cam.position.set(cx + rnd(-1, 1) * shake, cy + rnd(-1, 1) * shake, cz);
+  cam.lookAt(ax + fx * curLookAhead, lookTargetY, az + fz * curLookAhead);
   followGround(cam.position.x, cam.position.z);
 
   // Expand vertical FOV in portrait mode to keep the horizontal field of view wide on phones

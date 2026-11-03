@@ -79,8 +79,8 @@ export const CFG = {
     mapEdgeMaxDist: 48.0,        // maximum allowed excursion from any road before hitting the invisible map boundary
 
     // Phase 3: Systems re-anchoring & camera collision avoidance
-    cameraCollisionMargin: 1.2,  // buffer distance between chase camera and building facades
-    cameraMinDist: 4.2,          // closest camera distance when pulled in by buildings
+    cameraCollisionMargin: 1.0,  // buffer distance between chase camera and building facades
+    cameraMinDist: 7.2,          // closest camera distance when pulled in by buildings (keeps whole bus visible)
     npcMassImpulse: 0.15,        // bus deceleration scaling when hitting light traffic (rickshaw, CNG, car)
     npcHeavyBounce: 0.40,        // rebound velocity ratio when bumping heavy obstacles while invulnerable
     scrapeSoundInterval: 0.45,   // minimum cooldown in seconds between sidewalk kerb scrape sounds
