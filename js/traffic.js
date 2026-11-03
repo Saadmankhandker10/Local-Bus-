@@ -14,6 +14,7 @@ import { emit, on } from "./events.js";
 import { sweptHit, sideGap } from "./physics.js";
 import { makeVehicle, makeStall, makeThela, makeFishStall, makePillar, makeManhole, makeTrench, makeRamp, beaconMat, dangerRingMat } from "./vehicles.js";
 import { disposeHierarchy, sparkMat } from "./shaders.js";
+import { releaseCarModel, resetCarPools } from "./carModel.js";
 import {
   spawnCrashEffects,
   spawnScrapeSparks,
@@ -144,8 +145,10 @@ function obbIntersect(x1, z1, rot1, hw1, hl1, x2, z2, rot2, hw2, hl2) {
 export function resetTraffic(fromDist = 0) {
   for (const o of objs) {
     scene.remove(o.m);
-    if (o.hit) disposeHierarchy(o.m);
+    if (o.m?.userData?.isPooledCar) releaseCarModel(o.m);
+    else disposeHierarchy(o.m);
   }
+  resetCarPools();
   for (const p of peds) scene.remove(p.m);
   for (const c of chunks) { c.active = false; c.m.visible = false; }
   for (const sp of sparkPool) { sp.active = false; sp.m.visible = false; }
@@ -493,7 +496,19 @@ function approachAngle(cur, target, step) {
 /** Move along the road; at the end of a piece, carry on to the next one. @returns false if it left the map */
 function advance(o, dt) {
   o.s += o.v * dt;
-  if (o.s < 0) return false;
+  if (o.s < 0) {
+    if (o.dir < 0) {
+      // Oncoming traffic transitions seamlessly to previous road segment
+      const S = SEGS[o.seg];
+      const prevSeg = S.from !== undefined ? MAIN[S.from] : (here.prev >= 0 ? here.prev : -1);
+      if (prevSeg >= 0 && SEGS[prevSeg]) {
+        o.seg = prevSeg;
+        o.s += SEGS[prevSeg].len;
+        return true;
+      }
+    }
+    return false;
+  }
   while (o.s > SEGS[o.seg].len) {
     const nx = SEGS[o.seg].next;
     if (!nx.length) return false;
@@ -576,7 +591,11 @@ export function updateTraffic(dt) {
     }
     if (despawn) {
       scene.remove(o.m);
-      if (o.hit) disposeHierarchy(o.m);
+      if (o.m.userData.isPooledCar) {
+        releaseCarModel(o.m);
+      } else {
+        disposeHierarchy(o.m);
+      }
       objs.splice(i, 1);
       continue;
     }

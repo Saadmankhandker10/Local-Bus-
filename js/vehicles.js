@@ -106,14 +106,15 @@ function vip(t, c) {
       h: t.h
     });
     if (inst) {
-      // Front hood flagpole + miniature flag
-      inst.add(box(.05, .65, .05, 0xffd54f, -t.w * .38, t.h * .75, -t.l * .45));
-      inst.add(box(.28, .18, .04, 0x1f6b3a, -t.w * .38 + .14, t.h * .98, -t.l * .45));
-      // Floating overhead VIP marker
-      const badge = vipBadge.clone();
-      badge.position.set(0, t.h + 1.15, 0);
-      inst.add(badge);
-      inst.userData.vipBadge = badge;
+      if (!inst.userData.hasVipAccessories) {
+        inst.userData.hasVipAccessories = true;
+        inst.add(box(.05, .65, .05, 0xffd54f, -t.w * .38, t.h * .75, -t.l * .45));
+        inst.add(box(.28, .18, .04, 0x1f6b3a, -t.w * .38 + .14, t.h * .98, -t.l * .45));
+        const badge = vipBadge.clone();
+        badge.position.set(0, t.h + 1.15, 0);
+        inst.add(badge);
+        inst.userData.vipBadge = badge;
+      }
       return inst;
     }
   }
@@ -144,14 +145,17 @@ function policeCar(t) {
       h: t.h
     });
     if (inst) {
-      // Asynchronous GPU LED strobe lightbar (Red left 4 bulbs, Blue right 4 bulbs)
-      const lightbar = new THREE.Mesh(policeLightbarGeo, policeLightbarMat);
-      lightbar.position.set(0, t.h + .22, -.1);
-      inst.add(lightbar);
+      if (!inst.userData.hasPoliceAccessories) {
+        inst.userData.hasPoliceAccessories = true;
+        // Asynchronous GPU LED strobe lightbar (Red left 4 bulbs, Blue right 4 bulbs)
+        const lightbar = new THREE.Mesh(policeLightbarGeo, policeLightbarMat);
+        lightbar.position.set(0, t.h + .22, -.1);
+        inst.add(lightbar);
 
-      const sign = policeSign.clone();
-      sign.position.set(0, .82, t.l * .51);
-      inst.add(sign);
+        const sign = policeSign.clone();
+        sign.position.set(0, .82, t.l * .51);
+        inst.add(sign);
+      }
       return inst;
     }
   }

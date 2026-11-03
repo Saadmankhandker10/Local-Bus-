@@ -442,7 +442,6 @@ export function updateBus(dt) {
     game.vx = v * Math.sin(game.yaw);
     game.prog = progressOf(here.seg, here.s);
     ds = Math.abs(v) * dt;
-    game.dist += ds;
 
     // Wrong-way detection on two-way boulevards
     game.wrongWay = SEGS[here.seg].half >= 6 && game.lat > 0.75;
