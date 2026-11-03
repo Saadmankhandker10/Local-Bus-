@@ -327,7 +327,20 @@ export function projectToRoad(wx, wz, currentSeg = 0, out = {}) {
     if (!S) continue;
     let minD2 = Infinity;
     let minIdx = 0;
-    for (let i = 0; i < S.n; i++) {
+    // Fast coarse search (every 4th point): 75% fewer distance operations
+    for (let i = 0; i < S.n; i += 4) {
+      const dx = wx - S.X[i];
+      const dz = wz - S.Z[i];
+      const d2 = dx * dx + dz * dz;
+      if (d2 < minD2) {
+        minD2 = d2;
+        minIdx = i;
+      }
+    }
+    // Fine refinement around coarse minimum (local ±4 points)
+    const iStart = Math.max(0, minIdx - 4);
+    const iEnd = Math.min(S.n - 1, minIdx + 4);
+    for (let i = iStart; i <= iEnd; i++) {
       const dx = wx - S.X[i];
       const dz = wz - S.Z[i];
       const d2 = dx * dx + dz * dz;
@@ -361,6 +374,7 @@ export function projectToRoad(wx, wz, currentSeg = 0, out = {}) {
   out.s = bestS;
   out.lat = bestLat;
   out.yaw = bestYaw;
+  out.dist = Math.sqrt(bestD2);
   return out;
 }
 

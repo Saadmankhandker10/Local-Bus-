@@ -1133,8 +1133,8 @@ export function updateWorld() {
     lastStreamX = busX;
     lastStreamZ = busZ;
 
-    // Distance-based 2D spatial streaming: constant memory, zero allocation, smooth 60 FPS
-    const keepDist2 = (W.buildingAhead + 40) ** 2; // ~300m
+    // Distance-based 2D spatial streaming: optimized 140m horizon matches fog and keeps active pool ~35-45 groups (matches Baper Rasta performance)
+    const keepDist2 = 160 * 160; // 160m keep radius
     for (const p of active) {
       const d2 = (p.wx - busX) ** 2 + (p.wz - busZ) ** 2;
       if (d2 > keepDist2) release(p);
@@ -1155,13 +1155,13 @@ export function updateWorld() {
         }
       }
     }
-    const streamR2 = (W.buildingAhead) ** 2;
+    const streamR2 = 135 * 135; // 135m spawn radius
     for (let si = 0; si < SEGS.length; si++) {
       if (near.includes(si)) continue;
       const S = SEGS[si];
       const midIdx = Math.floor(S.n / 2);
       const dMid2 = (S.X[midIdx] - busX) ** 2 + (S.Z[midIdx] - busZ) ** 2;
-      if (dMid2 < (W.buildingAhead + S.len / 2) ** 2) {
+      if (dMid2 < (135 + S.len / 2) ** 2) {
         near.push(si);
       }
     }

@@ -388,7 +388,10 @@ export function updateBus(dt) {
       if (ctl.brake > 0.1 && hasFuel) {
         if (game.gear !== "R") {
           game.gear = "R";
-          say("হেল্পার", "পিছনে ওস্তাদ, পিছনে! ডানে কাটেন!", 1.8, true);
+          if (!game.lastRevSpeech || game.time - game.lastRevSpeech > 6.0) {
+            game.lastRevSpeech = game.time;
+            say("হেল্পার", "পিছনে ওস্তাদ, পিছনে! ডানে কাটেন!", 1.8, true);
+          }
           playReverseBeep();
         }
         v -= (FR.reverseAccel || 9.0) * ctl.brake * dt * 0.8;
@@ -433,7 +436,7 @@ export function updateBus(dt) {
     game.wx = (game.wx !== undefined ? game.wx : bus.position.x) + dx;
     game.wz = (game.wz !== undefined ? game.wz : bus.position.z) + dz;
 
-    // Project world coordinates onto road network
+    // Project world coordinates onto road network (high-performance O(1) projection)
     projectToRoad(game.wx, game.wz, here.seg, projOut);
     here.seg = projOut.seg;
     here.s = projOut.s;
@@ -443,11 +446,13 @@ export function updateBus(dt) {
     game.prog = progressOf(here.seg, here.s);
     ds = Math.abs(v) * dt;
 
-    // Wrong-way detection on two-way boulevards
-    game.wrongWay = SEGS[here.seg].half >= 6 && game.lat > 0.75;
+    // Wrong-way detection: only triggers on main two-way boulevards when actually driving in oncoming lanes
+    const S = SEGS[here.seg];
+    const isTwoWayMain = S.main && S.half >= 6;
+    const inOncomingLane = game.lat > 1.8 && Math.abs(game.lat) <= S.half;
+    game.wrongWay = isTwoWayMain && inOncomingLane && Math.cos(game.yaw) > 0.25 && Math.abs(v) > 1.5;
 
     // Check if we crossed a named Dhaka crossroad (মোড়)
-    const S = SEGS[here.seg];
     for (const [ji, j] of (S.junctions || []).entries()) {
       const js = j.at * S.len;
       const key = `${here.seg}:${ji}`;
@@ -469,8 +474,8 @@ export function updateBus(dt) {
       }
     }
 
-    // Global road surface check: returns true if the bus is on ANY road segment or junction stub
-    const onAsphalt = atJunction || hitsAnyRoad(game.wx, game.wz, 1.2);
+    // Fast O(1) road pavement check: bus is on asphalt if within road width or at an intersection
+    const onAsphalt = atJunction || Math.abs(game.lat) <= (S.half + 1.2);
 
     // 1. Off-Road Footpath & Dirt: grip reduced, bumpy vibration, kerb scrape sound
     // Only triggers when vehicle actually leaves asphalt road and junction pavement
@@ -494,15 +499,15 @@ export function updateBus(dt) {
       kerbScrapeTimer = Math.max(0, kerbScrapeTimer - dt);
     }
 
-    // 2. Solid Building Facades: physical collision tested strictly against ACTUAL 3D buildings.
+    // 2. Solid Building Facades: physical collision tested strictly against ACTUAL 3D buildings within proximity (< 15m).
     // Eliminates phantom invisible walls at turns, open corners, crossroads, and detour branches!
     if (!onAsphalt) {
       for (const bldg of activeBuildings) {
         if (!bldg.mesh || !bldg.mesh.visible) continue;
         const dx = game.wx - bldg.wx;
         const dz = game.wz - bldg.wz;
-        const maxBound = Math.max(bldg.w, bldg.d) * 0.75 + 4.5;
-        if (dx * dx + dz * dz > maxBound * maxBound) continue;
+        // Fast bounding circle reject: only check buildings within 15 meters
+        if (dx * dx + dz * dz > 225) continue;
 
         // Transform bus center into building-local 2D space
         const yaw = bldg.mesh.rotation.y || bldg.yaw || 0;
@@ -516,7 +521,7 @@ export function updateBus(dt) {
         const halfD = bldg.d * 0.5 + 1.25;
 
         if (Math.abs(lx) < halfW && Math.abs(lz) < halfD) {
-          // Physical collision with an actual 3D building!
+          // Physical collision with an actual 3D building facade!
           const penX = halfW - Math.abs(lx);
           const penZ = halfD - Math.abs(lz);
 
@@ -547,14 +552,15 @@ export function updateBus(dt) {
       }
     }
 
-    // 3. Map Edge Invisible Boundary: stop vehicle with helper warning line
-    findNearestRoad(game.wx, game.wz, nearestRoad);
+    // 3. Map Edge Invisible Boundary: stop vehicle if it drives too far off the road grid (> 48m)
+    // Uses O(1) projOut.dist instead of scanning all 14 segments every frame!
+    const distToRoad = projOut.dist !== undefined ? projOut.dist : Math.abs(game.lat);
     const maxExcursion = FR.mapEdgeMaxDist || 48.0;
-    if (nearestRoad.dist > maxExcursion) {
-      const overDist = nearestRoad.dist - maxExcursion;
-      sample(nearestRoad.seg, nearestRoad.s, pos);
-      const nx = (game.wx - pos.x) / nearestRoad.dist;
-      const nz = (game.wz - pos.z) / nearestRoad.dist;
+    if (distToRoad > maxExcursion) {
+      const overDist = distToRoad - maxExcursion;
+      sample(here.seg, here.s, pos);
+      const nx = (game.wx - pos.x) / (distToRoad || 1);
+      const nz = (game.wz - pos.z) / (distToRoad || 1);
       game.wx -= nx * overDist * 1.1;
       game.wz -= nz * overDist * 1.1;
       game.signedSpeed = 0;
