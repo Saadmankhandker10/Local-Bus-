@@ -32,12 +32,12 @@ export const renderer = new THREE.WebGLRenderer({
   powerPreference: "high-performance"
 });
 renderer.setSize(innerWidth, innerHeight);
-const defaultMaxPr = isMobile ? 1.5 : CFG.render.maxPixelRatio;
+const defaultMaxPr = isMobile ? 1.25 : CFG.render.maxPixelRatio;
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, defaultMaxPr));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.22;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = isMobile ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 document.body.prepend(renderer.domElement);
 
 export const scene = new THREE.Scene();
@@ -119,7 +119,7 @@ export function setRenderQuality(qualityMode) {
   const isHigh = qualityMode === "high";
   let pr = 1.0;
   if (isHigh) {
-    pr = isMobile ? Math.min(devicePixelRatio || 1, 1.75) : Math.min(devicePixelRatio || 1, 2);
+    pr = isMobile ? Math.min(devicePixelRatio || 1, 1.5) : Math.min(devicePixelRatio || 1, 1.75);
   } else if (!isLow) {
     pr = isMobile ? Math.min(devicePixelRatio || 1, 1.25) : Math.min(devicePixelRatio || 1, 1.5);
   }
@@ -127,6 +127,7 @@ export function setRenderQuality(qualityMode) {
   const enableShadows = (qualityMode !== "low");
   renderer.shadowMap.enabled = enableShadows;
   sun.castShadow = enableShadows;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   const shadowRes = (isMobile || !isHigh) ? 1024 : 2048;
   sun.shadow.mapSize.set(shadowRes, shadowRes);
 }
@@ -141,8 +142,8 @@ export const UNIT = new THREE.BoxGeometry(1, 1, 1);
 UNIT.userData = { isShared: true };
 const matCache = new Map();
 
-/** A coloured box mesh of size w×h×d at (x, y, z). All boxes share GPU data and cast/receive soft shadows. */
-export function box(w, h, d, color, x = 0, y = 0, z = 0) {
+/** A coloured box mesh of size w×h×d at (x, y, z). All boxes share GPU data; large objects can pass castShadow=true. */
+export function box(w, h, d, color, x = 0, y = 0, z = 0, castShadow = false) {
   if (!matCache.has(color)) {
     const mat = new THREE.MeshLambertMaterial({ color });
     mat.userData = { isShared: true };
@@ -151,7 +152,7 @@ export function box(w, h, d, color, x = 0, y = 0, z = 0) {
   const m = new THREE.Mesh(UNIT, matCache.get(color));
   m.scale.set(w, h, d);
   m.position.set(x, y, z);
-  m.castShadow = true;
+  m.castShadow = castShadow;
   m.receiveShadow = true;
   return m;
 }
@@ -257,7 +258,6 @@ export function person(shirt, y = 0, cap, wearsLungi = false, opts = {}) {
   head.position.set(0, 0.46, 0);
   const headMesh = new THREE.Mesh(headGeo, skinMat);
   headMesh.position.y = 0.18;
-  headMesh.castShadow = true;
   head.add(headMesh);
 
   // Headwear / Hair / Accessories
@@ -271,18 +271,15 @@ export function person(shirt, y = 0, cap, wearsLungi = false, opts = {}) {
   } else if (outfit === "police") {
     // Police navy cap
     const pCap = box(0.44, 0.10, 0.44, 0x1a237e, 0, 0.35, 0);
-    pCap.castShadow = true;
     head.add(pCap);
   } else if (cap) {
     const cMesh = box(0.44, 0.10, 0.44, cap, 0, 0.35, 0);
-    cMesh.castShadow = true;
     head.add(cMesh);
   } else {
     // Male: prayer tupi or neat hair
     if (Math.random() < 0.35) {
       const tupi = new THREE.Mesh(tupiGeo, lambert(0xf5f5f5));
       tupi.position.y = 0.33;
-      tupi.castShadow = true;
       head.add(tupi);
     } else {
       const hair = box(0.38, 0.08, 0.38, 0x1a1a1a, 0, 0.34, 0);
@@ -295,14 +292,12 @@ export function person(shirt, y = 0, cap, wearsLungi = false, opts = {}) {
   const leftArm = new THREE.Group();
   leftArm.position.set(-0.25, 0.38, 0);
   const leftArmMesh = new THREE.Mesh(armGeo, outfit === "genji" ? skinMat : torsoMat);
-  leftArmMesh.castShadow = true;
   leftArm.add(leftArmMesh);
   torso.add(leftArm);
 
   const rightArm = new THREE.Group();
   rightArm.position.set(0.25, 0.38, 0);
   const rightArmMesh = new THREE.Mesh(armGeo, outfit === "genji" ? skinMat : torsoMat);
-  rightArmMesh.castShadow = true;
   rightArm.add(rightArmMesh);
   torso.add(rightArm);
 
@@ -315,7 +310,6 @@ export function person(shirt, y = 0, cap, wearsLungi = false, opts = {}) {
   const leftLeg = new THREE.Group();
   leftLeg.position.set(-0.11, y + 0.48, 0);
   const leftLegMesh = new THREE.Mesh(legGeo, legMat);
-  leftLegMesh.castShadow = true;
   leftLegMesh.receiveShadow = true;
   const leftSandal = new THREE.Mesh(sandalGeo, sandalMat);
   leftSandal.position.set(0, -0.46, 0.03);
@@ -325,7 +319,6 @@ export function person(shirt, y = 0, cap, wearsLungi = false, opts = {}) {
   const rightLeg = new THREE.Group();
   rightLeg.position.set(0.11, y + 0.48, 0);
   const rightLegMesh = new THREE.Mesh(legGeo, legMat);
-  rightLegMesh.castShadow = true;
   rightLegMesh.receiveShadow = true;
   const rightSandal = new THREE.Mesh(sandalGeo, sandalMat);
   rightSandal.position.set(0, -0.46, 0.03);
@@ -942,7 +935,6 @@ function makePooledBuilding(idx) {
   const tankMat = (idx % 2 === 0) ? tankMatBlack : tankMatBlue;
   const tank1 = new THREE.Mesh(tankGeo, tankMat);
   tank1.position.set(-1.4, 0.82, 0.8);
-  tank1.castShadow = true;
   const tankCap1 = new THREE.Mesh(tankCapGeo, lambert(0xffffff));
   tankCap1.position.set(-1.4, 1.48, 0.8);
   roof.add(tank1, tankCap1);
@@ -951,7 +943,6 @@ function makePooledBuilding(idx) {
   if (idx % 3 !== 0) {
     const tank2 = new THREE.Mesh(tankGeo, tankMat);
     tank2.position.set(-1.4, 0.82, -0.8);
-    tank2.castShadow = true;
     const tankCap2 = new THREE.Mesh(tankCapGeo, lambert(0xffffff));
     tankCap2.position.set(-1.4, 1.48, -0.8);
     roof.add(tank2, tankCap2);

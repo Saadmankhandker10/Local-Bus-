@@ -241,8 +241,8 @@ function optimizeComplexGltf(scene, isFielder = false) {
     if (geoms.length === 1) {
       geoms[0].userData = { isShared: true };
       const m = new THREE.Mesh(geoms[0], mat);
-      const isMinor = (mat.name || "").includes("Screenshot") || (mat.name || "").includes("sticker") || (mat.name || "").includes("lanyard");
-      m.castShadow = !isMinor;
+      // Exterior paintMesh already casts the solid car silhouette; interior/trim meshes do not need redundant shadow passes
+      m.castShadow = false;
       m.receiveShadow = true;
       root.add(m);
     } else {
@@ -251,14 +251,16 @@ function optimizeComplexGltf(scene, isFielder = false) {
         if (merged) {
           merged.userData = { isShared: true };
           const m = new THREE.Mesh(merged, mat);
-          m.castShadow = true;
+          m.castShadow = false;
           m.receiveShadow = true;
           root.add(m);
         }
       } catch (err) {
         for (const g of geoms) {
           g.userData = { isShared: true };
-          root.add(new THREE.Mesh(g, mat));
+          const m = new THREE.Mesh(g, mat);
+          m.castShadow = false;
+          root.add(m);
         }
       }
     }
@@ -285,7 +287,12 @@ export function loadCarModels() {
         } else if (key === "townace") {
           gltf.scene.traverse(node => {
             if (node.isMesh) {
-              node.castShadow = true;
+              const name = (node.name || "").toLowerCase();
+              const matName = (node.material?.name || "").toLowerCase();
+              const isInteriorOrMinor = name.includes("glass") || name.includes("seat") || name.includes("int") ||
+                name.includes("steer") || name.includes("meter") || name.includes("wiper") ||
+                matName.includes("glass") || matName.includes("interior");
+              node.castShadow = !isInteriorOrMinor;
               node.receiveShadow = true;
               if (node.geometry) node.geometry.userData = { isShared: true };
             }
@@ -294,7 +301,11 @@ export function loadCarModels() {
         } else if (key === "prius") {
           gltf.scene.traverse(node => {
             if (node.isMesh) {
-              node.castShadow = true;
+              const name = (node.name || "").toLowerCase();
+              const matName = (node.material?.name || "").toLowerCase();
+              const isInteriorOrMinor = name.includes("glass") || name.includes("seat") || name.includes("interior") ||
+                matName.includes("glass") || matName.includes("interior");
+              node.castShadow = !isInteriorOrMinor;
               node.receiveShadow = true;
               if (node.geometry) node.geometry.userData = { isShared: true };
             }
@@ -303,7 +314,9 @@ export function loadCarModels() {
         } else if (key === "hiace_2004") {
           gltf.scene.traverse(node => {
             if (node.isMesh) {
-              node.castShadow = true;
+              const name = (node.name || "").toLowerCase();
+              const isGlassOrMinor = name.includes("glass") || name.includes("wheel") || (node.material && node.material.transparent);
+              node.castShadow = !isGlassOrMinor;
               node.receiveShadow = true;
               if (node.geometry) node.geometry.userData = { isShared: true };
             }
@@ -312,7 +325,9 @@ export function loadCarModels() {
         } else if (key === "hiace") {
           gltf.scene.traverse(node => {
             if (node.isMesh) {
-              node.castShadow = true;
+              const name = (node.name || "").toLowerCase();
+              const isGlassOrMinor = name.includes("glass") || name.includes("interior") || (node.material && node.material.transparent);
+              node.castShadow = !isGlassOrMinor;
               node.receiveShadow = true;
               if (node.geometry) node.geometry.userData = { isShared: true };
             }

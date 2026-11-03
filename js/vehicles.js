@@ -212,8 +212,8 @@ function bike(t, c) {
 
 function truck(t, c) {
   const g = new THREE.Group();
-  g.add(box(t.w, t.h * .9, t.l * .7, c, 0, t.h * .55, t.l * .15));          // cargo
-  g.add(box(t.w * .95, t.h * .7, t.l * .25, 0xfdd835, 0, t.h * .45, -t.l * .37)); // cab
+  g.add(box(t.w, t.h * .9, t.l * .7, c, 0, t.h * .55, t.l * .15, true));          // cargo
+  g.add(box(t.w * .95, t.h * .7, t.l * .25, 0xfdd835, 0, t.h * .45, -t.l * .37, true)); // cab
   for (const s of [-1, 1]) g.add(box(.3, .7, t.l * .85, TYRE, s * t.w * .5, .35, 0));
   // Painted Folk Dhaka Truck Art plate on the rear tailgate
   const artMesh = new THREE.Mesh(new THREE.PlaneGeometry(t.w * .92, t.h * .55), pick(TRUCK_ART_MATS));
@@ -284,7 +284,7 @@ export function makeThela() {
   g.userData.stallType = "thela";
 
   // 1. Wooden chassis bed & push handles
-  const bed = box(1.3, 0.1, 2.2, 0x8d6e63, 0, 0.65, 0);
+  const bed = box(1.3, 0.1, 2.2, 0x8d6e63, 0, 0.65, 0, true);
   const handleL = box(0.06, 0.06, 0.8, 0x5d4037, -0.5, 0.85, -1.3);
   const handleR = box(0.06, 0.06, 0.8, 0x5d4037, 0.5, 0.85, -1.3);
   const railFront = box(1.3, 0.22, 0.06, 0x5d4037, 0, 0.78, 1.07);
@@ -302,7 +302,6 @@ export function makeThela() {
   for (const [wx, wy, wz] of wheelPositions) {
     const w = new THREE.Mesh(thelaWheelGeo, thelaWheelMat);
     w.position.set(wx, wy, wz);
-    w.castShadow = true;
     const hub = box(0.12, 0.12, 0.12, 0x212121, wx, wy, wz);
     g.add(w, hub);
   }
@@ -313,7 +312,6 @@ export function makeThela() {
     const melon = new THREE.Mesh(new THREE.SphereGeometry(0.20, 8, 8), melonMat);
     melon.position.set(rnd(-0.35, 0.35), 0.85, rnd(-0.5, 0.6));
     melon.scale.set(1.1, 1.0, 1.2);
-    melon.castShadow = true;
     g.add(melon);
   }
   const bananaMat = lambert(0xffeb3b);
@@ -321,14 +319,12 @@ export function makeThela() {
     const ban = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.34, 6), bananaMat);
     ban.rotation.set(rnd(-0.4, 0.4), rnd(-1, 1), rnd(0.5, 1.2));
     ban.position.set(rnd(-0.4, 0.4), 0.88, rnd(-0.6, 0.7));
-    ban.castShadow = true;
     g.add(ban);
   }
   const papayaMat = lambert(0xff9800);
   for (let i = 0; i < 3; i++) {
     const pap = new THREE.Mesh(new THREE.SphereGeometry(0.14, 6, 6), papayaMat);
     pap.position.set(rnd(-0.3, 0.3), 0.86, rnd(-0.4, 0.5));
-    pap.castShadow = true;
     g.add(pap);
   }
 
@@ -355,7 +351,7 @@ export function makeFishStall() {
   g.userData.stallType = "fish";
 
   // 1. Low wooden cutting platform (chowki)
-  const platform = box(1.8, 0.42, 1.6, 0x6d4c41, 0, 0.21, 0);
+  const platform = box(1.8, 0.42, 1.6, 0x6d4c41, 0, 0.21, 0, true);
   g.add(platform);
 
   // 2. Traditional iron boti knife upright on wooden base
@@ -372,7 +368,6 @@ export function makeFishStall() {
   for (const bPos of [[-0.45, 0.52, -0.2], [-0.42, 0.52, 0.45]]) {
     const basket = new THREE.Mesh(basketGeo, basketMat);
     basket.position.set(bPos[0], bPos[1], bPos[2]);
-    basket.castShadow = true;
     g.add(basket);
 
     // Silver Hilsa fish inside basket
@@ -381,7 +376,6 @@ export function makeFishStall() {
       fish.rotation.set(Math.PI / 2 + rnd(-0.2, 0.2), rnd(-0.4, 0.4), rnd(-1, 1));
       fish.position.set(bPos[0] + rnd(-0.15, 0.15), bPos[1] + 0.12, bPos[2] + rnd(-0.15, 0.15));
       fish.scale.set(1, 0.4, 1);
-      fish.castShadow = true;
       const gills = box(0.02, 0.03, 0.05, 0xd32f2f, fish.position.x, fish.position.y + 0.02, fish.position.z);
       g.add(fish, gills);
     }
@@ -390,7 +384,6 @@ export function makeFishStall() {
   // 4. Blue water bucket
   const bucket = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.14, 0.32, 8), lambert(0x1976d2));
   bucket.position.set(0.55, 0.58, -0.4);
-  bucket.castShadow = true;
   g.add(bucket);
 
   // 5. Fishmonger sitting in lungi beside the boti

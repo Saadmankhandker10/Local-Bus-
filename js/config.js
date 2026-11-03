@@ -476,7 +476,7 @@ export const CFG = {
   },
 
   render: {
-    maxPixelRatio: 2,     // lower to 1 for more speed on phones
+    maxPixelRatio: 1.5,   // 1.5 provides retina sharpness on high-DPI displays without 4K GPU fill-rate throttling
   },
 
   hud: {

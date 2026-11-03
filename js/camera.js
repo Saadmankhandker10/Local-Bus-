@@ -48,6 +48,10 @@ function testBuildingCollision(ax, az, cx, cz) {
 
   for (const p of activeBuildings) {
     if (!p.mesh || !p.mesh.visible) continue;
+    // Fast spatial distance reject: camera ray length is at most bestDist (~15 units)
+    if (Math.abs(p.wx - ax) > (bestDist + p.w / 2 + margin) ||
+        Math.abs(p.wz - az) > (bestDist + p.d / 2 + margin)) continue;
+
     const minX = p.wx - p.w / 2 - margin;
     const maxX = p.wx + p.w / 2 + margin;
     const minZ = p.wz - p.d / 2 - margin;
