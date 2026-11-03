@@ -18,8 +18,12 @@ self.addEventListener("install", e => {
     "./js/SkeletonUtils.js",
     "./models/hiace.glb",
     "./models/hiace_2004.glb",
+    "./models/townace.glb",
+    "./models/prius.glb",
+    "./models/chaser.glb",
     "./models/corolla.glb",
-    "./models/fielder.glb"
+    "./models/fielder.glb",
+    "./models/bangladeshi_bus.glb"
   ])));
 });
 

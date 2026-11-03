@@ -866,9 +866,8 @@ export function recoverToRoad() {
   findNearestRoad(game.wx !== undefined ? game.wx : bus.position.x, game.wz !== undefined ? game.wz : bus.position.z, nearest);
   sample(nearest.seg, nearest.s, pos);
   const targetLat = -3.4; // left lane (Dhaka drive side)
-  const rx = Math.cos(pos.yaw), rz = -Math.sin(pos.yaw);
-  game.wx = pos.x + rx * targetLat;
-  game.wz = pos.z - rz * targetLat;
+  game.wx = pos.x + Math.cos(pos.yaw) * targetLat;
+  game.wz = pos.z - Math.sin(pos.yaw) * targetLat;
   game.heading = -pos.yaw;
   game.steerAngle = 0;
   game.signedSpeed = 0;
