@@ -1,12 +1,14 @@
 // Loader, optimizer and pool for authentic 3D Bangladeshi traffic cars, microbuses & sedans:
 // 1. Toyota Hiace 2005 Microbus (`models/hiace.glb`)
 // 2. Toyota Hiace 2004 Classic Boxy Microbus (`models/hiace_2004.glb`)
-// 3. Toyota Corolla Luxel Private Sedan (`models/corolla.glb`)
-// 4. Toyota Corolla Fielder Station Wagon (`models/fielder.glb`)
+// 3. Toyota TownAce 2005 GL Van/Microbus (`models/townace.glb`)
+// 4. Toyota Prius Hybrid Sedan (`models/prius.glb`)
+// 5. Toyota Corolla Luxel Private Sedan (`models/corolla.glb`)
+// 6. Toyota Corolla Fielder Station Wagon (`models/fielder.glb`)
 //
 // Performance Optimizations:
-// - BufferGeometryUtils batching: combines 538 Corolla & 603 Fielder sub-meshes into ~50 material batches
-// - Selective shadow casting: only major exterior body shells cast shadows, dropping shadow draw calls by 95%
+// - BufferGeometryUtils batching: combines multi-part sub-meshes into material batches
+// - Selective shadow casting: only major exterior body shells cast shadows, dropping draw calls by 95%
 // - Object Pooling: pre-allocates and reuses vehicle instances; zero garbage collection pauses during driving
 // - Static Plate Cache: pre-renders authentic BRTA license plates once; zero canvas texture allocations
 
@@ -20,6 +22,8 @@ import { box } from "./world.js";
 const MODEL_PATHS = {
   hiace: "models/hiace.glb",
   hiace_2004: "models/hiace_2004.glb",
+  townace: "models/townace.glb",
+  prius: "models/prius.glb",
   corolla: "models/corolla.glb",
   fielder: "models/fielder.glb"
 };
@@ -27,6 +31,8 @@ const MODEL_PATHS = {
 const loadedTemplates = {
   hiace: null,
   hiace_2004: null,
+  townace: null,
+  prius: null,
   corolla: null,
   fielder: null
 };
@@ -35,6 +41,8 @@ const loadedTemplates = {
 const carPool = {
   hiace: [],
   hiace_2004: [],
+  townace: [],
+  prius: [],
   corolla: [],
   fielder: []
 };
@@ -180,7 +188,6 @@ function normalizeGeomForMerge(geom) {
 function optimizeComplexGltf(scene, isFielder = false) {
   scene.updateMatrixWorld(true);
 
-  // Group geometries by material or material type
   const matMap = new Map();
   const paintGeoms = [];
   let primaryPaintMat = null;
@@ -234,7 +241,6 @@ function optimizeComplexGltf(scene, isFielder = false) {
     if (geoms.length === 1) {
       geoms[0].userData = { isShared: true };
       const m = new THREE.Mesh(geoms[0], mat);
-      // Only exterior glass and large bumpers cast shadows
       const isMinor = (mat.name || "").includes("Screenshot") || (mat.name || "").includes("sticker") || (mat.name || "").includes("lanyard");
       m.castShadow = !isMinor;
       m.receiveShadow = true;
@@ -276,6 +282,24 @@ export function loadCarModels() {
           loadedTemplates.corolla = optimizeComplexGltf(gltf.scene, false);
         } else if (key === "fielder") {
           loadedTemplates.fielder = optimizeComplexGltf(gltf.scene, true);
+        } else if (key === "townace") {
+          gltf.scene.traverse(node => {
+            if (node.isMesh) {
+              node.castShadow = true;
+              node.receiveShadow = true;
+              if (node.geometry) node.geometry.userData = { isShared: true };
+            }
+          });
+          loadedTemplates.townace = { root: gltf.scene, baseGltf: gltf };
+        } else if (key === "prius") {
+          gltf.scene.traverse(node => {
+            if (node.isMesh) {
+              node.castShadow = true;
+              node.receiveShadow = true;
+              if (node.geometry) node.geometry.userData = { isShared: true };
+            }
+          });
+          loadedTemplates.prius = { root: gltf.scene, baseGltf: gltf };
         } else if (key === "hiace_2004") {
           gltf.scene.traverse(node => {
             if (node.isMesh) {
@@ -308,6 +332,8 @@ export function loadCarModels() {
   loadPromise = Promise.allSettled([
     loadOne(MODEL_PATHS.hiace, "hiace"),
     loadOne(MODEL_PATHS.hiace_2004, "hiace_2004"),
+    loadOne(MODEL_PATHS.townace, "townace"),
+    loadOne(MODEL_PATHS.prius, "prius"),
     loadOne(MODEL_PATHS.corolla, "corolla"),
     loadOne(MODEL_PATHS.fielder, "fielder"),
   ]).then(() => {
@@ -321,6 +347,8 @@ export function loadCarModels() {
 export function isCarModelReady() {
   return loadedTemplates.hiace !== null ||
          loadedTemplates.hiace_2004 !== null ||
+         loadedTemplates.townace !== null ||
+         loadedTemplates.prius !== null ||
          loadedTemplates.corolla !== null ||
          loadedTemplates.fielder !== null;
 }
@@ -339,10 +367,10 @@ export function instantiateCarModel(opts = {}) {
   let modelKey = opts.model;
   if (!modelKey || !loadedTemplates[modelKey]) {
     if (isVip) {
-      const vipChoices = ["corolla", "hiace"].filter(k => loadedTemplates[k]);
+      const vipChoices = ["corolla", "prius", "hiace"].filter(k => loadedTemplates[k]);
       modelKey = vipChoices.length ? pick(vipChoices) : availableKeys[0];
     } else if (isPolice) {
-      const policeChoices = ["corolla", "hiace"].filter(k => loadedTemplates[k]);
+      const policeChoices = ["townace", "corolla", "hiace"].filter(k => loadedTemplates[k]);
       modelKey = policeChoices.length ? pick(policeChoices) : availableKeys[0];
     } else {
       modelKey = pick(availableKeys);
@@ -351,7 +379,7 @@ export function instantiateCarModel(opts = {}) {
 
   // 1. Check object pool for an idle instance
   const pool = carPool[modelKey];
-  let car = pool.find(c => !c.userData.inUse);
+  let car = pool ? pool.find(c => !c.userData.inUse) : null;
 
   // Pick color
   let carColor = opts.color;
@@ -452,6 +480,84 @@ export function instantiateCarModel(opts = {}) {
     frontPlateY = 0.42;
     rearPlateY = 0.58;
 
+  } else if (modelKey === "townace") {
+    // 2005 Toyota TownAce GL Van / Microbus
+    const model = template.root.clone(true);
+    const bbox = new THREE.Box3().setFromObject(template.root);
+    const center = new THREE.Vector3();
+    bbox.getCenter(center);
+
+    const pivot = new THREE.Group();
+    model.position.set(-center.x, -bbox.min.y, -center.z);
+    pivot.add(model);
+    pivot.rotation.y = Math.PI; // faces -Z forward
+    pivot.scale.set(0.96, 0.96, 0.96);
+    root.add(pivot);
+
+    let townacePaintMat = new THREE.MeshStandardMaterial({
+      color: carColor,
+      roughness: isVip ? 0.20 : 0.28,
+      metalness: isVip ? 0.45 : 0.35,
+    });
+
+    model.traverse(child => {
+      if (child.isMesh && child.material) {
+        // "Material" is the primary body paint in TownAce GLB
+        if (child.material.name === "Material" || child.name.includes("fnmg00")) {
+          child.material = townacePaintMat;
+        }
+      }
+    });
+
+    setPaintColorFn = col => {
+      if (townacePaintMat) townacePaintMat.color.setHex(col);
+    };
+
+    frontPlateZ = -2.22;
+    rearPlateZ = 2.22;
+    frontPlateY = 0.42;
+    rearPlateY = 0.58;
+
+  } else if (modelKey === "prius") {
+    // Toyota Prius Hybrid Private Sedan
+    const model = template.root.clone(true);
+    const bbox = new THREE.Box3().setFromObject(template.root);
+    const center = new THREE.Vector3();
+    bbox.getCenter(center);
+    const size = new THREE.Vector3();
+    bbox.getSize(size);
+
+    const pivot = new THREE.Group();
+    model.position.set(-center.x, -bbox.min.y, -center.z);
+    pivot.add(model);
+    const scale = 4.4 / Math.max(size.x, size.z);
+    pivot.scale.set(scale, scale, scale);
+    pivot.rotation.y = 0; // faces -Z forward
+    root.add(pivot);
+
+    let priusPaintMat = new THREE.MeshStandardMaterial({
+      color: carColor,
+      roughness: isVip ? 0.18 : 0.25,
+      metalness: isVip ? 0.50 : 0.40,
+    });
+
+    model.traverse(child => {
+      if (child.isMesh && child.material) {
+        if (child.material.name === "paint") {
+          child.material = priusPaintMat;
+        }
+      }
+    });
+
+    setPaintColorFn = col => {
+      if (priusPaintMat) priusPaintMat.color.setHex(col);
+    };
+
+    frontPlateZ = -2.15;
+    rearPlateZ = 2.15;
+    frontPlateY = 0.35;
+    rearPlateY = 0.52;
+
   } else if (modelKey === "corolla" || modelKey === "fielder") {
     // Clone only the 50 merged meshes instead of 1630 individual nodes!
     const model = template.root.clone(true);
@@ -488,7 +594,7 @@ export function instantiateCarModel(opts = {}) {
   }
 
   // Pre-cached authentic Bangladeshi license plates
-  let plateClass = isPolice ? "police" : (isVip ? "vip" : (modelKey.includes("hiace") ? "hiace" : "car"));
+  let plateClass = isPolice ? "police" : (isVip ? "vip" : (modelKey.includes("hiace") || modelKey.includes("townace") ? "hiace" : "car"));
   const plateInfo = generateBangladeshiPlate(plateClass);
 
   const frontPlate = createPlateMesh(plateInfo);
@@ -528,7 +634,7 @@ export function instantiateCarModel(opts = {}) {
     }
   };
 
-  pool.push(root);
+  if (pool) pool.push(root);
   return root;
 }
 
