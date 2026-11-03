@@ -526,6 +526,7 @@ export function updateTraffic(dt) {
     if (Math.abs(here.s - barS) < halfSpan && hitBlockade) {
       if (here.s < barS - activeProc.barricadeHalfLen + 1.5) {
         game.speed = 0;
+        game.signedSpeed = 0;
         game.boostT = 0;
         here.s = Math.min(here.s, barS - halfSpan + .2);
         if (activeProc.openCorridor === "wrong-way") {

@@ -518,7 +518,7 @@ export function updateBus(dt) {
       game.shake = Math.max(game.shake, 0.25);
       mapEdgeVoiceTimer -= dt;
       if (mapEdgeVoiceTimer <= 0) {
-        say("এদিকে রাস্তা নেই ওস্তাদ");
+        say("হেল্পার", "এদিকে রাস্তা নেই ওস্তাদ!", 2.2, true);
         mapEdgeVoiceTimer = 4.0;
       }
     } else {
@@ -777,7 +777,7 @@ export function recoverToRoad() {
   game.hp = Math.max(10, (game.hp || 100) - hpCost);
 
   placeBus();
-  say("রাস্তায় তুললাম ওস্তাদ, সাবধানে চালান!");
+  say("হেল্পার", "রাস্তায় তুললাম ওস্তাদ, সাবধানে চালান!", 2.5, true);
   playBrakeFao();
   game.shake = 0.35;
 }
