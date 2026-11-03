@@ -66,13 +66,19 @@ export const UI = {
 /** Names of the cross-avenues and side streets (keyed by the branch id in map.js), for the GPS and the helper. */
 export const ROADS = {
   "mohammadpur-lane": "মোহাম্মদপুর তাজমহল রোড",
+  "townhall-bazaar": "টাউন হল বাজার গলি",
   "shyamoli-ring-road": "শ্যামলী — রিং রোড",
   "mirpur-road-north": "ফার্মগেট — মিরপুর ১০ রোড",
+  "asad-detour": "আসাদগেট বাইপাস গলি",
   "satmasjid-road": "সাতমসজিদ রোড — জিগাতলা",
+  "dhanmondi-lake-road": "ধানমন্ডি লেক রোড",
   "kalabagan-lane": "কলাবাগান — গ্রিন রোড",
+  "elephant-road-market": "এলিফ্যান্ট রোড মার্কেট গলি",
   "newmarket-azimpur": "নিউমার্কেট — আজিমপুর রোড",
   "katabon-lane": "কাঁটাবন — এলিফ্যান্ট রোড",
+  "katabon-detour": "কাঁটাবন গলি বাইপাস",
   "karwan-farmgate": "কারওয়ান বাজার — ফার্মগেট",
+  "charukola-lane": "চারুকলা বকুলতলা গলি",
   "matsya-motijheel": "মৎস্য ভবন — মতিঝিল রোড",
   "nilkhet-palashi": "নীলক্ষেত — পলাশী মোড়",
 };

@@ -6,9 +6,9 @@ import { scene, box, plate } from "./world.js";
 import { input } from "./input.js";
 import { game } from "./state.js";
 import { emit } from "./events.js";
-import { SEGS, here, sample, place, fromProgress, progressOf, projectToRoad } from "./map.js";
+import { SEGS, here, sample, place, fromProgress, progressOf, projectToRoad, findNearestRoad } from "./map.js";
 import { SLOGANS, COMPANIES, PLATES } from "./data/slogans.bn.js";
-import { playKhelaHobe, playReverseBeep } from "./audio.js";
+import { playKhelaHobe, playReverseBeep, playKerbScrape, playBrakeFao, crashSound } from "./audio.js";
 import { say } from "./speech.js";
 import {
   boostFlameMat,
@@ -244,6 +244,9 @@ const pos = { x: 0, y: 0, z: 0, yaw: 0, k: 0 }; // reused road sample
 const projOut = { seg: 0, s: 0, lat: 0, yaw: 0 }; // reused road projection
 let lastMorKey = "";
 let revBeepTimer = 0;
+let kerbScrapeTimer = 0;
+let mapEdgeVoiceTimer = 0;
+const nearestRoad = { seg: 0, s: 0, lat: 0, yaw: 0, dist: 0 };
 
 /** Put the bus on the main road at a journey progress value, facing along the road. */
 export function resetBus(progress = 0) {
@@ -454,6 +457,72 @@ export function updateBus(dt) {
         game.morName = j.name;
         emit("morPass", { name: j.name });
       }
+    }
+
+    // Phase 2 Surface Rules: Road asphalt vs. Footpath / Dirt vs. Solid Buildings vs. Map Edge
+    const roadHalf = S.half;
+    const distFromRoad = Math.abs(game.lat) - roadHalf;
+    const sidewalkW = FR.sidewalkWidth || 3.8;
+
+    // 1. Off-Road Footpath & Dirt: grip reduced, bumpy vibration, kerb scrape sound
+    if (distFromRoad > 0 && distFromRoad <= sidewalkW) {
+      if (Math.abs(v) > (FR.offRoadMaxSpeed || 14.0) && !boosting) {
+        v = Math.sign(v) * Math.max(0, Math.abs(v) - (FR.offRoadDrag || 16.0) * dt);
+        game.signedSpeed = v;
+        game.speed = Math.abs(v);
+      }
+      if (Math.abs(v) > 0.6) {
+        game.busY = Math.max(game.busY, Math.abs(Math.sin(game.dist * 3.8)) * (FR.bumpyVibrationScale || 0.12));
+        game.shake = Math.max(game.shake, 0.18);
+      }
+      kerbScrapeTimer -= dt;
+      if (kerbScrapeTimer <= 0 && Math.abs(v) > 2.0) {
+        playKerbScrape(bus.position);
+        spawnScrapeSparks(bus.position.x + Math.sign(game.lat) * 1.3, 0.35, bus.position.z, 6, Math.sign(game.lat), 0);
+        kerbScrapeTimer = FR.scrapeSoundInterval || 0.45;
+      }
+    } else {
+      kerbScrapeTimer = Math.max(0, kerbScrapeTimer - dt);
+    }
+
+    // 2. Solid Building Facades & Perimeter Walls: solid elastic barrier with soft recovery
+    if (distFromRoad > sidewalkW) {
+      const penetration = distFromRoad - sidewalkW;
+      const sideSign = Math.sign(game.lat);
+      const rx = Math.cos(projOut.yaw), rz = -Math.sin(projOut.yaw);
+      game.wx -= rx * sideSign * penetration * 1.05;
+      game.wz -= rz * sideSign * penetration * 1.05;
+      game.lat = sideSign * (roadHalf + sidewalkW);
+      game.signedSpeed = -game.signedSpeed * (FR.buildingBounce || 0.22);
+      v = game.signedSpeed;
+      game.speed = Math.abs(v);
+      game.shake = Math.max(game.shake, 0.45);
+      game.hp = Math.max(5, (game.hp || 100) - 2);
+      crashSound(false, bus.position);
+      spawnScrapeSparks(bus.position.x, 1.1, bus.position.z, 10, -sideSign, 0);
+    }
+
+    // 3. Map Edge Invisible Boundary: stop vehicle with helper warning line
+    findNearestRoad(game.wx, game.wz, nearestRoad);
+    const maxExcursion = FR.mapEdgeMaxDist || 48.0;
+    if (nearestRoad.dist > maxExcursion) {
+      const overDist = nearestRoad.dist - maxExcursion;
+      sample(nearestRoad.seg, nearestRoad.s, pos);
+      const nx = (game.wx - pos.x) / nearestRoad.dist;
+      const nz = (game.wz - pos.z) / nearestRoad.dist;
+      game.wx -= nx * overDist * 1.1;
+      game.wz -= nz * overDist * 1.1;
+      game.signedSpeed = 0;
+      game.speed = 0;
+      v = 0;
+      game.shake = Math.max(game.shake, 0.25);
+      mapEdgeVoiceTimer -= dt;
+      if (mapEdgeVoiceTimer <= 0) {
+        say("এদিকে রাস্তা নেই ওস্তাদ");
+        mapEdgeVoiceTimer = 4.0;
+      }
+    } else {
+      mapEdgeVoiceTimer = Math.max(0, mapEdgeVoiceTimer - dt);
     }
   } else {
     // ---- Standard 1.5D Curvilinear Route Navigation ----
@@ -675,3 +744,41 @@ export function updateBusVisual(dt) {
     for (const m of cracks[i]) if (m.visible !== show) m.visible = show;
   }
 }
+
+/**
+ * Back-to-Road recovery action: re-aligns the bus to the nearest road segment
+ * facing along the route with proper penalties and conductor dialogue.
+ */
+export function recoverToRoad() {
+  if (!game.running) return;
+  const nearest = { seg: 0, s: 0, lat: 0, yaw: 0, dist: 0 };
+  findNearestRoad(game.wx !== undefined ? game.wx : bus.position.x, game.wz !== undefined ? game.wz : bus.position.z, nearest);
+  sample(nearest.seg, nearest.s, pos);
+  const targetLat = -3.4; // left lane (Dhaka drive side)
+  const rx = Math.cos(pos.yaw), rz = -Math.sin(pos.yaw);
+  game.wx = pos.x + rx * targetLat;
+  game.wz = pos.z - rz * targetLat;
+  game.heading = -pos.yaw;
+  game.steerAngle = 0;
+  game.signedSpeed = 0;
+  game.speed = 0;
+  game.gear = "D";
+  game.busY = 0;
+  game.busVy = 0;
+  here.seg = nearest.seg;
+  here.s = nearest.s;
+  game.lat = targetLat;
+  game.yaw = 0;
+  game.prog = progressOf(here.seg, here.s);
+
+  const fareCost = CFG.freeRoam?.recoveryFareCost || 20;
+  const hpCost = CFG.freeRoam?.recoveryHpCost || 5;
+  game.fare = Math.max(0, (game.fare || 0) - fareCost);
+  game.hp = Math.max(10, (game.hp || 100) - hpCost);
+
+  placeBus();
+  say("রাস্তায় তুললাম ওস্তাদ, সাবধানে চালান!");
+  playBrakeFao();
+  game.shake = 0.35;
+}
+

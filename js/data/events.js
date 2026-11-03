@@ -73,7 +73,7 @@ export const PROCESSION_EVENTS = [
     bypassSignText: "উল্টা লেনে কাটেন ►",
 
     // Dialogue & Messages
-    alertMsg: "📢 আসাদ গেট মিছিল — বাম লেন বন্ধ, উল্টা লেনে কাটেন!",
+    alertMsg: "📢 আসাদ গেট মিছিল — উল্টা লেনে কাটেন অথবা আসাদগেট বাইপাস গলি ধরেন!",
     dialogueKey: "asadGateMichil",
   },
 ];

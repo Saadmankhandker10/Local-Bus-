@@ -69,6 +69,16 @@ export const CFG = {
     // Recovery action ("রাস্তায় ফিরুন")
     recoveryFareCost: 20,        // fare deduction for resetting to road
     recoveryHpCost: 5,           // HP/comfort deduction for resetting to road
+
+    // Phase 2: Surface rules & environmental interaction
+    offRoadGrip: 0.55,           // grip reduction on sidewalks/dirt (slip and slower throttle response)
+    offRoadMaxSpeed: 14.0,       // top speed achievable on footpath/dirt without nitrous boost
+    offRoadDrag: 16.0,           // extra rolling drag applied when wheels are on dirt/sidewalk
+    sidewalkWidth: 3.8,          // width of pedestrian footpath before solid buildings begin
+    buildingBounce: 0.22,        // restitution / elasticity when colliding with solid building walls
+    mapEdgeMaxDist: 48.0,        // maximum allowed excursion from any road before hitting the invisible map boundary
+    scrapeSoundInterval: 0.45,   // minimum cooldown in seconds between sidewalk kerb scrape sounds
+    bumpyVibrationScale: 0.12,   // amplitude of vertical chassis oscillation on rough dirt/footpaths
   },
 
   fuel: {

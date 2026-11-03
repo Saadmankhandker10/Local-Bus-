@@ -727,3 +727,36 @@ export function playReverseBeep(pos = null) {
   osc.start(t);
   osc.stop(t + 0.16);
 }
+
+/** Play sidewalk / kerb friction scrape sound (gritty asphalt/concrete friction). */
+export function playKerbScrape(pos = null) {
+  if (!ctx || muted) return;
+  initAudio();
+  const t = ctx.currentTime, len = 0.22;
+  const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * len), ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) {
+    const decay = 1 - i / d.length;
+    d[i] = (Math.random() * 2 - 1) * decay * (0.8 + 0.2 * Math.sin(i * 0.1));
+  }
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const f = ctx.createBiquadFilter();
+  f.type = "bandpass";
+  f.frequency.setValueAtTime(1400, t);
+  f.Q.value = 2.5;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.001, t);
+  g.gain.linearRampToValueAtTime(0.24, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.001, t + len);
+  src.connect(f);
+  f.connect(g);
+  if (pos && typeof create3DPanner === "function") {
+    const panner = create3DPanner(pos.x, pos.y, pos.z, { refDistance: 12, maxDistance: 45 });
+    g.connect(panner);
+  } else {
+    g.connect(master);
+  }
+  src.start(t);
+}
+

@@ -4,7 +4,8 @@
 import * as THREE from "three";
 import { CFG } from "./config.js";
 import { rnd, pick } from "./utils.js";
-import { SEGS, here, sample, place, ahead, progressOf, hitsAnyRoad } from "./map.js";
+import { game } from "./state.js";
+import { SEGS, MAIN, here, sample, place, ahead, progressOf, hitsAnyRoad } from "./map.js";
 import { getProcessionBySegId } from "./data/events.js";
 import {
   createAsphaltTex,
@@ -614,6 +615,107 @@ const treeCrownGeo = new THREE.IcosahedronGeometry(1, 0);
 const treeLeafMat = new THREE.MeshLambertMaterial({ color: 0x263818 });
 const bushMat = new THREE.MeshLambertMaterial({ color: 0x2f481e });
 
+/**
+ * Builds a 3D circular Dhaka roundabout (e.g. Doyel Chattar) with central monument,
+ * green garden island, circular asphalt ring, and connecting avenues.
+ */
+function buildRoundabout(seg, s, r = 22, group = null) {
+  sample(seg, s, pt);
+  const cx = pt.x, cz = pt.z, cy = pt.y;
+  const segments = 32;
+  const rIn = r, rOut = r + 18;
+
+  // 1. Wide circular asphalt ring
+  const roadBatch = batch(MATS.road);
+  for (let step = 0; step < segments; step++) {
+    const a0 = (step / segments) * Math.PI * 2;
+    const a1 = ((step + 1) / segments) * Math.PI * 2;
+    const cos0 = Math.cos(a0), sin0 = Math.sin(a0);
+    const cos1 = Math.cos(a1), sin1 = Math.sin(a1);
+
+    const x0_in = cx + cos0 * rIn, z0_in = cz + sin0 * rIn;
+    const x0_out = cx + cos0 * rOut, z0_out = cz + sin0 * rOut;
+    const x1_in = cx + cos1 * rIn, z1_in = cz + sin1 * rIn;
+    const x1_out = cx + cos1 * rOut, z1_out = cz + sin1 * rOut;
+
+    const base = roadBatch.pos.length / 3;
+    roadBatch.pos.push(x0_in, cy + 0.006, z0_in, x0_out, cy + 0.006, z0_out, x1_in, cy + 0.006, z1_in, x1_out, cy + 0.006, z1_out);
+    roadBatch.uvs.push(cos0 * 2, sin0 * 2, cos0 * 3.5, sin0 * 3.5, cos1 * 2, sin1 * 2, cos1 * 3.5, sin1 * 3.5);
+    roadBatch.idx.push(base, base + 2, base + 1, base + 1, base + 2, base + 3);
+  }
+
+  // 2. Central green island lawn
+  const lawnBatch = batch(MATS.median);
+  for (let step = 0; step < segments; step++) {
+    const a0 = (step / segments) * Math.PI * 2;
+    const a1 = ((step + 1) / segments) * Math.PI * 2;
+    const base = lawnBatch.pos.length / 3;
+    lawnBatch.pos.push(cx, cy + 0.22, cz, cx + Math.cos(a0) * (rIn - 0.4), cy + 0.22, cz + Math.sin(a0) * (rIn - 0.4), cx + Math.cos(a1) * (rIn - 0.4), cy + 0.22, cz + Math.sin(a1) * (rIn - 0.4));
+    lawnBatch.uvs.push(0.5, 0.5, 0.5 + Math.cos(a0) * 0.5, 0.5 + Math.sin(a0) * 0.5, 0.5 + Math.cos(a1) * 0.5, 0.5 + Math.sin(a1) * 0.5);
+    lawnBatch.idx.push(base, base + 1, base + 2);
+  }
+
+  // 3. Striped kerb around central island
+  for (let step = 0; step < segments; step++) {
+    const a0 = (step / segments) * Math.PI * 2;
+    const a1 = ((step + 1) / segments) * Math.PI * 2;
+    const kmat = step % 2 === 0 ? MATS.kerbYellow : MATS.kerbBlack;
+    const kb = batch(kmat);
+    const base = kb.pos.length / 3;
+    kb.pos.push(
+      cx + Math.cos(a0) * (rIn - 0.4), cy + 0.24, cz + Math.sin(a0) * (rIn - 0.4),
+      cx + Math.cos(a0) * rIn, cy + 0.24, cz + Math.sin(a0) * rIn,
+      cx + Math.cos(a1) * (rIn - 0.4), cy + 0.24, cz + Math.sin(a1) * (rIn - 0.4),
+      cx + Math.cos(a1) * rIn, cy + 0.24, cz + Math.sin(a1) * rIn
+    );
+    kb.uvs.push(0, 0, 1, 0, 0, 1, 1, 1);
+    kb.idx.push(base, base + 2, base + 1, base + 1, base + 2, base + 3);
+  }
+
+  // 4. White circular lane dash in the middle of the ring
+  const rMid = (rIn + rOut) / 2;
+  const lineBatch = batch(MATS.line);
+  for (let step = 0; step < segments; step += 2) {
+    const a0 = (step / segments) * Math.PI * 2;
+    const a1 = ((step + 0.8) / segments) * Math.PI * 2;
+    const base = lineBatch.pos.length / 3;
+    lineBatch.pos.push(
+      cx + Math.cos(a0) * (rMid - 0.1), cy + 0.015, cz + Math.sin(a0) * (rMid - 0.1),
+      cx + Math.cos(a0) * (rMid + 0.1), cy + 0.015, cz + Math.sin(a0) * (rMid + 0.1),
+      cx + Math.cos(a1) * (rMid - 0.1), cy + 0.015, cz + Math.sin(a1) * (rMid - 0.1),
+      cx + Math.cos(a1) * (rMid + 0.1), cy + 0.015, cz + Math.sin(a1) * (rMid + 0.1)
+    );
+    lineBatch.uvs.push(0, 0, 1, 0, 0, 1, 1, 1);
+    lineBatch.idx.push(base, base + 2, base + 1, base + 1, base + 2, base + 3);
+  }
+
+  // 5. Decorative Central Doyel Chattar Monument
+  if (group) {
+    const baseGeo = new THREE.CylinderGeometry(4.2, 5.0, 1.8, 16);
+    const baseMat = new THREE.MeshLambertMaterial({ color: 0xeeeeee });
+    const pedestal = new THREE.Mesh(baseGeo, baseMat);
+    pedestal.position.set(cx, cy + 0.9, cz);
+
+    const spireGeo = new THREE.ConeGeometry(1.6, 6.2, 8);
+    const spireMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+    const spire = new THREE.Mesh(spireGeo, spireMat);
+    spire.position.set(cx, cy + 4.0, cz);
+
+    for (let i = 0; i < 8; i++) {
+      const ang = (i / 8) * Math.PI * 2;
+      const bush = new THREE.Mesh(treeCrownGeo, bushMat);
+      bush.position.set(cx + Math.cos(ang) * 9.5, cy + 0.45, cz + Math.sin(ang) * 9.5);
+      bush.scale.set(0.65, 0.45, 0.65);
+      group.add(bush);
+    }
+    group.add(pedestal, spire);
+  }
+
+  // Cross avenue stubs branching off the roundabout
+  stub(seg, s, -1);
+  stub(seg, s, 1);
+}
+
 /** Build every road ribbon, yellow-black striped kerbs, tree-lined medians, and overhead metro viaduct. */
 function buildRoads() {
   const M = CFG.metro;
@@ -655,7 +757,11 @@ function buildRoads() {
       const inGap = d => {
         if (d < 14 || d > S.len - 14) return true;
         for (const j of S.junctions || []) {
-          if (Math.abs(d - j.at * S.len) < 12) return true;
+          const span = j.type === "roundabout" ? (j.radius || 22) + 6 : 12;
+          if (Math.abs(d - j.at * S.len) < span) return true;
+        }
+        for (const u of S.uturns || []) {
+          if (Math.abs(d - u.at * S.len) < 14) return true;
         }
         const proc = getProcessionBySegId(S.id);
         if (proc) {
@@ -721,7 +827,12 @@ function buildRoads() {
       }
     }
     for (const j of S.junctions || []) {
-      for (const side of j.type === "X" ? [-1, 1] : [j.side]) stub(i, j.at * S.len, side);
+      if (j.type === "roundabout") {
+        buildRoundabout(i, j.at * S.len, j.radius || 22, medianGroup);
+      } else {
+        const sides = j.type === "X" ? [-1, 1] : [j.side !== undefined ? j.side : -1];
+        for (const side of sides) stub(i, j.at * S.len, side);
+      }
     }
   }
   scene.add(medianGroup);
@@ -899,9 +1010,9 @@ function makePooledBuilding(idx) {
 }
 
 /* ====== Buildings: a pool of richly detailed Dhaka street blocks reused along the road ====== */
-const pool = [];
-const placements = SEGS.map(() => []);
-const active = new Set();
+export const pool = [];
+export const placements = SEGS.map(() => []);
+export const active = new Set();
 
 function blocked(seg, s, side) {
   const S = SEGS[seg];
@@ -945,6 +1056,7 @@ export function initWorld(scenery) {
         placements[i].push({
           seg: i, s, side, w, d, h,
           off, hidden: look.hidden, mesh: null,
+          wx, wz,
         });
       }
     }
@@ -962,62 +1074,120 @@ export function resetWorld() {
   for (const p of [...active]) release(p);
 }
 
-const near = [];
-export function updateWorld() {
-  for (const p of active) {
-    const a = ahead(p.seg, p.s);
-    if (!(a > -W.buildingBehind && a < W.buildingAhead)) release(p);
+/** Configures and deploys a pooled building mesh at placement p. */
+function spawnBuilding(p, seg) {
+  const g = pool.pop();
+  const { bldg, sign, hawker, roof, scaffold, isUnderConstruction } = g.userData;
+  bldg.scale.set(p.w, p.h, p.d);
+  bldg.position.set(0, p.h / 2, 0);
+
+  // Position the rooftop props at the top of the building (y = p.h)
+  if (roof) {
+    roof.position.set(0, p.h, 0);
+    roof.visible = !isUnderConstruction;
   }
-  const cur = SEGS[here.seg];
-  near.length = 0;
-  near.push(here.seg, ...cur.next);
-  if (here.prev >= 0) near.push(here.prev);
-  for (let i = 0; i < SEGS.length; i++) if (i !== here.seg && SEGS[i].from === cur.from) near.push(i);
-  for (const seg of near) {
-    for (const p of placements[seg]) {
-      if (p.mesh || p.hidden || !pool.length) continue;
-      const a = ahead(seg, p.s);
-      if (!(a > -W.buildingBehind && a < W.buildingAhead)) continue;
-      const g = pool.pop();
-      const { bldg, sign, hawker, roof, scaffold, isUnderConstruction } = g.userData;
-      bldg.scale.set(p.w, p.h, p.d);
-      bldg.position.set(0, p.h / 2, 0);
 
-      // Position the rooftop props at the top of the building (y = p.h)
-      if (roof) {
-        roof.position.set(0, p.h, 0);
-        roof.visible = !isUnderConstruction;
+  // Position the shop signboard, scaffolding, or sidewalk hawker canopy on the road-facing side
+  const faceX = -p.side * (p.w / 2 + 0.08);
+
+  if (isUnderConstruction) {
+    if (scaffold) {
+      scaffold.position.set(-p.side * (p.w / 2 + 0.3), 0, 0);
+      scaffold.scale.set(1, p.h, p.d);
+      scaffold.rotation.y = (p.side > 0 ? 0 : Math.PI);
+      scaffold.visible = true;
+    }
+    if (sign) sign.visible = false;
+    if (hawker) hawker.visible = false;
+  } else {
+    if (scaffold) scaffold.visible = false;
+    if (sign) {
+      sign.position.set(faceX, 3.8, 0);
+      sign.rotation.y = -p.side * Math.PI / 2;
+      sign.visible = true;
+    }
+    if (hawker) {
+      hawker.position.set(-p.side * (p.w / 2 + 1.4), 0, 0);
+      hawker.scale.x = p.side;
+      hawker.visible = true;
+    }
+  }
+  place(g, seg, p.s, p.side * p.off, 0);
+  g.visible = true;
+  p.mesh = g;
+  active.add(p);
+}
+
+const near = [];
+
+export function updateWorld() {
+  const busX = game.wx !== undefined ? game.wx : 0;
+  const busZ = game.wz !== undefined ? game.wz : 0;
+  const isFree = Boolean(game.freeRoam && CFG.freeRoam?.enabled);
+
+  if (isFree) {
+    // Distance-based 2D spatial streaming: constant memory, zero allocation, smooth 60 FPS
+    const keepDist2 = (W.buildingAhead + 40) ** 2; // ~300m
+    for (const p of active) {
+      const d2 = (p.wx - busX) ** 2 + (p.wz - busZ) ** 2;
+      if (d2 > keepDist2) release(p);
+    }
+
+    const cur = SEGS[here.seg];
+    near.length = 0;
+    near.push(here.seg);
+    if (cur) {
+      if (cur.next) near.push(...cur.next);
+      if (cur.alts) near.push(...cur.alts);
+      if (here.prev >= 0 && !near.includes(here.prev)) near.push(here.prev);
+      if (!cur.main && cur.from !== undefined) {
+        const parentMain = MAIN[cur.from];
+        if (parentMain !== undefined) {
+          if (!near.includes(parentMain)) near.push(parentMain);
+          for (const sib of SEGS[parentMain].alts || []) if (!near.includes(sib)) near.push(sib);
+        }
       }
-
-      // Position the shop signboard, scaffolding, or sidewalk hawker canopy on the road-facing side
-      const faceX = -p.side * (p.w / 2 + 0.08);
-
-      if (isUnderConstruction) {
-        if (scaffold) {
-          scaffold.position.set(-p.side * (p.w / 2 + 0.3), 0, 0);
-          scaffold.scale.set(1, p.h, p.d);
-          scaffold.rotation.y = (p.side > 0 ? 0 : Math.PI);
-          scaffold.visible = true;
-        }
-        if (sign) sign.visible = false;
-        if (hawker) hawker.visible = false;
-      } else {
-        if (scaffold) scaffold.visible = false;
-        if (sign) {
-          sign.position.set(faceX, 3.8, 0);
-          sign.rotation.y = -p.side * Math.PI / 2;
-          sign.visible = true;
-        }
-        if (hawker) {
-          hawker.position.set(-p.side * (p.w / 2 + 1.4), 0, 0);
-          hawker.scale.x = p.side;
-          hawker.visible = true;
-        }
+    }
+    const streamR2 = (W.buildingAhead) ** 2;
+    for (let si = 0; si < SEGS.length; si++) {
+      if (near.includes(si)) continue;
+      const S = SEGS[si];
+      const midIdx = Math.floor(S.n / 2);
+      const dMid2 = (S.X[midIdx] - busX) ** 2 + (S.Z[midIdx] - busZ) ** 2;
+      if (dMid2 < (W.buildingAhead + S.len / 2) ** 2) {
+        near.push(si);
       }
-      place(g, seg, p.s, p.side * p.off, 0);
-      g.visible = true;
-      p.mesh = g;
-      active.add(p);
+    }
+    for (const seg of near) {
+      const plist = placements[seg];
+      if (!plist) continue;
+      for (const p of plist) {
+        if (p.mesh || p.hidden || !pool.length) continue;
+        const d2 = (p.wx - busX) ** 2 + (p.wz - busZ) ** 2;
+        if (d2 > streamR2) continue;
+        spawnBuilding(p, seg);
+      }
+    }
+  } else {
+    // 1.5D curvilinear streaming
+    for (const p of active) {
+      const a = ahead(p.seg, p.s);
+      if (!(a > -W.buildingBehind && a < W.buildingAhead)) release(p);
+    }
+    const cur = SEGS[here.seg];
+    near.length = 0;
+    near.push(here.seg, ...cur.next);
+    if (here.prev >= 0) near.push(here.prev);
+    for (let i = 0; i < SEGS.length; i++) if (i !== here.seg && SEGS[i].from === cur.from) near.push(i);
+    for (const seg of near) {
+      const plist = placements[seg];
+      if (!plist) continue;
+      for (const p of plist) {
+        if (p.mesh || p.hidden || !pool.length) continue;
+        const a = ahead(seg, p.s);
+        if (!(a > -W.buildingBehind && a < W.buildingAhead)) continue;
+        spawnBuilding(p, seg);
+      }
     }
   }
 }

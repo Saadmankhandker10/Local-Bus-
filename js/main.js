@@ -4,7 +4,7 @@ import { game, resetGame } from "./state.js";
 import { on, emit } from "./events.js";
 import { renderer, scene, initWorld, resetWorld, updateWorld, setRenderQuality, sun, skyMesh } from "./world.js";
 import { initInput, pollInput, onTap, onAnyInput } from "./input.js";
-import { resetBus, updateBus, updateAutopilot, updateBusVisual, triggerHelperSlap } from "./bus.js";
+import { resetBus, updateBus, updateAutopilot, updateBusVisual, triggerHelperSlap, recoverToRoad } from "./bus.js";
 import { cam, updateCamera, resetCamera } from "./camera.js";
 import { resetTraffic, updateTraffic } from "./traffic.js";
 import { resetMarks, updateMarks } from "./marks.js";
@@ -491,6 +491,10 @@ try {
   onTap("horn", doHorn);
   onTap("shout", doShout);
   onTap("mute", doMute);
+  onTap("recover", () => recoverToRoad());
+  if ($("backToRoadBtn")) {
+    $("backToRoadBtn").onclick = () => recoverToRoad();
+  }
   if ($("soundbtn")) {
     $("soundbtn").textContent = isMuted() ? "🔇" : "🔊";
     $("soundbtn").onclick = () => { unlockAudio(); doMute(); };

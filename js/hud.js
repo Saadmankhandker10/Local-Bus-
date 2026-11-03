@@ -555,6 +555,7 @@ export function hideScreen() {
   $("screen").style.display = "none";
   document.body.classList.add("in-game");
   $("pausebtn").hidden = false;
+  if ($("backToRoadBtn")) $("backToRoadBtn").hidden = false;
   $("msg").textContent = "";
   $("stagecard").hidden = true;
   if ($("meme")) $("meme").hidden = true;
@@ -578,6 +579,7 @@ function clearOverlays() {
   if ($("titleblock")) $("titleblock").hidden = false;
   if ($("startInfo")) $("startInfo").hidden = false;
   $("pausebtn").hidden = true;
+  if ($("backToRoadBtn")) $("backToRoadBtn").hidden = true;
   $("warn").hidden = true;
   $("crowdbox").hidden = true;
   if ($("wrongWay")) $("wrongWay").hidden = true;

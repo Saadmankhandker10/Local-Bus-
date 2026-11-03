@@ -22,34 +22,49 @@ export const MAP = {
       junctions: [
         { at: 0.35, type: "X", name: "তাজমহল রোড মোড়" },
         { at: 0.72, type: "X", name: "টাউন হল মোড়" },
-      ] },
+      ],
+      alt: { id: "townhall-bazaar", mor: "টাউন হল বাজার গলি", side: -1, bulge: 24, width: 14, kind: "street" }
+    },
     { id: "mohammadpur-flyover", mor: "শ্যামলী — লালমাটিয়া মোড়", stage: 0,
       path: [["s", 200], ["r", 10, 450], ["s", 420], ["l", 10, 450], ["s", 200]],
       junctions: [
-        { at: 0.5, type: "X", name: "লালমাটিয়া আড়ং মোড়" },
-      ] },
+        { at: 0.5, type: "T", side: -1, name: "লালমাটিয়া আড়ং মোড়" },
+      ]
+    },
     { id: "asad-gate", mor: "আসাদগেট মোড়", stage: 0,
       path: [["s", 360], ["r", 90, 55], ["s", 300]],
       junctions: [
         { at: 0.38, type: "X", name: "আসাদগেট — সংসদ ভবন মোড়" },
-      ] },
+      ],
+      uturns: [
+        { at: 0.12, name: "আসাদগেট ইউ-টার্ন" }
+      ],
+      alt: { id: "asad-detour", mor: "আসাদগেট বাইপাস গলি", side: 1, bulge: 28, width: 14, kind: "street" }
+    },
 
     // ---- Stage 2: Dhanmondi (heading south) ----
     { id: "dhanmondi-north", mor: "ধানমন্ডি ২৭ মোড়", stage: 1,
       path: [["s", 260], ["l", 8, 500], ["s", 360]],
       junctions: [
         { at: 0.45, type: "X", name: "ধানমন্ডি ২৭ মোড়" },
-      ] },
+      ],
+      uturns: [
+        { at: 0.22, name: "ধানমন্ডি ২৭ ইউ-টার্ন" }
+      ]
+    },
     { id: "dhanmondi-mid", mor: "কলাবাগান — ধানমন্ডি ১৫ মোড়", stage: 1,
       path: [["s", 260], ["r", 18, 280], ["s", 320], ["l", 18, 280], ["s", 260]],
       junctions: [
-        { at: 0.5, type: "X", name: "কলাবাগান মাঠ মোড়" },
-      ] },
+        { at: 0.5, type: "T", side: 1, name: "কলাবাগান মাঠ মোড়" },
+      ],
+      alt: { id: "dhanmondi-lake-road", mor: "ধানমন্ডি লেক রোড", side: 1, bulge: 26, width: 14, kind: "street" }
+    },
     { id: "dhanmondi-south", mor: "ধানমন্ডি ২ — সিটি কলেজ মোড়", stage: 1,
       path: [["s", 320], ["l", 10, 320], ["s", 420]],
       junctions: [
         { at: 0.48, type: "X", name: "ল্যাবএইড — গ্রিন রোড মোড়" },
-      ] },
+      ]
+    },
 
     // ---- Stage 3: Science Lab, New Market, Shahbag (clean boulevard without self-overlapping hairpin) ----
     { id: "science-lab", mor: "সায়েন্সল্যাব মোড়", stage: 2,
@@ -57,25 +72,32 @@ export const MAP = {
       junctions: [
         { at: 0.35, type: "X", name: "সায়েন্সল্যাব — নিউমার্কেট মোড়" },
         { at: 0.72, type: "X", name: "বাটা সিগন্যাল — এলিফ্যান্ট রোড মোড়" },
-      ] },
+      ],
+      alt: { id: "elephant-road-market", mor: "এলিফ্যান্ট রোড মার্কেট গলি", side: 1, bulge: 25, width: 14, kind: "street" }
+    },
     { id: "shahbag-approach", mor: "শাহবাগ মোড়", stage: 2,
       path: [["s", 420], ["l", 6, 600], ["s", 320]],
       junctions: [
         { at: 0.88, type: "X", name: "শাহবাগ জাতীয় জাদুঘর মোড়" },
-      ] },
+      ],
+      alt: { id: "katabon-detour", mor: "কাঁটাবন গলি বাইপাস", side: -1, bulge: 28, width: 14, kind: "street" }
+    },
 
     // ---- Stage 4: Dhaka University (heading south) ----
     { id: "du-north", mor: "টিএসসি — চারুকলা মোড়", stage: 3,
       path: [["s", 90], ["r", 90, 55], ["s", 320], ["l", 15, 300], ["s", 260]],
       junctions: [
         { at: 0.65, type: "X", name: "টিএসসি রাজু ভাস্কর্য মোড়" },
-      ] },
+      ],
+      alt: { id: "charukola-lane", mor: "চারুকলা বকুলতলা গলি", side: -1, bulge: 22, width: 14, kind: "street" }
+    },
     { id: "du-campus", mor: "কার্জন হল — দোয়েল চত্বর মোড়", stage: 3,
       path: [["s", 320], ["r", 20, 260], ["s", 420], ["l", 20, 260], ["s", 320]],
       junctions: [
         { at: 0.35, type: "X", name: "শহীদ মিনার — মেডিকেল মোড়" },
-        { at: 0.72, type: "X", name: "দোয়েল চত্বর — কার্জন হল মোড়" },
-      ] },
+        { at: 0.72, type: "roundabout", name: "দোয়েল চত্বর গোলচত্বর", radius: 22 },
+      ]
+    },
   ],
 };
 
@@ -176,7 +198,7 @@ function makeAlt(main, alt) {
 /** All road pieces. Index = segment id used everywhere else. */
 export const SEGS = [];
 /** Index of the main segment for each leg. */
-const MAIN = [];
+export const MAIN = [];
 
 (function build() {
   const pose = { x: MAP.start.x, z: MAP.start.z, h: MAP.start.heading * Math.PI / 180 };
@@ -184,7 +206,7 @@ const MAIN = [];
   for (const [li, leg] of MAP.legs.entries()) {
     const seg = makeSeg(commandPoints(leg.path, pose), {
       id: leg.id, mor: leg.mor || "", kind: "main", side: 0, half: MAP.width / 2, stage: leg.stage, main: true,
-      junctions: leg.junctions || [], from: li, turns: turnsOf(leg.path),
+      junctions: leg.junctions || [], uturns: leg.uturns || [], from: li, turns: turnsOf(leg.path),
     });
     seg.p0 = prog; prog += seg.len; seg.p1 = prog;
     MAIN.push(SEGS.length); SEGS.push(seg);
@@ -195,6 +217,7 @@ const MAIN = [];
       a.mor = altDef.mor || leg.mor || "";
       a.p0 = seg.p0; a.p1 = seg.p1; a.from = li;
       a.junctions = [{ at: 0.5, type: "X", name: a.mor }];
+      a.uturns = [];
       const f = a.len / seg.len;
       a.turns = seg.turns.map(t => ({ ...t, s: t.s * f, end: t.end * f }));
       const idx = SEGS.length;
@@ -286,6 +309,14 @@ export function projectToRoad(wx, wz, currentSeg = 0, out = {}) {
     if (cur.next) for (const n of cur.next) candidates.push(n);
     if (cur.alts) for (const a of cur.alts) candidates.push(a);
     if (here.prev >= 0 && here.prev !== currentSeg) candidates.push(here.prev);
+    // If on an alt side street, allow seamlessly transitioning back to the main route or sister branches
+    if (!cur.main && cur.from !== undefined) {
+      const parentMain = MAIN[cur.from];
+      if (parentMain !== undefined) {
+        candidates.push(parentMain);
+        for (const sib of SEGS[parentMain].alts || []) if (sib !== currentSeg) candidates.push(sib);
+      }
+    }
   }
 
   let bestD2 = Infinity;
@@ -311,7 +342,6 @@ export function projectToRoad(wx, wz, currentSeg = 0, out = {}) {
     const rx = Math.cos(tmp.yaw), rz = -Math.sin(tmp.yaw);
     const fx = -Math.sin(tmp.yaw), fz = -Math.cos(tmp.yaw);
     const dx = wx - tmp.x, dz = wz - tmp.z;
-    const lat = dx * rx + dz * rz;
     const forwardOffset = dx * fx + dz * fz;
     const sFinal = Math.max(0, Math.min(S.len, sEst + forwardOffset));
 
@@ -331,6 +361,56 @@ export function projectToRoad(wx, wz, currentSeg = 0, out = {}) {
   out.s = bestS;
   out.lat = bestLat;
   out.yaw = bestYaw;
+  return out;
+}
+
+/**
+ * Global search across all segments in SEGS to find the closest road point to (wx, wz).
+ * Writes { seg, s, lat, yaw, dist } into out and returns out.
+ */
+export function findNearestRoad(wx, wz, out = {}) {
+  let bestD2 = Infinity;
+  let bestSeg = 0, bestS = 0, bestLat = 0, bestYaw = 0;
+
+  for (let si = 0; si < SEGS.length; si++) {
+    const S = SEGS[si];
+    if (!S) continue;
+    let minD2 = Infinity;
+    let minIdx = 0;
+    for (let i = 0; i < S.n; i += 2) {
+      const dx = wx - S.X[i];
+      const dz = wz - S.Z[i];
+      const d2 = dx * dx + dz * dz;
+      if (d2 < minD2) {
+        minD2 = d2;
+        minIdx = i;
+      }
+    }
+    const sEst = minIdx * S.step;
+    sample(si, sEst, tmp);
+    const rx = Math.cos(tmp.yaw), rz = -Math.sin(tmp.yaw);
+    const fx = -Math.sin(tmp.yaw), fz = -Math.cos(tmp.yaw);
+    const dx = wx - tmp.x, dz = wz - tmp.z;
+    const forwardOffset = dx * fx + dz * fz;
+    const sFinal = Math.max(0, Math.min(S.len, sEst + forwardOffset));
+
+    sample(si, sFinal, tmp);
+    const rxF = Math.cos(tmp.yaw), rzF = -Math.sin(tmp.yaw);
+    const dFinal2 = (wx - tmp.x) ** 2 + (wz - tmp.z) ** 2;
+    if (dFinal2 < bestD2) {
+      bestD2 = dFinal2;
+      bestSeg = si;
+      bestS = sFinal;
+      bestLat = (wx - tmp.x) * rxF + (wz - tmp.z) * rzF;
+      bestYaw = tmp.yaw;
+    }
+  }
+
+  out.seg = bestSeg;
+  out.s = bestS;
+  out.lat = bestLat;
+  out.yaw = bestYaw;
+  out.dist = Math.sqrt(bestD2);
   return out;
 }
 
