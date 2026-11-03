@@ -230,7 +230,7 @@ export const CFG = {
   },
 
   traffic: {
-    maxActive: 14,        // hard cap on simultaneous active vehicles for optimal 60 FPS performance
+    maxActive: 10,        // hard cap on simultaneous active vehicles for optimal 60 FPS performance
     firstSpawnDelay: 1,   // seconds before the first vehicle appears
     startInterval: 1.5,   // seconds between vehicles at the start
     minInterval: 0.45,    // fastest spawn rate (difficulty cap)
@@ -432,14 +432,14 @@ export const CFG = {
     roadHalfWidth: 11.2,
     skyColor: 0x3b6d9e,
     fogNear: 60,
-    fogFar: 260,
+    fogFar: 160,
     dash: [3, 10],        // lane markings: 3 units of paint every 10 units
     stubWidth: 12,        // side roads at junctions (just scenery)
     stubLength: 70,
     buildingGap: 11,      // distance between buildings along the road
-    buildingPool: 160,    // how many building groups exist (they are reused)
-    buildingAhead: 260,   // buildings are placed this far ahead of the bus...
-    buildingBehind: 50,   // ...and kept until this far behind
+    buildingPool: 65,     // optimized building pool for locked 60 FPS performance
+    buildingAhead: 140,   // buildings placed ahead within visible fog horizon
+    buildingBehind: 35,   // kept until behind the camera
     buildingColors: [0xd7ccc8, 0xffe0b2, 0xb0bec5, 0xc5e1a5, 0xf8bbd0, 0xbcaaa4],
   },
 

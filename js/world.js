@@ -49,7 +49,7 @@ scene.add(hemi);
 export const sun = new THREE.DirectionalLight(0xfffae6, 2.0);
 sun.position.set(22, 65, 22);
 sun.castShadow = true;
-const defaultShadowRes = isMobile ? 1024 : 2048;
+const defaultShadowRes = isMobile ? 512 : 1024;
 sun.shadow.mapSize.set(defaultShadowRes, defaultShadowRes);
 const sc = sun.shadow.camera;
 sc.left = -36;
@@ -128,7 +128,7 @@ export function setRenderQuality(qualityMode) {
   renderer.shadowMap.enabled = enableShadows;
   sun.castShadow = enableShadows;
   renderer.shadowMap.type = THREE.PCFShadowMap;
-  const shadowRes = (isMobile || !isHigh) ? 1024 : 2048;
+  const shadowRes = (isMobile || !isHigh) ? 512 : 1024;
   sun.shadow.mapSize.set(shadowRes, shadowRes);
 }
 
@@ -1179,7 +1179,7 @@ export function updateWorld() {
     // 1.5D curvilinear streaming
     for (const p of active) {
       const a = ahead(p.seg, p.s);
-      if (!(a > -W.buildingBehind && a < W.buildingAhead)) release(p);
+      if (Number.isNaN(a) || !(a > -W.buildingBehind && a < W.buildingAhead)) release(p);
     }
     const cur = SEGS[here.seg];
     near.length = 0;

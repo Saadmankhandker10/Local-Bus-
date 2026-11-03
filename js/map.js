@@ -18,33 +18,31 @@ export const MAP = {
   legs: [
     // ---- Stage 1: Mohammadpur (heading east) ----
     { id: "mohammadpur-stand", mor: "মোহাম্মদপুর বাসস্ট্যান্ড মোড়", stage: 0,
-      path: [["s", 380], ["r", 12, 300], ["s", 300], ["l", 20, 240], ["s", 260]],
+      path: [["s", 1240]],
       junctions: [
         { at: 0.35, type: "X", name: "তাজমহল রোড মোড়" },
         { at: 0.72, type: "X", name: "টাউন হল মোড়" },
       ],
-      alt: { id: "townhall-bazaar", mor: "টাউন হল বাজার গলি", side: -1, bulge: 24, width: 18.0, kind: "street" }
     },
     { id: "mohammadpur-flyover", mor: "শ্যামলী — লালমাটিয়া মোড়", stage: 0,
-      path: [["s", 200], ["r", 10, 450], ["s", 420], ["l", 10, 450], ["s", 200]],
+      path: [["s", 1240]],
       junctions: [
         { at: 0.5, type: "T", side: -1, name: "লালমাটিয়া আড়ং মোড়" },
       ]
     },
     { id: "asad-gate", mor: "আসাদগেট মোড়", stage: 0,
-      path: [["s", 360], ["r", 90, 55], ["s", 300]],
+      path: [["s", 1200]],
       junctions: [
         { at: 0.38, type: "X", name: "আসাদগেট — সংসদ ভবন মোড়" },
       ],
       uturns: [
         { at: 0.12, name: "আসাদগেট ইউ-টার্ন" }
       ],
-      alt: { id: "asad-detour", mor: "আসাদগেট বাইপাস গলি", side: 1, bulge: 28, width: 18.0, kind: "street" }
     },
 
-    // ---- Stage 2: Dhanmondi (heading south) ----
+    // ---- Stage 2: Dhanmondi ----
     { id: "dhanmondi-north", mor: "ধানমন্ডি ২৭ মোড়", stage: 1,
-      path: [["s", 260], ["l", 8, 500], ["s", 360]],
+      path: [["s", 1120]],
       junctions: [
         { at: 0.45, type: "X", name: "ধানমন্ডি ২৭ মোড়" },
       ],
@@ -53,46 +51,42 @@ export const MAP = {
       ]
     },
     { id: "dhanmondi-mid", mor: "কলাবাগান — ধানমন্ডি ১৫ মোড়", stage: 1,
-      path: [["s", 260], ["r", 18, 280], ["s", 320], ["l", 18, 280], ["s", 260]],
+      path: [["s", 1160]],
       junctions: [
         { at: 0.5, type: "T", side: 1, name: "কলাবাগান মাঠ মোড়" },
       ],
-      alt: { id: "dhanmondi-lake-road", mor: "ধানমন্ডি লেক রোড", side: 1, bulge: 26, width: 18.0, kind: "street" }
     },
     { id: "dhanmondi-south", mor: "ধানমন্ডি ২ — সিটি কলেজ মোড়", stage: 1,
-      path: [["s", 320], ["l", 10, 320], ["s", 420]],
+      path: [["s", 1160]],
       junctions: [
         { at: 0.48, type: "X", name: "ল্যাবএইড — গ্রিন রোড মোড়" },
       ]
     },
 
-    // ---- Stage 3: Science Lab, New Market, Shahbag (clean boulevard without self-overlapping hairpin) ----
+    // ---- Stage 3: Science Lab, New Market, Shahbag ----
     { id: "science-lab", mor: "সায়েন্সল্যাব মোড়", stage: 2,
-      path: [["l", 90, 55], ["s", 380], ["r", 14, 340], ["s", 260], ["l", 14, 340], ["s", 320]],
+      path: [["s", 1280]],
       junctions: [
         { at: 0.35, type: "X", name: "সায়েন্সল্যাব — নিউমার্কেট মোড়" },
         { at: 0.72, type: "X", name: "বাটা সিগন্যাল — এলিফ্যান্ট রোড মোড়" },
       ],
-      alt: { id: "elephant-road-market", mor: "এলিফ্যান্ট রোড মার্কেট গলি", side: 1, bulge: 25, width: 18.0, kind: "street" }
     },
     { id: "shahbag-approach", mor: "শাহবাগ মোড়", stage: 2,
-      path: [["s", 420], ["l", 6, 600], ["s", 320]],
+      path: [["s", 1200]],
       junctions: [
         { at: 0.88, type: "X", name: "শাহবাগ জাতীয় জাদুঘর মোড়" },
       ],
-      alt: { id: "katabon-detour", mor: "কাঁটাবন গলি বাইপাস", side: -1, bulge: 28, width: 18.0, kind: "street" }
     },
 
-    // ---- Stage 4: Dhaka University (heading south) ----
+    // ---- Stage 4: Dhaka University ----
     { id: "du-north", mor: "টিএসসি — চারুকলা মোড়", stage: 3,
-      path: [["s", 90], ["r", 90, 55], ["s", 320], ["l", 15, 300], ["s", 260]],
+      path: [["s", 1100]],
       junctions: [
         { at: 0.65, type: "X", name: "টিএসসি রাজু ভাস্কর্য মোড়" },
       ],
-      alt: { id: "charukola-lane", mor: "চারুকলা বকুলতলা গলি", side: -1, bulge: 22, width: 18.0, kind: "street" }
     },
     { id: "du-campus", mor: "কার্জন হল — দোয়েল চত্বর মোড়", stage: 3,
-      path: [["s", 320], ["r", 20, 260], ["s", 420], ["l", 20, 260], ["s", 320]],
+      path: [["s", 1320]],
       junctions: [
         { at: 0.35, type: "X", name: "শহীদ মিনার — মেডিকেল মোড়" },
         { at: 0.72, type: "roundabout", name: "দোয়েল চত্বর গোলচত্বর", radius: 22 },

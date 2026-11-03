@@ -371,8 +371,6 @@ function step(dt) {
   if (!game.running) {
     // Live idling backdrop behind the title menu!
     updateAutopilot(dt);
-    updateWorld();
-    updateLandmarks();
     updateTraffic(dt);
     return;
   }
@@ -398,8 +396,6 @@ function step(dt) {
     }
   }
 
-  updateWorld();
-  updateLandmarks();
   // Auto health restore: after clean driving without crashes/hits for a few seconds,
   // bus body & window HP smoothly regenerates back to full!
   if (game.hp < CFG.bus.maxHp && !game.crashing && !game.caught) {
@@ -415,7 +411,6 @@ function step(dt) {
 
   updateTraffic(dt);
   updateMarks(dt);
-  navStep();
   updateCrowd(dt);
 
   // The crowd shouts while it is close behind the bus.
@@ -442,6 +437,10 @@ function step(dt) {
 /** Draw one frame. dt is the real time since the last frame (0 while paused). */
 function render(dt) {
   try {
+    updateWorld();
+    updateLandmarks();
+    if (game.running) navStep();
+
     if (game.warn && !prevWarn && game.running) warnBeep();
     prevWarn = game.warn;
     const close = (game.running && crowd.active)
@@ -580,7 +579,13 @@ let menuSlowFrameAcc = 0;
   else {
     // Slow motion simply feeds the simulation less time per real second.
     acc += frameDt * (game.crashing ? CFG.crash.slowMo : 1);
-    while (acc >= STEP) { step(STEP); acc -= STEP; }
+    let subSteps = 0;
+    while (acc >= STEP && subSteps < 2) {
+      step(STEP);
+      acc -= STEP;
+      subSteps++;
+    }
+    if (acc >= STEP) acc = 0; // Prevent accumulator overflow / frame-rate death spiral
   }
   render(game.paused ? 0 : frameDt);
 })(last);
