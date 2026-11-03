@@ -24,6 +24,7 @@ const MODEL_PATHS = {
   hiace_2004: "models/hiace_2004.glb",
   townace: "models/townace.glb",
   prius: "models/prius.glb",
+  chaser: "models/chaser.glb",
   corolla: "models/corolla.glb",
   fielder: "models/fielder.glb"
 };
@@ -33,6 +34,7 @@ const loadedTemplates = {
   hiace_2004: null,
   townace: null,
   prius: null,
+  chaser: null,
   corolla: null,
   fielder: null
 };
@@ -43,6 +45,7 @@ const carPool = {
   hiace_2004: [],
   townace: [],
   prius: [],
+  chaser: [],
   corolla: [],
   fielder: []
 };
@@ -311,6 +314,19 @@ export function loadCarModels() {
             }
           });
           loadedTemplates.prius = { root: gltf.scene, baseGltf: gltf };
+        } else if (key === "chaser") {
+          gltf.scene.traverse(node => {
+            if (node.isMesh) {
+              const name = (node.name || "").toLowerCase();
+              const matName = (node.material?.name || "").toLowerCase();
+              const isInteriorOrMinor = name.includes("glass") || name.includes("window") || name.includes("light") ||
+                name.includes("logo") || matName.includes("windows") || matName.includes("lights");
+              node.castShadow = !isInteriorOrMinor;
+              node.receiveShadow = true;
+              if (node.geometry) node.geometry.userData = { isShared: true };
+            }
+          });
+          loadedTemplates.chaser = { root: gltf.scene, baseGltf: gltf };
         } else if (key === "hiace_2004") {
           gltf.scene.traverse(node => {
             if (node.isMesh) {
@@ -349,6 +365,7 @@ export function loadCarModels() {
     loadOne(MODEL_PATHS.hiace_2004, "hiace_2004"),
     loadOne(MODEL_PATHS.townace, "townace"),
     loadOne(MODEL_PATHS.prius, "prius"),
+    loadOne(MODEL_PATHS.chaser, "chaser"),
     loadOne(MODEL_PATHS.corolla, "corolla"),
     loadOne(MODEL_PATHS.fielder, "fielder"),
   ]).then(() => {
@@ -364,6 +381,7 @@ export function isCarModelReady() {
          loadedTemplates.hiace_2004 !== null ||
          loadedTemplates.townace !== null ||
          loadedTemplates.prius !== null ||
+         loadedTemplates.chaser !== null ||
          loadedTemplates.corolla !== null ||
          loadedTemplates.fielder !== null;
 }
@@ -382,10 +400,10 @@ export function instantiateCarModel(opts = {}) {
   let modelKey = opts.model;
   if (!modelKey || !loadedTemplates[modelKey]) {
     if (isVip) {
-      const vipChoices = ["corolla", "prius", "hiace"].filter(k => loadedTemplates[k]);
+      const vipChoices = ["chaser", "corolla", "prius", "hiace"].filter(k => loadedTemplates[k]);
       modelKey = vipChoices.length ? pick(vipChoices) : availableKeys[0];
     } else if (isPolice) {
-      const policeChoices = ["townace", "corolla", "hiace"].filter(k => loadedTemplates[k]);
+      const policeChoices = ["chaser", "townace", "corolla", "hiace"].filter(k => loadedTemplates[k]);
       modelKey = policeChoices.length ? pick(policeChoices) : availableKeys[0];
     } else {
       modelKey = pick(availableKeys);
@@ -572,6 +590,47 @@ export function instantiateCarModel(opts = {}) {
     rearPlateZ = 2.15;
     frontPlateY = 0.35;
     rearPlateY = 0.52;
+
+  } else if (modelKey === "chaser") {
+    // Toyota Chaser JZX100 Executive Sport Sedan
+    const model = template.root.clone(true);
+    const bbox = new THREE.Box3().setFromObject(template.root);
+    const center = new THREE.Vector3();
+    bbox.getCenter(center);
+    const size = new THREE.Vector3();
+    bbox.getSize(size);
+
+    const pivot = new THREE.Group();
+    model.position.set(-center.x, -bbox.min.y, -center.z);
+    pivot.add(model);
+    const scale = 4.65 / Math.max(size.x, size.z);
+    pivot.scale.set(scale, scale, scale);
+    pivot.rotation.y = 0; // faces -Z forward
+    root.add(pivot);
+
+    let chaserPaintMat = new THREE.MeshStandardMaterial({
+      color: carColor,
+      roughness: isVip ? 0.18 : 0.26,
+      metalness: isVip ? 0.50 : 0.38,
+    });
+
+    model.traverse(child => {
+      if (child.isMesh && child.material) {
+        const matName = child.material.name || "";
+        if (matName === "paint" || matName === "body2" || child.name.includes("body") || child.name.includes("hood") || child.name.includes("trunk") || child.name.includes("bumper")) {
+          child.material = chaserPaintMat;
+        }
+      }
+    });
+
+    setPaintColorFn = col => {
+      if (chaserPaintMat) chaserPaintMat.color.setHex(col);
+    };
+
+    frontPlateZ = -2.32;
+    rearPlateZ = 2.32;
+    frontPlateY = 0.38;
+    rearPlateY = 0.55;
 
   } else if (modelKey === "corolla" || modelKey === "fielder") {
     // Clone only the 50 merged meshes instead of 1630 individual nodes!
