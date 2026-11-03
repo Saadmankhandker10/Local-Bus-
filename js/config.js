@@ -230,6 +230,7 @@ export const CFG = {
   },
 
   traffic: {
+    maxActive: 14,        // hard cap on simultaneous active vehicles for optimal 60 FPS performance
     firstSpawnDelay: 1,   // seconds before the first vehicle appears
     startInterval: 1.5,   // seconds between vehicles at the start
     minInterval: 0.45,    // fastest spawn rate (difficulty cap)

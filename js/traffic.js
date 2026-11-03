@@ -250,6 +250,9 @@ function underFlyover(seg, s) {
 function spawn(dt) {
   // Draw call budget control during title menu (Section 9): max 4 active background vehicles
   if (!game.running && objs.length >= 4) return;
+  // High-performance active vehicle budget: capped at 14 vehicles for stable 60 FPS
+  const maxActive = T.maxActive || 14;
+  if (objs.length >= maxActive) return;
 
   // Traffic: vehicles come more often the further you drive, up to a limit.
   spawnTimer -= dt;
@@ -285,6 +288,7 @@ function spawn(dt) {
 
   // Crossing pedestrians on ordinary roads (they walk from one pavement to the other and dodge the bus).
   if (game.dist >= nextPed) {
+    if (peds.length >= 4) return;
     nextPed = game.dist + rnd(PED.gapMin, PED.gapMax);
     walk(here.seg, here.s, T.spawnAhead * .75, pickBranch, spot);
     const S = SEGS[spot.seg];
@@ -585,7 +589,7 @@ export function updateTraffic(dt) {
     let despawn = false;
     if (isFreeRoam) {
       const d2 = (o.m.position.x - bus.position.x) ** 2 + (o.m.position.z - bus.position.z) ** 2;
-      despawn = !alive || Math.abs(o.x) > SEGS[o.seg].half + T.despawnSide * 3 || d2 > (T.despawnAhead * 1.35) ** 2;
+      despawn = !alive || Math.abs(o.x) > SEGS[o.seg].half + T.despawnSide * 3 || d2 > (135 * 135);
     } else {
       despawn = !alive || Number.isNaN(o.z) || o.z > T.despawnBehind || o.z < T.despawnAhead || Math.abs(o.x) > SEGS[o.seg].half + T.despawnSide;
     }
@@ -813,7 +817,7 @@ export function updateTraffic(dt) {
     let pedDespawn = false;
     if (isFreeRoam) {
       const pedDist2 = (p.m.position.x - bus.position.x) ** 2 + (p.m.position.z - bus.position.z) ** 2;
-      pedDespawn = pedDist2 > (T.despawnAhead * 1.35) ** 2;
+      pedDespawn = pedDist2 > (90 * 90);
     } else {
       pedDespawn = Number.isNaN(a) || a < -T.despawnBehind || a > -T.despawnAhead;
     }

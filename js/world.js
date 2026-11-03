@@ -52,12 +52,12 @@ sun.castShadow = true;
 const defaultShadowRes = isMobile ? 1024 : 2048;
 sun.shadow.mapSize.set(defaultShadowRes, defaultShadowRes);
 const sc = sun.shadow.camera;
-sc.left = -45;
-sc.right = 45;
-sc.top = 45;
-sc.bottom = -45;
+sc.left = -36;
+sc.right = 36;
+sc.top = 36;
+sc.bottom = -36;
 sc.near = 1;
-sc.far = 180;
+sc.far = 135;
 sun.shadow.bias = -0.0006;
 sun.shadow.normalBias = 0.03;
 scene.add(sun);
@@ -1047,7 +1047,7 @@ export function initWorld(scenery) {
         placements[i].push({
           seg: i, s, side, w, d, h,
           off, hidden: look.hidden, mesh: null,
-          wx, wz,
+          wx, wz, yaw: pt.yaw,
         });
       }
     }
@@ -1061,8 +1061,14 @@ function release(p) {
   active.delete(p);
 }
 
+let lastStreamTime = 0;
+let lastStreamX = -999999, lastStreamZ = -999999;
+
 export function resetWorld() {
   for (const p of [...active]) release(p);
+  lastStreamTime = 0;
+  lastStreamX = -999999;
+  lastStreamZ = -999999;
 }
 
 /** Configures and deploys a pooled building mesh at placement p. */
@@ -1117,6 +1123,16 @@ export function updateWorld() {
   const isFree = Boolean(game.freeRoam && CFG.freeRoam?.enabled);
 
   if (isFree) {
+    const now = performance.now();
+    const movedDist2 = (busX - lastStreamX) ** 2 + (busZ - lastStreamZ) ** 2;
+    // Spatial streaming throttle: evaluate building pool streaming every 120ms or when bus moves > 3m
+    if (now - lastStreamTime < 120 && movedDist2 < 9.0) {
+      return;
+    }
+    lastStreamTime = now;
+    lastStreamX = busX;
+    lastStreamZ = busZ;
+
     // Distance-based 2D spatial streaming: constant memory, zero allocation, smooth 60 FPS
     const keepDist2 = (W.buildingAhead + 40) ** 2; // ~300m
     for (const p of active) {

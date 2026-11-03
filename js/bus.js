@@ -2,11 +2,11 @@
 import * as THREE from "three";
 import { CFG } from "./config.js";
 import { clamp, pick, rnd } from "./utils.js";
-import { scene, box, plate } from "./world.js";
+import { scene, box, plate, active as activeBuildings } from "./world.js";
 import { input } from "./input.js";
 import { game } from "./state.js";
 import { emit } from "./events.js";
-import { SEGS, here, sample, place, fromProgress, progressOf, projectToRoad, findNearestRoad } from "./map.js";
+import { SEGS, here, sample, place, fromProgress, progressOf, projectToRoad, findNearestRoad, hitsAnyRoad } from "./map.js";
 import { SLOGANS, COMPANIES, PLATES } from "./data/slogans.bn.js";
 import { playKhelaHobe, playReverseBeep, playKerbScrape, playBrakeFao, crashSound } from "./audio.js";
 import { say } from "./speech.js";
@@ -459,12 +459,22 @@ export function updateBus(dt) {
     }
 
     // Phase 2 Surface Rules: Road asphalt vs. Footpath / Dirt vs. Solid Buildings vs. Map Edge
-    const roadHalf = S.half;
-    const distFromRoad = Math.abs(game.lat) - roadHalf;
-    const sidewalkW = FR.sidewalkWidth || 3.8;
+    // Check if bus is near any named or unnamed junction opening on the current segment
+    let atJunction = false;
+    for (const j of S.junctions || []) {
+      const js = j.at * S.len;
+      if (Math.abs(here.s - js) < 28) {
+        atJunction = true;
+        break;
+      }
+    }
+
+    // Global road surface check: returns true if the bus is on ANY road segment or junction stub
+    const onAsphalt = atJunction || hitsAnyRoad(game.wx, game.wz, 1.2);
 
     // 1. Off-Road Footpath & Dirt: grip reduced, bumpy vibration, kerb scrape sound
-    if (distFromRoad > 0 && distFromRoad <= sidewalkW) {
+    // Only triggers when vehicle actually leaves asphalt road and junction pavement
+    if (!onAsphalt) {
       if (Math.abs(v) > (FR.offRoadMaxSpeed || 14.0) && !boosting) {
         v = Math.sign(v) * Math.max(0, Math.abs(v) - (FR.offRoadDrag || 16.0) * dt);
         game.signedSpeed = v;
@@ -477,28 +487,64 @@ export function updateBus(dt) {
       kerbScrapeTimer -= dt;
       if (kerbScrapeTimer <= 0 && Math.abs(v) > 2.0) {
         playKerbScrape(bus.position);
-        spawnScrapeSparks(bus.position.x + Math.sign(game.lat) * 1.3, 0.35, bus.position.z, 6, Math.sign(game.lat), 0);
+        spawnScrapeSparks(bus.position.x + Math.sign(game.lat || 1) * 1.3, 0.35, bus.position.z, 6, Math.sign(game.lat || 1), 0);
         kerbScrapeTimer = FR.scrapeSoundInterval || 0.45;
       }
     } else {
       kerbScrapeTimer = Math.max(0, kerbScrapeTimer - dt);
     }
 
-    // 2. Solid Building Facades & Perimeter Walls: solid elastic barrier with soft recovery
-    if (distFromRoad > sidewalkW) {
-      const penetration = distFromRoad - sidewalkW;
-      const sideSign = Math.sign(game.lat);
-      const rx = Math.cos(projOut.yaw), rz = -Math.sin(projOut.yaw);
-      game.wx -= rx * sideSign * penetration * 1.05;
-      game.wz -= rz * sideSign * penetration * 1.05;
-      game.lat = sideSign * (roadHalf + sidewalkW);
-      game.signedSpeed = -game.signedSpeed * (FR.buildingBounce || 0.22);
-      v = game.signedSpeed;
-      game.speed = Math.abs(v);
-      game.shake = Math.max(game.shake, 0.45);
-      game.hp = Math.max(5, (game.hp || 100) - 2);
-      crashSound(false, bus.position);
-      spawnScrapeSparks(bus.position.x, 1.1, bus.position.z, 10, -sideSign, 0);
+    // 2. Solid Building Facades: physical collision tested strictly against ACTUAL 3D buildings.
+    // Eliminates phantom invisible walls at turns, open corners, crossroads, and detour branches!
+    if (!onAsphalt) {
+      for (const bldg of activeBuildings) {
+        if (!bldg.mesh || !bldg.mesh.visible) continue;
+        const dx = game.wx - bldg.wx;
+        const dz = game.wz - bldg.wz;
+        const maxBound = Math.max(bldg.w, bldg.d) * 0.75 + 4.5;
+        if (dx * dx + dz * dz > maxBound * maxBound) continue;
+
+        // Transform bus center into building-local 2D space
+        const yaw = bldg.mesh.rotation.y || bldg.yaw || 0;
+        const cosY = Math.cos(yaw);
+        const sinY = Math.sin(yaw);
+        const lx = dx * cosY - dz * sinY;
+        const lz = dx * sinY + dz * cosY;
+
+        // Bounding box dimensions (half width/depth + bus collision margin ~1.25m)
+        const halfW = bldg.w * 0.5 + 1.25;
+        const halfD = bldg.d * 0.5 + 1.25;
+
+        if (Math.abs(lx) < halfW && Math.abs(lz) < halfD) {
+          // Physical collision with an actual 3D building!
+          const penX = halfW - Math.abs(lx);
+          const penZ = halfD - Math.abs(lz);
+
+          let pushLocalX = 0, pushLocalZ = 0;
+          if (penX < penZ) {
+            pushLocalX = (Math.sign(lx) || 1) * penX;
+          } else {
+            pushLocalZ = (Math.sign(lz) || 1) * penZ;
+          }
+
+          // Convert local push vector back to world coordinates
+          const pushWx = pushLocalX * cosY + pushLocalZ * sinY;
+          const pushWz = -pushLocalX * sinY + pushLocalZ * cosY;
+
+          game.wx += pushWx * 1.05;
+          game.wz += pushWz * 1.05;
+
+          // Elastic bounce off building facade
+          game.signedSpeed = -game.signedSpeed * (FR.buildingBounce || 0.22);
+          v = game.signedSpeed;
+          game.speed = Math.abs(v);
+          game.shake = Math.max(game.shake, 0.45);
+          game.hp = Math.max(5, (game.hp || 100) - 2);
+          crashSound(false, bus.position);
+          spawnScrapeSparks(bus.position.x, 1.1, bus.position.z, 10, -Math.sign(pushWx || 1), 0);
+          break;
+        }
+      }
     }
 
     // 3. Map Edge Invisible Boundary: stop vehicle with helper warning line
