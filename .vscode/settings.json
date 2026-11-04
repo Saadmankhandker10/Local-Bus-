@@ -1,6 +1,15 @@
 {
-  "javascript.validate.enable": true,
+  "javascript.validate.enable": false,
   "javascript.implicitProjectConfig.checkJs": false,
   "typescript.validate.enable": false,
-  "cSpell.enabled": true
+  "javascript.suggestionActions.enabled": false,
+  "typescript.suggestionActions.enabled": false,
+  "cSpell.enabled": false,
+  "cSpell.diagnosticLevel": "Hint",
+  "cSpell.maxNumberOfProblems": 0,
+  "eslint.enable": false,
+  "markdownlint.enable": false,
+  "css.validate": false,
+  "html.validate.scripts": false,
+  "html.validate.styles": false
 }
