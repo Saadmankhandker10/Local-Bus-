@@ -545,6 +545,7 @@ let acc = 0;
 let last = performance.now();
 let slowFrameAcc = 0;
 let menuSlowFrameAcc = 0;
+const elQuality = $("setQuality");
 
 (function loop(now) {
   requestAnimationFrame(loop);
@@ -560,14 +561,15 @@ let menuSlowFrameAcc = 0;
   last = now;
 
   // Auto-quality watchdog: if a phone struggles below ~28 FPS for 3 s, step down pixel ratio to 1 and disable shadows.
-  if (game.running && !game.paused && $("setQuality")?.value === "auto" && (renderer.getPixelRatio() > 1 || renderer.shadowMap.enabled)) {
+  const qVal = elQuality?.value || "auto";
+  if (game.running && !game.paused && qVal === "auto" && (renderer.getPixelRatio() > 1 || renderer.shadowMap.enabled)) {
     slowFrameAcc = frameDt > 0.036 ? slowFrameAcc + frameDt : Math.max(0, slowFrameAcc - frameDt * .5);
     if (slowFrameAcc > 3) {
       renderer.setPixelRatio(1);
       renderer.shadowMap.enabled = false;
       sun.castShadow = false;
     }
-  } else if (!game.running && $("setQuality")?.value === "auto" && renderer.getPixelRatio() > 1) {
+  } else if (!game.running && qVal === "auto" && renderer.getPixelRatio() > 1) {
     // Menu frame-rate protection: if device drops below 30 FPS during menu, reduce pixel ratio
     menuSlowFrameAcc = frameDt > 0.033 ? menuSlowFrameAcc + frameDt : Math.max(0, menuSlowFrameAcc - frameDt * .5);
     if (menuSlowFrameAcc > 2.5) {

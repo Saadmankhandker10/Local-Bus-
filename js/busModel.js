@@ -62,6 +62,23 @@ export function isBusModelReady() {
   return cachedGltf !== null;
 }
 
+const trafficBusPool = [];
+
+/** Release a traffic bus back to the pool. */
+export function releaseBusModel(root) {
+  if (!root) return;
+  root.visible = false;
+  root.userData.inUse = false;
+}
+
+/** Reset all pooled traffic buses on run restart. */
+export function resetBusPools() {
+  for (const b of trafficBusPool) {
+    b.root.visible = false;
+    b.root.userData.inUse = false;
+  }
+}
+
 /**
  * Creates an instance of the 3D Bangladeshi bus.
  * Options:
@@ -71,6 +88,15 @@ export function isBusModelReady() {
  */
 export function instantiateBusModel(opts = {}) {
   if (!cachedGltf) return null;
+
+  if (!opts.isPlayer) {
+    const existing = trafficBusPool.find(b => !b.root.userData.inUse);
+    if (existing) {
+      existing.root.userData.inUse = true;
+      existing.root.visible = true;
+      return existing;
+    }
+  }
 
   const root = new THREE.Group();
   root.name = "BangladeshiBusInstance";
@@ -145,7 +171,7 @@ export function instantiateBusModel(opts = {}) {
     root.add(sidePlateR);
   }
 
-  return {
+  const busInstance = {
     root,
     model,
     wheels,
@@ -172,5 +198,13 @@ export function instantiateBusModel(opts = {}) {
       if (wheelFR) wheelFR.rotation.y = -yawAngle;
     }
   };
+
+  if (!opts.isPlayer) {
+    root.userData.isPooledBus = true;
+    root.userData.inUse = true;
+    trafficBusPool.push(busInstance);
+  }
+
+  return busInstance;
 }
 

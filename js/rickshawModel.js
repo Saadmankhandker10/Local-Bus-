@@ -55,9 +55,26 @@ export function loadRickshawModel() {
   return loadPromise;
 }
 
+const rickshawPool = [];
+
 /** Check if rickshaw model is ready. */
 export function isRickshawModelReady() {
   return cachedGltf !== null;
+}
+
+/** Release a rickshaw back to the pool. */
+export function releaseRickshawModel(root) {
+  if (!root) return;
+  root.visible = false;
+  root.userData.inUse = false;
+}
+
+/** Reset all pooled rickshaws on run start/restart. */
+export function resetRickshawPools() {
+  for (const r of rickshawPool) {
+    r.visible = false;
+    r.userData.inUse = false;
+  }
 }
 
 /**
@@ -66,8 +83,21 @@ export function isRickshawModelReady() {
 export function instantiateRickshawModel(opts = {}) {
   if (!cachedGltf) return null;
 
+  // 1. Check pool for an idle instance
+  const existing = rickshawPool.find(r => !r.userData.inUse);
+  if (existing) {
+    existing.userData.inUse = true;
+    existing.visible = true;
+    if (opts.color && existing.userData.hoodMat) {
+      existing.userData.hoodMat.color.setHex(opts.color);
+    }
+    return existing;
+  }
+
   const root = new THREE.Group();
   root.name = "BangladeshiRickshawInstance";
+  root.userData.isPooledRickshaw = true;
+  root.userData.inUse = true;
 
   // Deep clone scene hierarchy so materials and wheels roll independently
   const model = cachedGltf.scene.clone(true);
@@ -128,5 +158,7 @@ export function instantiateRickshawModel(opts = {}) {
   };
 
   root.userData.rickshawController = controller;
+  root.userData.hoodMat = hoodMesh ? hoodMesh.material : null;
+  rickshawPool.push(root);
   return root;
 }

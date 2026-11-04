@@ -249,7 +249,7 @@ export function person(shirt, y = 0, cap, wearsLungi = false, opts = {}) {
   torso.position.y = y + 0.48;
   const torsoMesh = new THREE.Mesh(torsoGeo, torsoMat);
   torsoMesh.position.y = 0.23;
-  torsoMesh.castShadow = true;
+  torsoMesh.castShadow = false;
   torsoMesh.receiveShadow = true;
   torso.add(torsoMesh);
 
@@ -330,7 +330,7 @@ export function person(shirt, y = 0, cap, wearsLungi = false, opts = {}) {
     const lungiMat = pick(LUNGI_MATS);
     const lungiMesh = new THREE.Mesh(lungiGeo, lungiMat);
     lungiMesh.position.y = y + 0.25;
-    lungiMesh.castShadow = true;
+    lungiMesh.castShadow = false;
     lungiMesh.receiveShadow = true;
     g.add(lungiMesh);
 
@@ -344,7 +344,7 @@ export function person(shirt, y = 0, cap, wearsLungi = false, opts = {}) {
   } else if (outfit === "saree") {
     const sareeSkirt = new THREE.Mesh(sareeSkirtGeo, torsoMat);
     sareeSkirt.position.y = y + 0.26;
-    sareeSkirt.castShadow = true;
+    sareeSkirt.castShadow = false;
     sareeSkirt.receiveShadow = true;
     g.add(sareeSkirt);
 
@@ -899,7 +899,7 @@ function makePooledBuilding(idx) {
 
   // Main apartment/commercial building block (unit cube scaled per placement).
   const bldg = new THREE.Mesh(UNIT, BLDG_MATS[idx % BLDG_MATS.length]);
-  bldg.castShadow = true;
+  bldg.castShadow = false;
   bldg.receiveShadow = true;
   g.add(bldg);
 
@@ -914,7 +914,7 @@ function makePooledBuilding(idx) {
   awning.scale.set(2.4, 0.14, 7.6);
   awning.position.set(0, 2.55, 0);
   awning.rotation.z = 0.12;
-  awning.castShadow = true;
+  awning.castShadow = false;
   awning.receiveShadow = true;
   hawker.add(awning);
   for (const dz of [-3.4, 0, 3.4]) {
@@ -1063,12 +1063,14 @@ function release(p) {
 
 let lastStreamTime = 0;
 let lastStreamX = -999999, lastStreamZ = -999999;
+let lastStreamProg = -999999;
 
 export function resetWorld() {
   for (const p of [...active]) release(p);
   lastStreamTime = 0;
   lastStreamX = -999999;
   lastStreamZ = -999999;
+  lastStreamProg = -999999;
 }
 
 /** Configures and deploys a pooled building mesh at placement p. */
@@ -1176,7 +1178,15 @@ export function updateWorld() {
       }
     }
   } else {
-    // 1.5D curvilinear streaming
+    // 1.5D curvilinear streaming with 90ms / 2m throttle to eliminate per-frame CPU hitching
+    const now = performance.now();
+    const curProg = game.prog || 0;
+    if (now - lastStreamTime < 90 && Math.abs(curProg - lastStreamProg) < 2.0) {
+      return;
+    }
+    lastStreamTime = now;
+    lastStreamProg = curProg;
+
     for (const p of active) {
       const a = ahead(p.seg, p.s);
       if (Number.isNaN(a) || !(a > -W.buildingBehind && a < W.buildingAhead)) release(p);

@@ -179,52 +179,186 @@ on("stageArrive", t => {
   cardT = CFG.journey.cardSeconds;
 });
 
+// Cached DOM nodes for zero-allocation high-performance HUD updates
+let elFare = null, elDamage = null, elCombo = null, elPass = null, elSpd = null, elDist = null;
+let elFuelBar = null, elFuelPct = null, elFuelBox = null, elCngHint = null;
+let elHpBar = null, elHpBox = null, elComfortBar = null, elComfortBox = null;
+let elSpeedLines = null, elPBus = null, elCrowdBox = null, elCrowdText = null;
+let elCrowdBar = null, elCrowdCue = null, elWrongWay = null, elWarn = null, elVignette = null;
+let elMsg = null, elStageCard = null, elMeme = null;
+
+function ensureHudElements() {
+  if (elFare) return;
+  elFare = $("fare");
+  elDamage = $("damage");
+  elCombo = $("combo");
+  elPass = $("pass");
+  elSpd = $("spd");
+  elDist = $("dist");
+  elFuelBar = $("fuelbar");
+  elFuelPct = $("fuelPct");
+  elFuelBox = $("fuelbox");
+  elCngHint = $("cngHint");
+  elHpBar = $("hpbar");
+  elHpBox = $("hpbox");
+  elComfortBar = $("comfortbar");
+  elComfortBox = $("comfortbox");
+  elSpeedLines = $("speedlines");
+  elPBus = $("pbus");
+  elCrowdBox = $("crowdbox");
+  elCrowdText = $("crowdText");
+  elCrowdBar = $("crowdbar");
+  elCrowdCue = $("crowdcue");
+  elWrongWay = $("wrongWay");
+  elWarn = $("warn");
+  elVignette = $("vignette");
+  elMsg = $("msg");
+  elStageCard = $("stagecard");
+  elMeme = $("meme");
+}
+
+let lastFare = -1, lastDamage = -1, lastComboStr = "", lastPass = -1, lastSpd = -1;
+let lastDistStr = "", lastFuelInt = -1, lastHpInt = -1, lastComfortInt = -1;
+let lastLowFuel = null, lastLowHp = null, lastHealing = null, lastLowComfort = null;
+let lastChasing = null, lastCrowdSize = -1, lastWrongWay = null, lastWarn = null;
+let cngCheckTimer = 0, lastCngHintText = "";
+
 /**
  * Copy the current game numbers into the HUD. Called once per frame.
  * @param {number} boostFx 0..1 strength of the boost effect (for speed lines)
  */
 export function updateHud(dt, boostFx) {
-  $("fare").textContent = "৳" + bnNum(Math.floor(game.fare));
-  $("damage").textContent = "৳" + bnNum(Math.floor(game.damage * 10).toLocaleString("en-IN"));
-  $("combo").textContent = game.combo > 1 ? `x${bnNum(comboMult())}` : "";
-  $("pass").textContent = bnNum(game.pass);
-  $("spd").textContent = bnNum(Math.round(game.speed * CFG.hud.kmhPerSpeed));
-  // The route is scaled so the whole trip reads as the real ~7 km.
-  $("dist").textContent = bnNum((Math.min(game.prog, TOTAL) / TOTAL * ROUTE.realKm).toFixed(1));
-  $("fuelbar").style.width = game.fuel + "%";
-  if ($("fuelPct")) $("fuelPct").textContent = bnNum(Math.round(game.fuel)) + "%";
-  $("fuelbox").classList.toggle("low", game.fuel < CFG.hud.lowFuel);
-  const cng = game.running && game.fuel < 85 ? nearestCng() : null;
-  if ($("cngHint")) {
-    const m = cng ? Math.round(cng.d / TOTAL * ROUTE.realKm * 1000 / 10) * 10 : 0;
-    $("cngHint").textContent = cng ? `▲⛽ সিএনজি ${bnNum(m)} মি সামনে` : "";
+  ensureHudElements();
+
+  const curFare = Math.floor(game.fare);
+  if (curFare !== lastFare) {
+    lastFare = curFare;
+    if (elFare) elFare.textContent = "৳" + bnNum(curFare);
   }
-  $("hpbar").style.width = game.hp + "%";
-  $("hpbox").classList.toggle("low", game.hp < CFG.bus.lowHp);
-  $("hpbox").classList.toggle("healing", game.hp < CFG.bus.maxHp && (game.hpHealCooldown || 0) <= 0);
-  $("comfortbar").style.width = game.comfort + "%";
-  $("comfortbox").classList.toggle("low", game.comfort < CFG.comfort.lowThreshold);
-  $("speedlines").style.opacity = (boostFx * CFG.camera.speedLinesOpacity).toFixed(3);
-  $("pbus").style.left = (progress(game.prog) * 100).toFixed(2) + "%";
+
+  const curDamage = Math.floor(game.damage * 10);
+  if (curDamage !== lastDamage) {
+    lastDamage = curDamage;
+    if (elDamage) elDamage.textContent = "৳" + bnNum(curDamage.toLocaleString("en-IN"));
+  }
+
+  const curComboStr = game.combo > 1 ? `x${bnNum(comboMult())}` : "";
+  if (curComboStr !== lastComboStr) {
+    lastComboStr = curComboStr;
+    if (elCombo) elCombo.textContent = curComboStr;
+  }
+
+  if (game.pass !== lastPass) {
+    lastPass = game.pass;
+    if (elPass) elPass.textContent = bnNum(lastPass);
+  }
+
+  const curSpd = Math.round(game.speed * CFG.hud.kmhPerSpeed);
+  if (curSpd !== lastSpd) {
+    lastSpd = curSpd;
+    if (elSpd) elSpd.textContent = bnNum(curSpd);
+  }
+
+  const curDistStr = (Math.min(game.prog, TOTAL) / TOTAL * ROUTE.realKm).toFixed(1);
+  if (curDistStr !== lastDistStr) {
+    lastDistStr = curDistStr;
+    if (elDist) elDist.textContent = bnNum(curDistStr);
+  }
+
+  const curFuelInt = Math.round(game.fuel * 2) / 2;
+  if (curFuelInt !== lastFuelInt) {
+    lastFuelInt = curFuelInt;
+    if (elFuelBar) elFuelBar.style.width = curFuelInt + "%";
+    if (elFuelPct) elFuelPct.textContent = bnNum(Math.round(game.fuel)) + "%";
+  }
+
+  const isLowFuel = game.fuel < CFG.hud.lowFuel;
+  if (isLowFuel !== lastLowFuel) {
+    lastLowFuel = isLowFuel;
+    if (elFuelBox) elFuelBox.classList.toggle("low", isLowFuel);
+  }
+
+  // Throttle nearestCng check from 60 Hz to 4 Hz
+  cngCheckTimer -= dt;
+  if (cngCheckTimer <= 0) {
+    cngCheckTimer = 0.25;
+    const cng = game.running && game.fuel < 85 ? nearestCng() : null;
+    const m = cng ? Math.round(cng.d / TOTAL * ROUTE.realKm * 1000 / 10) * 10 : 0;
+    const newHint = cng ? `▲⛽ সিএনজি ${bnNum(m)} মি সামনে` : "";
+    if (newHint !== lastCngHintText) {
+      lastCngHintText = newHint;
+      if (elCngHint) elCngHint.textContent = newHint;
+    }
+  }
+
+  const curHpInt = Math.round(game.hp * 2) / 2;
+  if (curHpInt !== lastHpInt) {
+    lastHpInt = curHpInt;
+    if (elHpBar) elHpBar.style.width = curHpInt + "%";
+  }
+
+  const isLowHp = game.hp < CFG.bus.lowHp;
+  if (isLowHp !== lastLowHp) {
+    lastLowHp = isLowHp;
+    if (elHpBox) elHpBox.classList.toggle("low", isLowHp);
+  }
+
+  const isHealing = game.hp < CFG.bus.maxHp && (game.hpHealCooldown || 0) <= 0;
+  if (isHealing !== lastHealing) {
+    lastHealing = isHealing;
+    if (elHpBox) elHpBox.classList.toggle("healing", isHealing);
+  }
+
+  const curComfortInt = Math.round(game.comfort * 2) / 2;
+  if (curComfortInt !== lastComfortInt) {
+    lastComfortInt = curComfortInt;
+    if (elComfortBar) elComfortBar.style.width = curComfortInt + "%";
+  }
+
+  const isLowComfort = game.comfort < CFG.comfort.lowThreshold;
+  if (isLowComfort !== lastLowComfort) {
+    lastLowComfort = isLowComfort;
+    if (elComfortBox) elComfortBox.classList.toggle("low", isLowComfort);
+  }
+
+  if (elSpeedLines) elSpeedLines.style.opacity = (boostFx * CFG.camera.speedLinesOpacity).toFixed(3);
+  if (elPBus) elPBus.style.left = (progress(game.prog) * 100).toFixed(2) + "%";
 
   // Top-centre red chasing crowd pill ("পাবলিক পিছে! ৬ জন!") + bottom orange glow.
   const chasing = game.running && crowd.active;
-  $("crowdbox").hidden = !chasing;
-  if (chasing && $("crowdText")) {
-    $("crowdText").textContent = `পাবলিক পিছে! ${bnNum(crowd.size)} জন!`;
+  if (chasing !== lastChasing) {
+    lastChasing = chasing;
+    if (elCrowdBox) elCrowdBox.hidden = !chasing;
   }
-  const close = chasing ? clamp(1 - (crowd.gap - CFG.crowd.catchGap) / (CFG.crowd.cueGap - CFG.crowd.catchGap), 0, 1) : 0;
-  $("crowdbar").style.width = (close * 100).toFixed(1) + "%";
-  $("crowdcue").style.opacity = close.toFixed(3);
-  if ($("wrongWay")) $("wrongWay").hidden = !(game.running && game.wrongWay);
+  if (chasing) {
+    if (crowd.size !== lastCrowdSize) {
+      lastCrowdSize = crowd.size;
+      if (elCrowdText) elCrowdText.textContent = `পাবলিক পিছে! ${bnNum(crowd.size)} জন!`;
+    }
+    const close = clamp(1 - (crowd.gap - CFG.crowd.catchGap) / (CFG.crowd.cueGap - CFG.crowd.catchGap), 0, 1);
+    if (elCrowdBar) elCrowdBar.style.width = (close * 100).toFixed(1) + "%";
+    if (elCrowdCue) elCrowdCue.style.opacity = close.toFixed(3);
+  }
+
+  const isWrongWay = Boolean(game.running && game.wrongWay);
+  if (isWrongWay !== lastWrongWay) {
+    lastWrongWay = isWrongWay;
+    if (elWrongWay) elWrongWay.hidden = !isWrongWay;
+  }
 
   // Red warning: text + icon (not colour alone) and a soft red glow at the screen edges.
-  const warn = game.running && game.warn;
-  $("warn").hidden = !warn;
-  $("vignette").style.opacity = warn ? (.35 + .25 * Math.sin(game.time * Math.PI * 2 * CFG.warning.pulseHz)).toFixed(3) : "0";
-  if (msgT > 0) { msgT -= dt; if (msgT <= 0) $("msg").textContent = ""; }
-  if (cardT > 0) { cardT -= dt; if (cardT <= 0) $("stagecard").hidden = true; }
-  if (memeT > 0) { memeT -= dt; if (memeT <= 0 && $("meme")) $("meme").hidden = true; }
+  const warn = Boolean(game.running && game.warn);
+  if (warn !== lastWarn) {
+    lastWarn = warn;
+    if (elWarn) elWarn.hidden = !warn;
+  }
+  if (elVignette) {
+    elVignette.style.opacity = warn ? (.35 + .25 * Math.sin(game.time * Math.PI * 2 * CFG.warning.pulseHz)).toFixed(3) : "0";
+  }
+
+  if (msgT > 0) { msgT -= dt; if (msgT <= 0 && elMsg) elMsg.textContent = ""; }
+  if (cardT > 0) { cardT -= dt; if (cardT <= 0 && elStageCard) elStageCard.hidden = true; }
+  if (memeT > 0) { memeT -= dt; if (memeT <= 0 && elMeme) elMeme.hidden = true; }
 }
 
 /** Call fns when the main button (start / from checkpoint) or the "from the start" button is pressed. */

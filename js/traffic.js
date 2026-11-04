@@ -15,6 +15,8 @@ import { sweptHit, sideGap } from "./physics.js";
 import { makeVehicle, makeStall, makeThela, makeFishStall, makePillar, makeManhole, makeTrench, makeRamp, beaconMat, dangerRingMat } from "./vehicles.js";
 import { disposeHierarchy, sparkMat } from "./shaders.js";
 import { releaseCarModel, resetCarPools } from "./carModel.js";
+import { releaseRickshawModel, resetRickshawPools } from "./rickshawModel.js";
+import { releaseBusModel, resetBusPools } from "./busModel.js";
 import {
   spawnCrashEffects,
   spawnScrapeSparks,
@@ -146,9 +148,13 @@ export function resetTraffic(fromDist = 0) {
   for (const o of objs) {
     scene.remove(o.m);
     if (o.m?.userData?.isPooledCar) releaseCarModel(o.m);
+    else if (o.m?.userData?.isPooledRickshaw) releaseRickshawModel(o.m);
+    else if (o.m?.userData?.isPooledBus) releaseBusModel(o.m);
     else disposeHierarchy(o.m);
   }
   resetCarPools();
+  resetRickshawPools();
+  resetBusPools();
   for (const p of peds) scene.remove(p.m);
   for (const c of chunks) { c.active = false; c.m.visible = false; }
   for (const sp of sparkPool) { sp.active = false; sp.m.visible = false; }
@@ -597,6 +603,10 @@ export function updateTraffic(dt) {
       scene.remove(o.m);
       if (o.m.userData.isPooledCar) {
         releaseCarModel(o.m);
+      } else if (o.m.userData.isPooledRickshaw) {
+        releaseRickshawModel(o.m);
+      } else if (o.m.userData.isPooledBus) {
+        releaseBusModel(o.m);
       } else {
         disposeHierarchy(o.m);
       }
