@@ -246,6 +246,7 @@ let lastMorKey = "";
 let revBeepTimer = 0;
 let kerbScrapeTimer = 0;
 let mapEdgeVoiceTimer = 0;
+let reverseVoiceTimer = 0;
 const nearestRoad = { seg: 0, s: 0, lat: 0, yaw: 0, dist: 0 };
 
 /** Put the bus on the main road at a journey progress value, facing along the road. */
@@ -259,6 +260,8 @@ export function resetBus(progress = 0) {
   game.busVy = 0;
   game.wrongWay = false;
   lastMorKey = "";
+  revBeepTimer = 0;
+  reverseVoiceTimer = 0;
   if (SEGS[here.seg]?.mor) game.morName = SEGS[here.seg].mor;
   sample(here.seg, here.s, pos);
   const rx = Math.cos(pos.yaw), rz = -Math.sin(pos.yaw);
@@ -413,6 +416,7 @@ export function updateBus(dt) {
     } else {
       revBeepTimer = 0;
     }
+    if (reverseVoiceTimer > 0) reverseVoiceTimer -= dt;
 
     game.signedSpeed = v;
     game.speed = Math.abs(v);
@@ -624,6 +628,7 @@ export function updateBus(dt) {
     } else {
       revBeepTimer = 0;
     }
+    if (reverseVoiceTimer > 0) reverseVoiceTimer -= dt;
 
     const prevSpeed = game.speed;
     game.accel = (Math.abs(v) - prevSpeed) / dt;

@@ -1,0 +1,6 @@
+{
+  "javascript.validate.enable": true,
+  "javascript.implicitProjectConfig.checkJs": false,
+  "typescript.validate.enable": false,
+  "cSpell.enabled": true
+}
